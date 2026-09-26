@@ -258,6 +258,108 @@ internal fun DetailPage(
             }
         }
 
+        // 离线正文快照 / 本地阅读模式
+        val snapshot = vm.currentSnapshot
+        val fetchingSnapshot = vm.fetchingSnapshot
+        var expandedReader by remember { mutableStateOf(false) }
+
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            SectionLabel(
+                "离线正文快照",
+                trailing = if (snapshot != null) "已缓存 · ${snapshot.length} 字" else ""
+            )
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = MaterialTheme.colorScheme.surface,
+                border = BorderStroke(0.6.dp, MaterialTheme.colorScheme.outlineVariant),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (snapshot != null) {
+                        SelectionContainer {
+                            Text(
+                                snapshot,
+                                fontSize = 14.sp,
+                                lineHeight = 24.sp,
+                                maxLines = if (expandedReader) Int.MAX_VALUE else 8,
+                                overflow = TextOverflow.Ellipsis,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (snapshot.length > 300) {
+                                TextButton(
+                                    onClick = { expandedReader = !expandedReader },
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                    modifier = Modifier.height(30.dp)
+                                ) {
+                                    Text(if (expandedReader) "收起正文" else "展开全文阅读", fontSize = 12.sp)
+                                }
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    clipboard.setText(AnnotatedString(snapshot))
+                                    vm.toast("已复制离线正文")
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                                modifier = Modifier.height(30.dp)
+                            ) {
+                                Icon(Glyph.Copy, null, Modifier.size(12.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("复制正文", fontSize = 12.sp)
+                            }
+                            if (vm.fetchEnabled && item.url.startsWith("https://", true)) {
+                                OutlinedButton(
+                                    onClick = { vm.captureSnapshot(item) },
+                                    enabled = !vm.busy && !fetchingSnapshot,
+                                    shape = RoundedCornerShape(8.dp),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                                    modifier = Modifier.height(30.dp)
+                                ) {
+                                    if (fetchingSnapshot) CircularProgressIndicator(Modifier.size(11.dp), strokeWidth = 1.6.dp)
+                                    else Icon(Glyph.Book, null, Modifier.size(12.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(if (fetchingSnapshot) "抓取中…" else "更新快照", fontSize = 12.sp)
+                                }
+                            }
+                            TextButton(
+                                onClick = { vm.removeSnapshot(item.id) },
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                                modifier = Modifier.height(30.dp)
+                            ) {
+                                Text("删除快照", fontSize = 11.5.sp, color = MaterialTheme.colorScheme.outline)
+                            }
+                        }
+                    } else {
+                        Text(
+                            "抓取文章纯净正文保存到本地。即使源网页 404 或无网络，依然可以随时阅读。",
+                            fontSize = 12.5.sp,
+                            lineHeight = 18.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
+                        )
+                        if (vm.fetchEnabled && item.url.startsWith("https://", true)) {
+                            OutlinedButton(
+                                onClick = { vm.captureSnapshot(item) },
+                                enabled = !vm.busy && !fetchingSnapshot,
+                                shape = RoundedCornerShape(9.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                modifier = Modifier.height(34.dp)
+                            ) {
+                                if (fetchingSnapshot) CircularProgressIndicator(Modifier.size(13.dp), strokeWidth = 1.8.dp)
+                                else Icon(Glyph.Book, null, Modifier.size(14.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(if (fetchingSnapshot) "正文提取中…" else "提取正文快照（离线阅读模式）", fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // 标签栏
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             SectionLabel("标签")

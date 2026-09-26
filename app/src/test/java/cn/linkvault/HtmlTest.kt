@@ -73,7 +73,38 @@ class HtmlTest {
     @Test fun fetcherRefusesAnythingButHttpsBeforeTouchingTheNetwork() {
         listOf("http://example.com", "ftp://example.com", "not a url").forEach { url ->
             assertThrows(IllegalArgumentException::class.java) { Net.fetchHead(url) }
+            assertThrows(IllegalArgumentException::class.java) { Net.fetchArticle(url) }
         }
+    }
+
+    @Test fun extractArticleExtractsParagraphsAndStripsNoise() {
+        val html = """
+            <html>
+              <head><style>.ad { display:none; }</style></head>
+              <body>
+                <header><nav><a href="/">首页</a></nav></header>
+                <h1>文章主标题</h1>
+                <p>这是第一段内容，包含 <b>加粗</b> 与 &ldquo;引语&rdquo;。</p>
+                <script>console.log("广告脚本");</script>
+                <div class="content">
+                  <p>这是第二段正文。</p>
+                </div>
+                <footer>版权所有 &copy; 2026</footer>
+              </body>
+            </html>
+        """.trimIndent()
+        val text = Html.extractArticle(html)
+        assertTrue(text.contains("文章主标题"))
+        assertTrue(text.contains("这是第一段内容，包含 加粗 与 “引语”。"))
+        assertTrue(text.contains("这是第二段正文。"))
+        assertFalse(text.contains("广告脚本"))
+        assertFalse(text.contains("版权所有"))
+        assertFalse(text.contains("首页"))
+    }
+
+    @Test fun extractArticleHandlesEmptyAndScriptOnlyHtml() {
+        assertEquals("", Html.extractArticle("<script>alert(1)</script>"))
+        assertEquals("", Html.extractArticle(""))
     }
 }
 

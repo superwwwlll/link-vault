@@ -277,6 +277,313 @@ object Backup {
         return sb.toString().toByteArray(Charsets.UTF_8)
     }
 
+    /**
+     * 导出为单文件离线交互式导航网页（HTML Portal）。
+     * 内置现代化卡片布局、暗色模式适配、原生即时搜索输入框与标签筛选交互，无需任何外链与服务器。
+     */
+    fun encodePortalHtml(items: List<Bookmark>): ByteArray {
+        require(items.size <= MAX_ITEMS) { "单个备份最多 10000 条收藏" }
+        val sb = StringBuilder()
+        sb.append("<!DOCTYPE html>\n<html lang=\"zh-CN\">\n<head>\n")
+        sb.append("<meta charset=\"UTF-8\">\n")
+        sb.append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n")
+        sb.append("<title>链藏 · 个人导航书签</title>\n")
+        sb.append("<style>\n")
+        sb.append("""
+            :root {
+                --bg: #F8F7F4;
+                --surface: #FFFFFF;
+                --text: #191B1F;
+                --sub: #646A73;
+                --primary: #2F4DA8;
+                --primary-bg: #EAEFFC;
+                --border: #E8E6E1;
+                --tag-bg: #EFEFE9;
+                --card-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.02);
+            }
+            @media (prefers-color-scheme: dark) {
+                :root {
+                    --bg: #141518;
+                    --surface: #1E2024;
+                    --text: #EDEFEA;
+                    --sub: #9AA0A6;
+                    --primary: #5C82FF;
+                    --primary-bg: #1B2544;
+                    --border: #2E3138;
+                    --tag-bg: #282A30;
+                    --card-shadow: 0 1px 4px rgba(0,0,0,0.2);
+                }
+            }
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+                background: var(--bg);
+                color: var(--text);
+                line-height: 1.5;
+                padding: 32px 20px 60px;
+                min-height: 100vh;
+            }
+            .container { max-width: 1080px; margin: 0 auto; }
+            header { margin-bottom: 24px; text-align: center; }
+            .logo { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+            .sub { font-size: 13px; color: var(--sub); margin-top: 4px; }
+            .search-box {
+                margin: 20px auto 16px;
+                max-width: 540px;
+                position: relative;
+            }
+            .search-box input {
+                width: 100%;
+                padding: 12px 18px;
+                font-size: 14.5px;
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                background: var(--surface);
+                color: var(--text);
+                outline: none;
+                transition: border-color 0.15s ease, box-shadow 0.15s ease;
+            }
+            .search-box input:focus {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 3px var(--primary-bg);
+            }
+            .tags-bar {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                justify-content: center;
+                margin-bottom: 24px;
+            }
+            .tag-btn {
+                background: var(--surface);
+                border: 1px solid var(--border);
+                color: var(--sub);
+                padding: 5px 12px;
+                border-radius: 20px;
+                font-size: 12.5px;
+                cursor: pointer;
+                transition: all 0.15s ease;
+            }
+            .tag-btn:hover { border-color: var(--primary); color: var(--primary); }
+            .tag-btn.active {
+                background: var(--primary-bg);
+                border-color: var(--primary);
+                color: var(--primary);
+                font-weight: 600;
+            }
+            .stats { text-align: center; font-size: 12px; color: var(--sub); margin-bottom: 20px; }
+            .grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+                gap: 16px;
+            }
+            .card {
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: 14px;
+                padding: 16px;
+                box-shadow: var(--card-shadow);
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+                gap: 12px;
+                transition: transform 0.15s ease, border-color 0.15s ease;
+            }
+            .card:hover {
+                transform: translateY(-2px);
+                border-color: var(--primary);
+            }
+            .card-header {
+                display: flex;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            .site-badge {
+                width: 28px;
+                height: 28px;
+                border-radius: 8px;
+                background: var(--primary-bg);
+                color: var(--primary);
+                font-size: 13px;
+                font-weight: 700;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0;
+            }
+            .title-area { flex: 1; min-width: 0; }
+            .title-link {
+                font-size: 15px;
+                font-weight: 600;
+                color: var(--text);
+                text-decoration: none;
+                word-break: break-word;
+                line-height: 1.4;
+            }
+            .title-link:hover { color: var(--primary); text-decoration: underline; }
+            .site-host {
+                font-size: 11.5px;
+                color: var(--sub);
+                margin-top: 2px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .desc {
+                font-size: 13px;
+                color: var(--sub);
+                line-height: 1.45;
+                word-break: break-word;
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+            }
+            .notes {
+                font-size: 12.5px;
+                background: var(--tag-bg);
+                border-radius: 8px;
+                padding: 8px 10px;
+                color: var(--text);
+                word-break: break-word;
+            }
+            .card-footer {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-top: auto;
+                padding-top: 6px;
+                border-top: 1px solid var(--border);
+            }
+            .card-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+            .card-tag {
+                font-size: 11px;
+                padding: 2px 7px;
+                border-radius: 6px;
+                background: var(--tag-bg);
+                color: var(--sub);
+            }
+            .copy-btn {
+                background: none;
+                border: none;
+                color: var(--sub);
+                font-size: 12px;
+                cursor: pointer;
+                padding: 4px 6px;
+                border-radius: 6px;
+            }
+            .copy-btn:hover { color: var(--primary); background: var(--primary-bg); }
+        """.trimIndent())
+        sb.append("\n</style>\n</head>\n<body>\n")
+        sb.append("<div class=\"container\">\n")
+        sb.append("  <header>\n")
+        sb.append("    <div class=\"logo\">链藏 · 导航书签</div>\n")
+        sb.append("    <div class=\"sub\">离线个人知识主页 · 纯本地生成</div>\n")
+        sb.append("    <div class=\"search-box\"><input id=\"search\" type=\"search\" placeholder=\"输入关键词实时检索标题、链接、标签、手记…\" autocomplete=\"off\" /></div>\n")
+
+        val allTags = items.flatMap { parseTags(it.tags) }.groupingBy { it }.eachCount()
+        sb.append("    <div class=\"tags-bar\" id=\"tagsBar\">\n")
+        sb.append("      <button class=\"tag-btn active\" data-tag=\"\">全部 (${items.size})</button>\n")
+        allTags.toList().sortedByDescending { it.second }.forEach { (tag, count) ->
+            sb.append("      <button class=\"tag-btn\" data-tag=\"${escapeHtml(tag)}\">${escapeHtml(tag)} ($count)</button>\n")
+        }
+        sb.append("    </div>\n")
+        sb.append("    <div class=\"stats\" id=\"stats\">共 ${items.size} 条收藏</div>\n")
+        sb.append("  </header>\n")
+
+        sb.append("  <div class=\"grid\" id=\"grid\">\n")
+        items.forEach { item ->
+            val host = runCatching { java.net.URI(item.url).host.orEmpty() }.getOrDefault("")
+            val initial = host.filter { it.isLetter() }.firstOrNull()?.uppercaseChar()?.toString() ?: "L"
+            val title = if (item.title.isNotBlank()) item.title else item.url
+            val tagsList = parseTags(item.tags)
+            val searchData = escapeHtml((item.title + " " + item.url + " " + item.tags + " " + item.notes + " " + item.summary).lowercase())
+
+            sb.append("    <div class=\"card\" data-search=\"$searchData\" data-tags=\"${escapeHtml(item.tags.lowercase())}\">\n")
+            sb.append("      <div class=\"card-header\">\n")
+            sb.append("        <div class=\"site-badge\">${escapeHtml(initial)}</div>\n")
+            sb.append("        <div class=\"title-area\">\n")
+            sb.append("          <a class=\"title-link\" href=\"${escapeHtml(item.url)}\" target=\"_blank\" rel=\"noopener noreferrer\">${escapeHtml(title)}</a>\n")
+            sb.append("          <div class=\"site-host\">${escapeHtml(host.ifBlank { item.url })}</div>\n")
+            sb.append("        </div>\n")
+            sb.append("      </div>\n")
+            if (item.summary.isNotBlank()) {
+                sb.append("      <div class=\"desc\">${escapeHtml(item.summary)}</div>\n")
+            }
+            if (item.notes.isNotBlank()) {
+                sb.append("      <div class=\"notes\">💭 ${escapeHtml(item.notes)}</div>\n")
+            }
+            sb.append("      <div class=\"card-footer\">\n")
+            sb.append("        <div class=\"card-tags\">\n")
+            tagsList.forEach { tag ->
+                sb.append("          <span class=\"card-tag\">#${escapeHtml(tag)}</span>\n")
+            }
+            sb.append("        </div>\n")
+            sb.append("        <button class=\"copy-btn\" onclick=\"copyUrl('${escapeHtml(item.url)}', this)\">复制</button>\n")
+            sb.append("      </div>\n")
+            sb.append("    </div>\n")
+        }
+        sb.append("  </div>\n")
+        sb.append("</div>\n")
+
+        sb.append("""
+            <script>
+            let currentTag = '';
+            const searchInput = document.getElementById('search');
+            const stats = document.getElementById('stats');
+            const cards = Array.from(document.querySelectorAll('.card'));
+            const tagBtns = Array.from(document.querySelectorAll('.tag-btn'));
+            const total = cards.length;
+
+            function filter() {
+                const query = (searchInput.value || '').trim().toLowerCase();
+                let visible = 0;
+                cards.forEach(card => {
+                    const searchData = card.getAttribute('data-search') || '';
+                    const tags = card.getAttribute('data-tags') || '';
+                    const matchQuery = !query || searchData.includes(query);
+                    const matchTag = !currentTag || tags.split(',').map(s=>s.trim()).includes(currentTag.toLowerCase());
+                    if (matchQuery && matchTag) {
+                        card.style.display = '';
+                        visible++;
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+                if (visible === total) {
+                    stats.textContent = '共 ' + total + ' 条收藏';
+                } else {
+                    stats.textContent = '显示 ' + visible + ' / 共 ' + total + ' 条';
+                }
+            }
+
+            searchInput.addEventListener('input', filter);
+
+            tagBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    tagBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentTag = btn.getAttribute('data-tag') || '';
+                    filter();
+                });
+            });
+
+            function copyUrl(url, btn) {
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(url).then(() => {
+                        const orig = btn.textContent;
+                        btn.textContent = '已复制';
+                        setTimeout(() => btn.textContent = orig, 1500);
+                    });
+                }
+            }
+            </script>
+        """.trimIndent())
+        sb.append("\n</body>\n</html>\n")
+
+        return sb.toString().toByteArray(Charsets.UTF_8)
+    }
+
     private fun escapeHtml(text: String): String = text
         .replace("&", "&amp;")
         .replace("<", "&lt;")

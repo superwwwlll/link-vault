@@ -29,6 +29,7 @@ internal fun SettingsPage(
     vm: VaultViewModel,
     onExport: () -> Unit,
     onExportHtml: () -> Unit = {},
+    onExportPortalHtml: () -> Unit = {},
     onExportMarkdown: () -> Unit = {},
     onImport: () -> Unit,
     onPickFolder: () -> Unit,
@@ -143,6 +144,8 @@ internal fun SettingsPage(
                         SettingRow(Glyph.Export, "导出收藏", "将 ${vm.items.size} 条收藏保存为 JSON", !vm.busy && !vm.readFailed && !vm.loading, onExport)
                         HorizontalDivider(Modifier.padding(start = 58.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
                         SettingRow(Glyph.LinkChain, "导出 HTML 书签", "通用格式 · 兼容各大浏览器", !vm.busy && !vm.readFailed && !vm.loading, onExportHtml)
+                        HorizontalDivider(Modifier.padding(start = 58.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+                        SettingRow(Glyph.Globe, "导出独立导航网页", "单文件精美网页 · 内置即时搜索与标签", !vm.busy && !vm.readFailed && !vm.loading, onExportPortalHtml)
                         HorizontalDivider(Modifier.padding(start = 58.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
                         SettingRow(Glyph.Markdown, "导出 Markdown 合辑", "知识库清单 · 兼容 Obsidian/Notion", !vm.busy && !vm.readFailed && !vm.loading, onExportMarkdown)
                         HorizontalDivider(Modifier.padding(start = 58.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))

@@ -21,6 +21,7 @@ import java.nio.charset.CodingErrorAction
  */
 object Net {
     const val MAX_BYTES = 96 * 1024
+    const val MAX_ARTICLE_BYTES = 384 * 1024
     const val TIMEOUT_MS = 12_000
     const val MAX_REDIRECTS = 3
 
@@ -77,6 +78,56 @@ object Net {
         description = Html.metaContent(html, listOf("og:description", "description", "twitter:description")).orEmpty().take(300),
         siteName = Html.metaContent(html, listOf("og:site_name", "application-name")).orEmpty().take(60)
     )
+
+    /**
+     * 离线正文抓取（Reader Mode Snapshot）。
+     * 限额读取网页内容（最多 384KB），提取纯净正文用于离线阅读。
+     */
+    fun fetchArticle(url: String): String {
+        require(Links.valid(url)) { "链接格式不合法" }
+        require(url.startsWith("https://", true)) { "只能抓取 https 链接，明文 http 已禁用" }
+        var target = url
+        var hops = 0
+        while (true) {
+            val connection = (URL(target).openConnection() as HttpURLConnection).apply {
+                connectTimeout = TIMEOUT_MS
+                readTimeout = TIMEOUT_MS
+                instanceFollowRedirects = false
+                requestMethod = "GET"
+                setRequestProperty("Range", "bytes=0-${MAX_ARTICLE_BYTES - 1}")
+                setRequestProperty("Accept", "text/html,application/xhtml+xml;q=0.9,*/*;q=0.1")
+                setRequestProperty("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
+                setRequestProperty("User-Agent", "LinkVault/1.3 (local bookmark manager; offline reader)")
+                setRequestProperty("Connection", "close")
+            }
+            try {
+                val code = connection.responseCode
+                if (code in 300..399) {
+                    val location = connection.getHeaderField("Location")
+                    require(!location.isNullOrBlank()) { "服务器返回了空的重定向地址" }
+                    require(hops++ < MAX_REDIRECTS) { "重定向次数过多，已停止" }
+                    val next = runCatching { URI(target).resolve(location) }.getOrNull()
+                        ?: error("服务器返回的重定向地址无法解析")
+                    target = next.toString()
+                    require(target.startsWith("https://", true) && Links.valid(target)) {
+                        "重定向到了不安全或无效的地址，已停止"
+                    }
+                    continue
+                }
+                require(code in 200..299) { "服务器返回 HTTP $code" }
+                val bytes = connection.inputStream.use { readBounded(it, MAX_ARTICLE_BYTES) }
+                val charset = charsetOf(connection.contentType, bytes)
+                val html = decode(bytes, charset)
+                val article = Html.extractArticle(html)
+                require(article.isNotBlank()) { "未能从页面提取到有效正文" }
+                return article
+            } catch (e: java.io.IOException) {
+                throw java.io.IOException(e.message ?: "网络请求失败", e)
+            } finally {
+                connection.disconnect()
+            }
+        }
+    }
 
     private fun readBounded(input: InputStream, limit: Int): ByteArray {
         val output = ByteArrayOutputStream()

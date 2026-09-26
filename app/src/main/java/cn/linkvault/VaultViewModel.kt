@@ -27,7 +27,7 @@ import kotlinx.coroutines.withContext
 
 data class Draft(val id: Long = 0, val url: String = "", val title: String = "", val notes: String = "", val tags: String = "")
 
-class VaultViewModel(app: Application, private val saved: SavedStateHandle) : AndroidViewModel(app) {
+class VaultViewModel(private val app: Application, private val saved: SavedStateHandle) : AndroidViewModel(app) {
     private val db = VaultDb.get(app)
     private val dao = db.bookmarks()
     private val prefs = app.getSharedPreferences("appearance", 0)
@@ -70,9 +70,55 @@ class VaultViewModel(app: Application, private val saved: SavedStateHandle) : An
     fun tab(value: Int) { tab = value; saved["tab"] = value; clearMessage() }
     fun scope(value: Int) { if (value in 0..3) { scope = value; saved["scope"] = value; clearMessage() } }
     fun setSort(value: Int) { if (value in 0..3) { sortOrder = value; saved["sort"] = value; prefs.edit().putInt("sort", value).apply() } }
-    fun show(item: Bookmark) { detailId = item.id; saved["detail"] = item.id; clearMessage() }
-    fun closeDetail() { detailId = null; saved["detail"] = null; clearMessage() }
+    fun show(item: Bookmark) { detailId = item.id; saved["detail"] = item.id; loadSnapshot(item.id); clearMessage() }
+    fun closeDetail() { detailId = null; saved["detail"] = null; currentSnapshot = null; clearMessage() }
     fun tag(value: String) { scope(0); filter(value); search(""); closeDetail(); tab(0) }
+
+    // ------------------------------------------------------------ 离线正文快照
+
+    var currentSnapshot by mutableStateOf<String?>(null); private set
+    var fetchingSnapshot by mutableStateOf(false); private set
+
+    fun loadSnapshot(id: Long) {
+        currentSnapshot = Snapshots.get(app, id)
+    }
+
+    fun captureSnapshot(item: Bookmark) {
+        if (busy || fetchingSnapshot) return
+        if (!fetchEnabled) {
+            toast("请先在设置中开启「页面信息抓取」")
+            return
+        }
+        if (!item.url.startsWith("https://", true)) {
+            toast("只能抓取 https 链接")
+            return
+        }
+        fetchingSnapshot = true
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val text = Net.fetchArticle(item.url)
+                Snapshots.save(app, item.id, text)
+                withContext(Dispatchers.Main) {
+                    currentSnapshot = text
+                    toast("已提取离线正文快照 (${text.length} 字)")
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    toast("正文抓取失败: ${e.message ?: "未知错误"}")
+                }
+            } finally {
+                withContext(Dispatchers.Main) {
+                    fetchingSnapshot = false
+                }
+            }
+        }
+    }
+
+    fun removeSnapshot(id: Long) {
+        Snapshots.delete(app, id)
+        currentSnapshot = null
+        toast("已删除正文快照")
+    }
 
     // ------------------------------------------------------------ 收藏数据
 
@@ -103,6 +149,7 @@ class VaultViewModel(app: Application, private val saved: SavedStateHandle) : An
     init {
         reload()
         reloadTrash()
+        detailId?.let { loadSnapshot(it) }
         if (saved.get<Boolean>("importPreview") == true) restoreImport()
         viewModelScope.launch(Dispatchers.IO) {
             runCatching { dao.purgeTrash(System.currentTimeMillis() - TRASH_RETENTION_MS) }
@@ -737,6 +784,27 @@ class VaultViewModel(app: Application, private val saved: SavedStateHandle) : An
                 toast("已导出 $count 条 Markdown 知识合辑，支持导入 Obsidian/Notion。")
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) { fail("导出 Markdown 失败：${e.localizedMessage}") }
+            finally { busy = false }
+        }
+    }
+
+    fun exportPortalHtml(uri: Uri) {
+        if (busy) { fail("有操作进行中，请稍后重新导出"); return }
+        busy = true
+        viewModelScope.launch {
+            try {
+                val count = withContext(Dispatchers.IO) {
+                    require(uri.scheme == "content") { "请选择系统文件选择器中的文件" }
+                    val rows = dao.all()
+                    val bytes = Backup.encodePortalHtml(rows)
+                    getApplication<Application>().contentResolver.openOutputStream(uri, "wt")?.use { it.write(bytes); it.flush() }
+                        ?: error("无法写入文件")
+                    rows.size
+                }
+                markBackedUp()
+                toast("已导出独立导航网页（$count 条），内置即时检索与标签，可直接在浏览器中打开。")
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) { fail("导出导航网页失败：${e.localizedMessage}") }
             finally { busy = false }
         }
     }

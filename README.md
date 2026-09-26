@@ -1,4 +1,4 @@
-# 链藏 1.3.3 · 本地链接收藏夹
+# 链藏 1.3.4 · 本地链接收藏夹
 
 Kotlin · Jetpack Compose · Room ｜ Android 8.0（API 26）及以上
 
@@ -6,7 +6,7 @@ Kotlin · Jetpack Compose · Room ｜ Android 8.0（API 26）及以上
 
 ## 安装 / 从旧版升级
 
-新版：`deliverables/lian-cang-1.3.3-debug.apk`，另复制到电脑桌面同名文件。
+新版：`deliverables/lian-cang-1.3.4-debug.apk`，另复制到电脑桌面同名文件。
 
 **更新只需在应用内点一下**：打开链藏时若发现新版本，收藏页顶部会出现提示条，点「更新」即下载并安装，
 收藏一条不丢。详见 [AUTO-UPDATE.md](AUTO-UPDATE.md)。
@@ -155,7 +155,7 @@ bash docker-build.sh
 ## 验证和截图
 
 以各版本 `VERIFICATION-*.md` 与构建产物校验记录为准。
-当前版本 1.3.3 摘要：**102 项测试通过、0 失败、0 错误**；lint **0 errors**；
+当前版本 1.3.4 摘要：**106 项测试通过、0 失败、0 错误**；lint **0 errors**；
 APK 9,307,898 字节；签名证书 SHA-256 与 1.0.0 起各版本完全一致。
 1.2.3 把收藏页顶部从 392dp 压到 282dp，一屏可见卡片从 2.3 张增加到 3 张完整（量测方式见该验证文档）。
 

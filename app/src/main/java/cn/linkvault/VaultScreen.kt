@@ -49,6 +49,7 @@ fun VaultScreen(vm: VaultViewModel) {
 
     val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri -> uri?.let(vm::export) }
     val exportHtml = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/html")) { uri -> uri?.let(vm::exportHtml) }
+    val exportPortalHtml = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/html")) { uri -> uri?.let(vm::exportPortalHtml) }
     val exportMarkdown = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/markdown")) { uri -> uri?.let(vm::exportMarkdown) }
     val secureExport = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri -> uri?.let { vm.exportEncrypted(it, securePassword.toCharArray()) } }
     val import = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(vm::prepareImport) }
@@ -63,6 +64,7 @@ fun VaultScreen(vm: VaultViewModel) {
     }
     fun launchExport() = guarded { export.launch("链藏备份-${Stamp.fileNameStamp()}.json") }
     fun launchExportHtml() = guarded { exportHtml.launch("链藏书签-${Stamp.fileNameStamp()}.html") }
+    fun launchExportPortalHtml() = guarded { exportPortalHtml.launch("链藏导航页-${Stamp.fileNameStamp()}.html") }
     fun launchExportMarkdown() = guarded { exportMarkdown.launch("链藏知识库-${Stamp.fileNameStamp()}.md") }
     fun launchImport() = guarded { import.launch(arrayOf("application/json", "text/html", "text/plain", "application/octet-stream")) }
     fun launchSecureExport(password: String) { securePassword = password; guarded { secureExport.launch("链藏加密备份-${Stamp.fileNameStamp()}.lvault") } }
@@ -216,7 +218,7 @@ fun VaultScreen(vm: VaultViewModel) {
                 }
                 vm.trashOpen -> TrashPage(vm, onBack = vm::closeTrash)
                 vm.tab == 1 -> TagsPage(vm)
-                vm.tab == 2 -> SettingsPage(vm, ::launchExport, ::launchExportHtml, ::launchExportMarkdown, ::launchImport, ::launchFolder, ::launchSecureExport, ::launchSecureImport)
+                vm.tab == 2 -> SettingsPage(vm, ::launchExport, ::launchExportHtml, ::launchExportPortalHtml, ::launchExportMarkdown, ::launchImport, ::launchFolder, ::launchSecureExport, ::launchSecureImport)
                 else -> CollectionPage(vm, onShare = ::share, onDelete = { deleteId = it.id }, onCopy = ::copyLink, onCopyMarkdown = ::copyMarkdown, onOpen = ::openLink)
             }
         }

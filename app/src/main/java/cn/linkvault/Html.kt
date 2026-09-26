@@ -89,4 +89,24 @@ internal object Html {
         "ensp" to " ", "emsp" to " ", "thinsp" to " ", "shy" to "", "minus" to "−", "plusmn" to "±",
         "frac12" to "½", "sect" to "§", "para" to "¶", "prime" to "′", "rarr" to "→", "larr" to "←"
     )
+
+    /**
+     * 极简本地正文快照提取（Reader Mode）。
+     * 移除脚本、样式、导航与页脚，提取可读段落，保留结构排版。
+     */
+    fun extractArticle(html: String): String {
+        val source = html.take(500_000)
+        val cleaned = source
+            .replace(Regex("<(script|style|noscript|svg|iframe|header|footer|nav|aside)\\b[^>]*>.*?</\\1\\s*>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)), " ")
+            .replace(Regex("<!--.*?-->", RegexOption.DOT_MATCHES_ALL), " ")
+        val withNewlines = cleaned
+            .replace(Regex("(?i)<br\\s*/?>"), "\n")
+            .replace(Regex("(?i)</?(p|div|h[1-6]|li|blockquote|tr|section|article)\\b[^>]*>"), "\n")
+        val stripped = withNewlines.replace(tags, " ")
+        val decoded = decodeEntities(stripped)
+        val lines = decoded.lines()
+            .map { it.replace(whitespace, " ").trim() }
+            .filter { it.isNotBlank() }
+        return lines.joinToString("\n\n").take(30_000)
+    }
 }

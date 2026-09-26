@@ -77,4 +77,25 @@ class StateTest {
             assertEquals("暂无收藏可供温故", vm.message)
         } finally { Dispatchers.resetMain() }
     }
+
+    @Test fun snapshotsStorageAndViewModelIntegration() {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
+        try {
+            val app = ApplicationProvider.getApplicationContext<Application>()
+            val vm = VaultViewModel(app, SavedStateHandle())
+            val sampleId = 9999L
+            val content = "这是文章的离线纯净正文快照，保留关键信息。"
+
+            Snapshots.save(app, sampleId, content)
+            assertTrue(Snapshots.has(app, sampleId))
+            assertEquals(content, Snapshots.get(app, sampleId))
+
+            vm.loadSnapshot(sampleId)
+            assertEquals(content, vm.currentSnapshot)
+
+            vm.removeSnapshot(sampleId)
+            assertNull(vm.currentSnapshot)
+            assertFalse(Snapshots.has(app, sampleId))
+        } finally { Dispatchers.resetMain() }
+    }
 }

@@ -131,4 +131,23 @@ class BackupTest {
         assertTrue(md.contains("## 设计"))
         assertTrue(md.contains("## 未分类"))
     }
+
+    @Test fun portalHtmlExportContainsAllItemsAndControls() {
+        val sample = listOf(
+            Bookmark(url = "https://github.com/superwwwlll/link-vault", canonical = "https://github.com/superwwwlll/link-vault", title = "链藏开源仓库", notes = "重点关注", tags = "开源,Android"),
+            Bookmark(url = "https://kotlinlang.org", canonical = "https://kotlinlang.org", title = "Kotlin 官网", summary = "官方语言门户", tags = "开发")
+        )
+        val html = String(Backup.encodePortalHtml(sample))
+        assertTrue(html.contains("<!DOCTYPE html>"))
+        assertTrue(html.contains("链藏 · 个人导航书签"))
+        assertTrue(html.contains("链藏开源仓库"))
+        assertTrue(html.contains("Kotlin 官网"))
+        assertTrue(html.contains("重点关注"))
+        assertTrue(html.contains("官方语言门户"))
+        assertTrue(html.contains("开源 (1)"))
+        assertTrue(html.contains("Android (1)"))
+        assertTrue(html.contains("开发 (1)"))
+        assertTrue(html.contains("id=\"search\""))
+        assertTrue(html.contains("copyUrl"))
+    }
 }
