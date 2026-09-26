@@ -91,22 +91,99 @@ internal object Html {
     )
 
     /**
-     * 极简本地正文快照提取（Reader Mode）。
-     * 移除脚本、样式、导航与页脚，提取可读段落，保留结构排版。
+     * 本地正文快照提取与结构化 Markdown 转换（Reader Mode + Pangu Spacing）。
+     * 1. 过滤脚本、样式、广告、弹窗与页脚导航噪音；
+     * 2. 转换为规范 Markdown 语法：标题 (#, ##, ###)、引用 (>)、列表 (-)、粗体 (**)、链接 ([text](url)) 与代码块 (```)；
+     * 3. 盘古排版：中英文与数字间自动补充空格，段落排版优雅舒适。
      */
     fun extractArticle(html: String): String {
-        val source = html.take(500_000)
-        val cleaned = source
-            .replace(Regex("<(script|style|noscript|svg|iframe|header|footer|nav|aside)\\b[^>]*>.*?</\\1\\s*>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)), " ")
+        if (html.isBlank()) return ""
+        val source = html.take(600_000)
+
+        // 1. 剔除噪声标签块与 HTML 注释
+        var s = source
+            .replace(Regex("<(script|style|noscript|svg|iframe|header|footer|nav|aside|button|form)\\b[^>]*>.*?</\\1\\s*>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)), " ")
             .replace(Regex("<!--.*?-->", RegexOption.DOT_MATCHES_ALL), " ")
-        val withNewlines = cleaned
-            .replace(Regex("(?i)<br\\s*/?>"), "\n")
-            .replace(Regex("(?i)</?(p|div|h[1-6]|li|blockquote|tr|section|article)\\b[^>]*>"), "\n")
-        val stripped = withNewlines.replace(tags, " ")
+
+        // 2. 代码块转换：<pre><code>...</code></pre> -> ```\n...\n```
+        s = s.replace(Regex("<pre\\b[^>]*>(?:<code\\b[^>]*>)?(.*?)(?:</code>)?</pre>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))) { m ->
+            val code = m.groupValues[1].replace(tags, "").trim()
+            "\n\n```\n${decodeEntities(code)}\n```\n\n"
+        }
+
+        // 3. 标题层级转换
+        s = s.replace(Regex("<h1\\b[^>]*>(.*?)</h1>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)), "\n\n# $1\n\n")
+            .replace(Regex("<h2\\b[^>]*>(.*?)</h2>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)), "\n\n## $1\n\n")
+            .replace(Regex("<h3\\b[^>]*>(.*?)</h3>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)), "\n\n### $1\n\n")
+            .replace(Regex("<h[4-6]\\b[^>]*>(.*?)</h[4-6]>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)), "\n\n#### $1\n\n")
+
+        // 4. 引用块转换：<blockquote>...</blockquote> -> > ...
+        s = s.replace(Regex("<blockquote\\b[^>]*>(.*?)</blockquote>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))) { m ->
+            val content = m.groupValues[1].replace(tags, " ")
+            val lines = decodeEntities(content).lines().map { it.trim() }.filter { it.isNotBlank() }
+            if (lines.isEmpty()) "" else "\n\n" + lines.joinToString("\n") { "> $it" } + "\n\n"
+        }
+
+        // 5. 列表转换：<li>...</li> -> \n- ...\n
+        s = s.replace(Regex("<li\\b[^>]*>(.*?)</li>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)), "\n- $1\n")
+
+        // 6. 行内强调与行内代码
+        s = s.replace(Regex("<(strong|b)\\b[^>]*>(.*?)</\\1\\s*>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)), "**$2**")
+            .replace(Regex("<(em|i)\\b[^>]*>(.*?)</\\1\\s*>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)), "*$2*")
+            .replace(Regex("<code\\b[^>]*>(.*?)</code>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)), "`$1`")
+
+        // 7. 超链接转换：<a href="...">text</a> -> [text](url)
+        s = s.replace(Regex("""<a\b[^>]*href=["'](https?://[^"'\s]+)["'][^>]*>(.*?)</a>""", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))) { m ->
+            val href = m.groupValues[1].trim()
+            val text = m.groupValues[2].replace(tags, " ").trim()
+            val cleanText = decodeEntities(text).replace(whitespace, " ").trim()
+            if (cleanText.isBlank() || cleanText.equals(href, ignoreCase = true)) href
+            else "[$cleanText]($href)"
+        }
+
+        // 8. 块级标签换行与普通断行
+        s = s.replace(Regex("(?i)<br\\s*/?>"), "\n")
+            .replace(Regex("(?i)</?(p|div|section|article|tr|hr|table|tbody)\\b[^>]*>"), "\n\n")
+
+        // 9. 清除残留标签并解码 HTML 实体
+        val stripped = s.replace(tags, " ")
         val decoded = decodeEntities(stripped)
-        val lines = decoded.lines()
-            .map { it.replace(whitespace, " ").trim() }
-            .filter { it.isNotBlank() }
-        return lines.joinToString("\n\n").take(30_000)
+
+        // 10. 分行整理、盘古排版（中英文数字混排加空格）与空行归一化
+        val lines = mutableListOf<String>()
+        var inCodeBlock = false
+        for (rawLine in decoded.lines()) {
+            val line = rawLine.trim()
+            if (line.startsWith("```")) {
+                inCodeBlock = !inCodeBlock
+                lines.add(line)
+                continue
+            }
+            if (inCodeBlock) {
+                lines.add(rawLine)
+                continue
+            }
+            if (line.isBlank()) {
+                if (lines.isNotEmpty() && lines.last().isNotBlank()) lines.add("")
+                continue
+            }
+            // 规整行内多余空格
+            val collapsed = line.replace(Regex("[ \\t]{2,}"), " ")
+            val beautified = pangu(collapsed)
+            lines.add(beautified)
+        }
+
+        val result = lines.joinToString("\n").replace(Regex("\\n{3,}"), "\n\n").trim()
+        return result.take(35_000)
+    }
+
+    /**
+     * 盘古之白（Pangu Spacing）：在中文与半角英文/数字间自动补充空格，优化排版体验。
+     */
+    fun pangu(text: String): String {
+        if (text.isEmpty()) return text
+        return text
+            .replace(Regex("([\\u4e00-\\u9fa5])([a-zA-Z0-9])"), "$1 $2")
+            .replace(Regex("([a-zA-Z0-9])([\\u4e00-\\u9fa5])"), "$1 $2")
     }
 }

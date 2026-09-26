@@ -1,5 +1,6 @@
 package cn.linkvault
 
+import java.io.BufferedInputStream
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.net.HttpURLConnection
@@ -8,6 +9,9 @@ import java.net.URL
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
 import java.nio.charset.CodingErrorAction
+import java.util.Locale
+import java.util.zip.GZIPInputStream
+import java.util.zip.InflaterInputStream
 
 /**
  * 可选的联网抓取。
@@ -42,6 +46,7 @@ object Net {
                 requestMethod = "GET"
                 setRequestProperty("Range", "bytes=0-${MAX_BYTES - 1}")
                 setRequestProperty("Accept", "text/html,application/xhtml+xml;q=0.9,*/*;q=0.1")
+                setRequestProperty("Accept-Encoding", "gzip, deflate")
                 setRequestProperty("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
                 setRequestProperty("User-Agent", "LinkVault/1.2 (local bookmark manager)")
                 setRequestProperty("Connection", "close")
@@ -61,7 +66,7 @@ object Net {
                     continue
                 }
                 require(code in 200..299) { "服务器返回 HTTP $code" }
-                val bytes = connection.inputStream.use { readBounded(it, MAX_BYTES) }
+                val bytes = openStream(connection).use { readBounded(it, MAX_BYTES) }
                 val charset = charsetOf(connection.contentType, bytes)
                 return parseHead(decode(bytes, charset))
             } catch (e: java.io.IOException) {
@@ -96,6 +101,7 @@ object Net {
                 requestMethod = "GET"
                 setRequestProperty("Range", "bytes=0-${MAX_ARTICLE_BYTES - 1}")
                 setRequestProperty("Accept", "text/html,application/xhtml+xml;q=0.9,*/*;q=0.1")
+                setRequestProperty("Accept-Encoding", "gzip, deflate")
                 setRequestProperty("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
                 setRequestProperty("User-Agent", "LinkVault/1.3 (local bookmark manager; offline reader)")
                 setRequestProperty("Connection", "close")
@@ -115,7 +121,7 @@ object Net {
                     continue
                 }
                 require(code in 200..299) { "服务器返回 HTTP $code" }
-                val bytes = connection.inputStream.use { readBounded(it, MAX_ARTICLE_BYTES) }
+                val bytes = openStream(connection).use { readBounded(it, MAX_ARTICLE_BYTES) }
                 val charset = charsetOf(connection.contentType, bytes)
                 val html = decode(bytes, charset)
                 val article = Html.extractArticle(html)
@@ -129,37 +135,133 @@ object Net {
         }
     }
 
+    /**
+     * 自动处理网络响应流：
+     * 1. 识别 Content-Encoding: gzip 或通过 0x1f 0x8b 魔数嗅探，包裹 GZIPInputStream；
+     * 2. 识别 deflate 编码，包裹 InflaterInputStream；
+     * 3. 避免压缩二进制数据当作文本直接解码导致的严重乱码。
+     */
+    internal fun openStream(connection: HttpURLConnection): InputStream {
+        val raw = connection.inputStream
+        val encoding = connection.contentEncoding?.lowercase(Locale.ROOT).orEmpty()
+        val buffered = BufferedInputStream(raw)
+        buffered.mark(4)
+        val magic = ByteArray(2)
+        val readMagic = buffered.read(magic)
+        buffered.reset()
+
+        val isGzip = encoding.contains("gzip") || (readMagic == 2 && (magic[0].toInt() and 0xFF) == 0x1F && (magic[1].toInt() and 0xFF) == 0x8B)
+        val isDeflate = encoding.contains("deflate")
+
+        if (isGzip) {
+            return try {
+                GZIPInputStream(buffered)
+            } catch (_: Exception) {
+                buffered.reset()
+                buffered
+            }
+        }
+        if (isDeflate) {
+            return try {
+                InflaterInputStream(buffered)
+            } catch (_: Exception) {
+                buffered.reset()
+                buffered
+            }
+        }
+        return buffered
+    }
+
     private fun readBounded(input: InputStream, limit: Int): ByteArray {
         val output = ByteArrayOutputStream()
         val buffer = ByteArray(8192)
-        while (output.size() < limit) {
-            val read = input.read(buffer, 0, minOf(buffer.size, limit - output.size()))
-            if (read < 0) break
-            output.write(buffer, 0, read)
+        try {
+            while (output.size() < limit) {
+                val read = input.read(buffer, 0, minOf(buffer.size, limit - output.size()))
+                if (read < 0) break
+                output.write(buffer, 0, read)
+            }
+        } catch (_: java.util.zip.ZipException) {
+            // 压缩流在截断处结束，返回已解压部分
+        } catch (_: java.io.EOFException) {
+            // 到达流末尾
         }
         return output.toByteArray()
     }
 
-    /** 优先用响应头声明的编码，其次从页面头部的 meta charset 嗅探。中文站点常见 GBK，需要照顾。 */
-    private fun charsetOf(contentType: String?, bytes: ByteArray): Charset {
-        val header = Regex("charset\\s*=\\s*\"?([\\w-]+)", RegexOption.IGNORE_CASE).find(contentType.orEmpty())?.groupValues?.get(1)
-        val sniff = if (bytes.isEmpty()) null else {
-            val head = String(bytes, 0, minOf(bytes.size, 2048), Charsets.ISO_8859_1)
-            Regex("charset\\s*=\\s*[\"']?([\\w-]+)", RegexOption.IGNORE_CASE).find(head)?.groupValues?.get(1)
+    /**
+     * 多重字符集识别：
+     * 1. 优先读取响应头 Content-Type 里的 charset；
+     * 2. 其次嗅探解压后前 16KB 内容中的 <meta charset="..."> 或 <meta http-equiv="Content-Type"> 或 xml encoding；
+     * 3. 统一规范国内常见的 GBK、GB2312、CP936 别名至 GB18030。
+     */
+    internal fun charsetOf(contentType: String?, bytes: ByteArray): Charset? {
+        val headerMatch = Regex("""charset\s*=\s*['"]?([a-zA-Z0-9_-]+)""", RegexOption.IGNORE_CASE)
+            .find(contentType.orEmpty())?.groupValues?.get(1)
+        if (!headerMatch.isNullOrBlank()) {
+            val cs = resolveCharset(headerMatch)
+            if (cs != null) return cs
         }
-        for (name in listOfNotNull(header, sniff)) {
-            val charset = runCatching { Charset.forName(name.trim()) }.getOrNull()
-            if (charset != null) return charset
+
+        if (bytes.isNotEmpty()) {
+            val sampleLen = minOf(bytes.size, 16384)
+            val sample = String(bytes, 0, sampleLen, Charsets.ISO_8859_1)
+            val metaMatch = Regex("""(?:charset|encoding)\s*=\s*['"]?([a-zA-Z0-9_-]+)""", RegexOption.IGNORE_CASE)
+                .find(sample)?.groupValues?.get(1)
+            if (!metaMatch.isNullOrBlank()) {
+                val cs = resolveCharset(metaMatch)
+                if (cs != null) return cs
+            }
         }
-        return Charsets.UTF_8
+        return null
     }
 
-    /** 只截了前 96KB，末尾可能切断多字节字符，所以用宽容解码而不是直接抛错。 */
-    private fun decode(bytes: ByteArray, charset: Charset): String = try {
-        charset.newDecoder()
-            .onMalformedInput(CodingErrorAction.REPLACE)
-            .onUnmappableCharacter(CodingErrorAction.REPLACE)
-            .decode(ByteBuffer.wrap(bytes))
-            .toString()
-    } catch (_: Exception) { String(bytes, Charsets.UTF_8) }
+    private fun resolveCharset(name: String): Charset? {
+        val trimmed = name.trim().lowercase(Locale.ROOT)
+        val normalized = when (trimmed) {
+            "gb2312", "gb_2312", "gbk", "cp936", "ms936" -> "GB18030"
+            "big5", "big5-hkscs" -> "Big5"
+            "utf8" -> "UTF-8"
+            else -> name.trim()
+        }
+        return runCatching { Charset.forName(normalized) }.getOrNull()
+    }
+
+    /**
+     * 稳健解码：
+     * 1. 若显式探测到非 UTF-8 字符集（如 GBK），优先按该字符集解码；
+     * 2. 若未显式标明，先用严格 UTF-8 校验；如果遇到非 UTF-8 字节序（国内老站常见），自动无缝回退至 GB18030 解码，彻底解决中文乱码。
+     */
+    internal fun decode(bytes: ByteArray, preferredCharset: Charset?): String {
+        if (bytes.isEmpty()) return ""
+        if (preferredCharset != null && preferredCharset != Charsets.UTF_8) {
+            return runCatching {
+                preferredCharset.newDecoder()
+                    .onMalformedInput(CodingErrorAction.REPLACE)
+                    .onUnmappableCharacter(CodingErrorAction.REPLACE)
+                    .decode(ByteBuffer.wrap(bytes))
+                    .toString()
+            }.getOrElse { String(bytes, preferredCharset) }
+        }
+
+        val utf8Decoder = Charsets.UTF_8.newDecoder()
+            .onMalformedInput(CodingErrorAction.REPORT)
+            .onUnmappableCharacter(CodingErrorAction.REPORT)
+        return try {
+            utf8Decoder.decode(ByteBuffer.wrap(bytes)).toString()
+        } catch (_: Exception) {
+            val gbk = runCatching { Charset.forName("GB18030") }.getOrNull()
+            if (gbk != null) {
+                runCatching {
+                    gbk.newDecoder()
+                        .onMalformedInput(CodingErrorAction.REPLACE)
+                        .onUnmappableCharacter(CodingErrorAction.REPLACE)
+                        .decode(ByteBuffer.wrap(bytes))
+                        .toString()
+                }.getOrElse { String(bytes, Charsets.UTF_8) }
+            } else {
+                String(bytes, Charsets.UTF_8)
+            }
+        }
+    }
 }

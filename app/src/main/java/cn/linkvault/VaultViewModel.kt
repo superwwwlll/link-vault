@@ -100,7 +100,7 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
                 Snapshots.save(app, item.id, text)
                 withContext(Dispatchers.Main) {
                     currentSnapshot = text
-                    toast("已提取离线正文快照 (${text.length} 字)")
+                    toast("已提取 Markdown 正文快照 (${text.length} 字)")
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {

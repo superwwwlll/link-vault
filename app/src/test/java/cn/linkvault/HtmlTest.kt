@@ -94,12 +94,52 @@ class HtmlTest {
             </html>
         """.trimIndent()
         val text = Html.extractArticle(html)
-        assertTrue(text.contains("文章主标题"))
-        assertTrue(text.contains("这是第一段内容，包含 加粗 与 “引语”。"))
+        assertTrue(text.contains("# 文章主标题"))
+        assertTrue(text.contains("**加粗**"))
+        assertTrue(text.contains("“引语”"))
         assertTrue(text.contains("这是第二段正文。"))
         assertFalse(text.contains("广告脚本"))
         assertFalse(text.contains("版权所有"))
         assertFalse(text.contains("首页"))
+    }
+
+    @Test fun extractArticleConvertsToMarkdownWithHierarchy() {
+        val html = """
+            <article>
+              <h1>一级大标题</h1>
+              <p>段落前言，包含 <a href="https://example.com/docs">官方链接</a> 说明。</p>
+              <h2>核心章节</h2>
+              <blockquote>引用名言：技术源于生活。</blockquote>
+              <ul>
+                <li>列表第一项</li>
+                <li>列表第二项</li>
+              </ul>
+              <pre><code>val name = "LinkVault"</code></pre>
+            </article>
+        """.trimIndent()
+        val md = Html.extractArticle(html)
+        assertTrue(md.contains("# 一级大标题"))
+        assertTrue(md.contains("[官方链接](https://example.com/docs)"))
+        assertTrue(md.contains("## 核心章节"))
+        assertTrue(md.contains("> 引用名言：技术源于生活。"))
+        assertTrue(md.contains("- 列表第一项"))
+        assertTrue(md.contains("- 列表第二项"))
+        assertTrue(md.contains("```\nval name = \"LinkVault\"\n```"))
+    }
+
+    @Test fun panguSpacingBeautifiesChineseAndEnglish() {
+        assertEquals("Kotlin 协程在 Android14 上性能提升 20%", Html.pangu("Kotlin协程在Android14上性能提升20%"))
+        assertEquals("这是纯中文测试", Html.pangu("这是纯中文测试"))
+    }
+
+    @Test fun netDecodesGBKAndFallbackCleanly() {
+        val gbkBytes = "GBK中文页面正文测试内容".toByteArray(java.nio.charset.Charset.forName("GBK"))
+        val decodedWithMeta = Net.decode(gbkBytes, java.nio.charset.Charset.forName("GB18030"))
+        assertEquals("GBK中文页面正文测试内容", decodedWithMeta)
+
+        // 未声明 charset 时，遇到非 UTF-8 字节序自动 fallback 到 GB18030
+        val decodedFallback = Net.decode(gbkBytes, null)
+        assertEquals("GBK中文页面正文测试内容", decodedFallback)
     }
 
     @Test fun extractArticleHandlesEmptyAndScriptOnlyHtml() {

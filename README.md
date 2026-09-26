@@ -1,4 +1,4 @@
-# 链藏 1.3.4 · 本地链接收藏夹
+# 链藏 1.3.5 · 本地链接收藏夹
 
 Kotlin · Jetpack Compose · Room ｜ Android 8.0（API 26）及以上
 
@@ -6,7 +6,7 @@ Kotlin · Jetpack Compose · Room ｜ Android 8.0（API 26）及以上
 
 ## 安装 / 从旧版升级
 
-新版：`deliverables/lian-cang-1.3.4-debug.apk`，另复制到电脑桌面同名文件。
+新版：`deliverables/lian-cang-1.3.5-debug.apk`，另复制到电脑桌面同名文件。
 
 **更新只需在应用内点一下**：打开链藏时若发现新版本，收藏页顶部会出现提示条，点「更新」即下载并安装，
 收藏一条不丢。详见 [AUTO-UPDATE.md](AUTO-UPDATE.md)。

@@ -23,6 +23,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -266,7 +267,7 @@ internal fun DetailPage(
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             SectionLabel(
                 "离线正文快照",
-                trailing = if (snapshot != null) "已缓存 · ${snapshot.length} 字" else ""
+                trailing = if (snapshot != null) "已缓存 Markdown · ${snapshot.length} 字" else ""
             )
             Surface(
                 shape = RoundedCornerShape(14.dp),
@@ -277,40 +278,36 @@ internal fun DetailPage(
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     if (snapshot != null) {
                         SelectionContainer {
-                            Text(
-                                snapshot,
-                                fontSize = 14.sp,
-                                lineHeight = 24.sp,
-                                maxLines = if (expandedReader) Int.MAX_VALUE else 8,
-                                overflow = TextOverflow.Ellipsis,
-                                color = MaterialTheme.colorScheme.onSurface
+                            SnapshotMarkdownViewer(
+                                markdown = snapshot,
+                                expanded = expandedReader
                             )
                         }
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            if (snapshot.length > 300) {
+                            if (snapshot.length > 200) {
                                 TextButton(
                                     onClick = { expandedReader = !expandedReader },
                                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                                     modifier = Modifier.height(30.dp)
                                 ) {
-                                    Text(if (expandedReader) "收起正文" else "展开全文阅读", fontSize = 12.sp)
+                                    Text(if (expandedReader) "收起阅读模式" else "展开全文阅读", fontSize = 12.sp)
                                 }
                             }
                             OutlinedButton(
                                 onClick = {
                                     clipboard.setText(AnnotatedString(snapshot))
-                                    vm.toast("已复制离线正文")
+                                    vm.toast("已复制 Markdown 正文")
                                 },
                                 shape = RoundedCornerShape(8.dp),
                                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
                                 modifier = Modifier.height(30.dp)
                             ) {
-                                Icon(Glyph.Copy, null, Modifier.size(12.dp))
+                                Icon(Glyph.Markdown, null, Modifier.size(13.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text("复制正文", fontSize = 12.sp)
+                                Text("复制 Markdown", fontSize = 12.sp)
                             }
                             if (vm.fetchEnabled && item.url.startsWith("https://", true)) {
                                 OutlinedButton(
@@ -336,7 +333,7 @@ internal fun DetailPage(
                         }
                     } else {
                         Text(
-                            "抓取文章纯净正文保存到本地。即使源网页 404 或无网络，依然可以随时阅读。",
+                            "抓取文章纯净正文并重排为 Markdown 格式保存到本地。即使源网页 404 或无网络，依然可以随时舒适离线阅读。",
                             fontSize = 12.5.sp,
                             lineHeight = 18.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
@@ -352,7 +349,7 @@ internal fun DetailPage(
                                 if (fetchingSnapshot) CircularProgressIndicator(Modifier.size(13.dp), strokeWidth = 1.8.dp)
                                 else Icon(Glyph.Book, null, Modifier.size(14.dp))
                                 Spacer(Modifier.width(6.dp))
-                                Text(if (fetchingSnapshot) "正文提取中…" else "提取正文快照（离线阅读模式）", fontSize = 12.sp)
+                                Text(if (fetchingSnapshot) "正文提取与重排中…" else "提取正文快照（Markdown 阅读模式）", fontSize = 12.sp)
                             }
                         }
                     }
@@ -420,6 +417,139 @@ private fun DetailStatusPill(
                 fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
                 color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+    }
+}
+
+@Composable
+private fun SnapshotMarkdownViewer(
+    markdown: String,
+    expanded: Boolean
+) {
+    if (!expanded) {
+        // 折叠态：显示简要预览（限制行数）
+        Text(
+            text = markdown,
+            fontSize = 14.sp,
+            lineHeight = 22.sp,
+            maxLines = 8,
+            overflow = TextOverflow.Ellipsis,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+    } else {
+        // 展开态：结构化 Markdown 人文排版（大标题、小标题、引用块、代码块、列表项）
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            val lines = markdown.lines()
+            var inCode = false
+            val codeLines = mutableListOf<String>()
+
+            for (line in lines) {
+                val trimmed = line.trim()
+                if (trimmed.startsWith("```")) {
+                    if (inCode) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = codeLines.joinToString("\n"),
+                                fontSize = 12.5.sp,
+                                fontFamily = FontFamily.Monospace,
+                                lineHeight = 18.sp,
+                                modifier = Modifier.padding(10.dp),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        codeLines.clear()
+                        inCode = false
+                    } else {
+                        inCode = true
+                    }
+                    continue
+                }
+                if (inCode) {
+                    codeLines.add(line)
+                    continue
+                }
+                if (trimmed.isBlank()) {
+                    Spacer(Modifier.height(3.dp))
+                    continue
+                }
+
+                when {
+                    trimmed.startsWith("# ") -> {
+                        Text(
+                            text = trimmed.removePrefix("# ").trim(),
+                            fontSize = 19.sp,
+                            fontWeight = FontWeight.Bold,
+                            lineHeight = 27.sp,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                    }
+                    trimmed.startsWith("## ") -> {
+                        Text(
+                            text = trimmed.removePrefix("## ").trim(),
+                            fontSize = 16.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            lineHeight = 24.sp,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                    }
+                    trimmed.startsWith("### ") || trimmed.startsWith("#### ") -> {
+                        val header = trimmed.replace(Regex("^#{3,4}\\s*"), "")
+                        Text(
+                            text = header,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            lineHeight = 22.sp,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                    }
+                    trimmed.startsWith("> ") -> {
+                        Row(Modifier.fillMaxWidth()) {
+                            Box(
+                                Modifier
+                                    .width(3.dp)
+                                    .height(20.dp)
+                                    .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(1.dp))
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = trimmed.removePrefix("> ").trim(),
+                                fontSize = 13.5.sp,
+                                lineHeight = 21.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    trimmed.startsWith("- ") || trimmed.startsWith("* ") -> {
+                        Row(Modifier.fillMaxWidth()) {
+                            Text(
+                                "•",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = trimmed.drop(2).trim(),
+                                fontSize = 14.sp,
+                                lineHeight = 23.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                    else -> {
+                        Text(
+                            text = trimmed,
+                            fontSize = 14.sp,
+                            lineHeight = 24.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
         }
     }
 }
