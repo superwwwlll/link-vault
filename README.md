@@ -6,25 +6,30 @@
 标题优先由系统分享自带、其次从剪贴板 HTML 取，最后按链接路径推导——**不需要联网也能拿到标题**。
 数据全部保存在手机本地的 SQLite 里，没有账号、没有服务器、没有云同步。
 
-## 安装
+## 更新（在应用内点一下就行）
 
-**[下载最新版 APK](https://github.com/superwwwlll/link-vault/releases/latest/download/lian-cang-debug.apk)**
+装好一次之后，**以后更新直接在链藏里完成**：
+
+打开链藏 → 发现新版本时收藏页顶部出现提示条 → 点「更新」→ 下载完自动调起系统安装器。
+
+- 首次更新时系统会要求允许链藏「安装未知应用」，按提示授权一次即可，之后就不再打扰。
+- 下载完会核对 SHA-256；安装时 Android 还会再校验签名是否与已装版本一致，两道都过不了才会被拦下。
 
 > ⚠️ **直接覆盖安装，不要卸载。** 卸载或清除应用数据会**永久丢失全部收藏**。
 > 升级前建议先在应用内「设置 → 导出收藏」备份一次。
+
+## 手动安装 / 首次安装
+
+**[下载最新版 APK](https://github.com/superwwwlll/link-vault/releases/latest/download/lian-cang-debug.apk)**
 
 - 需要 Android 8.0（API 26）及以上
 - 首次安装需按系统提示允许「安装未知应用」
 - 旧版本（1.0.0 及以后）可以直接覆盖升级，签名未变，收藏和归档状态都会保留
 
-## 自动更新（推荐）
+## 备选：用 Obtainium 跟踪
 
-用 [Obtainium](https://github.com/ImranR98/Obtainium) 订阅本仓库，之后每次发新版都会收到通知，
-点一下即可完成更新：
-
-1. 安装 Obtainium，并给它「安装未知应用」权限
-2. 添加应用 → 粘贴本仓库地址：`https://github.com/superwwwlll/link-vault`
-3. 完成后即可自动跟踪本仓库的 Release
+如果不想用应用内更新，也可以用 [Obtainium](https://github.com/ImranR98/Obtainium) 订阅本仓库
+（`https://github.com/superwwwlll/link-vault`），每次发新版会收到通知。
 
 ## 签名
 
@@ -37,9 +42,10 @@ SHA-256     5105679d9dab4656582dd7e6c3b85c2e40a2a1bd09146ac3474e052677ad3e7d
 ```
 
 每个 Release 的说明里都会附上对应 APK 的 SHA-256，可自行校验。
+每个 Release 里还有一份 `latest.json`，是应用内更新读取的版本清单。
 
 ## 说明
 
 - 这是个人自用的 debug 构建，不是应用商店正式发布版
 - 仓库内**不包含**任何用户数据、收藏内容或签名私钥
-- 应用默认不联网；仅有一个默认关闭、需要逐条手动触发的「页面信息抓取」可选功能
+- 应用只有两处会联网：打开时检查一次更新（可在设置里关掉），以及你自己开启抓取开关后逐条点击「抓取页面信息」
