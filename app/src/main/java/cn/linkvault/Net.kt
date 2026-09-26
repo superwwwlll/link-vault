@@ -39,7 +39,7 @@ object Net {
                 readTimeout = TIMEOUT_MS
                 instanceFollowRedirects = false
                 requestMethod = "GET"
-                setRequestProperty("Range", "bytes=0-$MAX_BYTES")
+                setRequestProperty("Range", "bytes=0-${MAX_BYTES - 1}")
                 setRequestProperty("Accept", "text/html,application/xhtml+xml;q=0.9,*/*;q=0.1")
                 setRequestProperty("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
                 setRequestProperty("User-Agent", "LinkVault/1.2 (local bookmark manager)")
@@ -54,7 +54,9 @@ object Net {
                     val next = runCatching { URI(target).resolve(location) }.getOrNull()
                         ?: error("服务器返回的重定向地址无法解析")
                     target = next.toString()
-                    require(target.startsWith("https://", true)) { "重定向到了非 https 地址，已停止" }
+                    require(target.startsWith("https://", true) && Links.valid(target)) {
+                        "重定向到了不安全或无效的地址，已停止"
+                    }
                     continue
                 }
                 require(code in 200..299) { "服务器返回 HTTP $code" }

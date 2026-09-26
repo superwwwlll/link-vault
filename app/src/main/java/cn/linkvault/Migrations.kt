@@ -43,5 +43,12 @@ class Migration1To2 : Migration(1, 2) {
     }
 }
 
+/** v2 → v3：把删除改为可恢复的回收站，旧收藏全部视为正常数据。 */
+class Migration2To3 : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `bookmarks` ADD COLUMN `deletedAt` INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
 /** 全部迁移，按版本顺序排列。升级安装时由 Room 依序执行。 */
-val VAULT_MIGRATIONS: Array<Migration> = arrayOf(Migration1To2())
+val VAULT_MIGRATIONS: Array<Migration> = arrayOf(Migration1To2(), Migration2To3())

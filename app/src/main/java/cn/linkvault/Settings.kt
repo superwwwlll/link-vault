@@ -13,6 +13,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -27,8 +31,13 @@ internal fun SettingsPage(
     onExportHtml: () -> Unit = {},
     onExportMarkdown: () -> Unit = {},
     onImport: () -> Unit,
-    onPickFolder: () -> Unit
+    onPickFolder: () -> Unit,
+    onSecureExport: (String) -> Unit = {},
+    onSecureImport: (String) -> Unit = {}
 ) {
+    var secureAction by rememberSaveable { mutableStateOf<String?>(null) }
+    var securePassword by rememberSaveable { mutableStateOf("") }
+
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         Box(Modifier.padding(horizontal = 24.dp)) { RootHeading("设置") }
         Column(Modifier.padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
@@ -139,11 +148,17 @@ internal fun SettingsPage(
                         HorizontalDivider(Modifier.padding(start = 58.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
                         SettingRow(Glyph.Import, "导入备份", "支持 JSON 与浏览器 HTML 书签", !vm.busy, onImport)
                         HorizontalDivider(Modifier.padding(start = 58.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+                        SettingRow(Glyph.Shield, "加密导出", "密码保护的本地备份（至少 8 位）", !vm.busy) { secureAction = "export" }
+                        HorizontalDivider(Modifier.padding(start = 58.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+                        SettingRow(Glyph.Shield, "导入加密备份", "不会上传密码或备份内容", !vm.busy) { secureAction = "import" }
+                        HorizontalDivider(Modifier.padding(start = 58.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
                         SettingRow(Glyph.Archive, "备份文件夹", if (vm.backupFolder.isEmpty()) "设置自动备份文件夹" else "已设置 · 点击更换或取消", !vm.busy, onPickFolder)
                         if (vm.backupFolder.isNotEmpty()) {
                             HorizontalDivider(Modifier.padding(start = 58.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
                             SettingRow(Glyph.Check, "立即备份到文件夹", "保存到已设文件夹", !vm.busy, vm::backupNow)
                         }
+                        HorizontalDivider(Modifier.padding(start = 58.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+                        SettingRow(Glyph.Delete, "回收站", "删除后 30 天内可恢复", !vm.busy, vm::openTrash)
                     }
                 }
                 if (vm.lastBackupAt > 0L) {
@@ -157,6 +172,37 @@ internal fun SettingsPage(
             }
             Spacer(Modifier.height(24.dp))
         }
+    }
+
+    secureAction?.let { action ->
+        AlertDialog(
+            onDismissRequest = { if (!vm.busy) { secureAction = null; securePassword = "" } },
+            icon = { Icon(Glyph.Shield, null) },
+            title = { Text(if (action == "export") "设置加密备份密码" else "输入加密备份密码") },
+            text = {
+                OutlinedTextField(
+                    value = securePassword,
+                    onValueChange = { securePassword = it.take(128) },
+                    label = { Text("密码") },
+                    singleLine = true,
+                    enabled = !vm.busy,
+                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                Button(
+                    enabled = !vm.busy && securePassword.length >= 8,
+                    onClick = {
+                        val password = securePassword
+                        secureAction = null
+                        securePassword = ""
+                        if (action == "export") onSecureExport(password) else onSecureImport(password)
+                    }
+                ) { Text(if (action == "export") "选择保存位置" else "选择备份文件") }
+            },
+            dismissButton = { TextButton(onClick = { secureAction = null; securePassword = "" }, enabled = !vm.busy) { Text("取消") } }
+        )
     }
 }
 

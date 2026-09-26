@@ -59,29 +59,57 @@ internal fun CollectionPage(
             vm.items.count { it.archived }
         )
     }
+    var selectedIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
+    val selectionMode = selectedIds.isNotEmpty()
+    var confirmBulkDelete by remember { mutableStateOf(false) }
+    LaunchedEffect(visible) { selectedIds = selectedIds.intersect(visible.map { it.id }.toSet()) }
 
     LazyColumn(
         contentPadding = PaddingValues(bottom = 100.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        if (selectionMode) item(contentType = "selection") {
+            Surface(color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.fillMaxWidth()) {
+                Row(Modifier.padding(start = 18.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("已选择 ${selectedIds.size} 条", Modifier.weight(1f), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    TextButton(onClick = { vm.bulkMarkRead(selectedIds); selectedIds = emptySet() }, enabled = !vm.busy) { Text("标已读") }
+                    TextButton(onClick = { vm.bulkArchive(selectedIds); selectedIds = emptySet() }, enabled = !vm.busy) { Text("归档") }
+                    TextButton(onClick = { confirmBulkDelete = true }, enabled = !vm.busy) { Text("删除", color = MaterialTheme.colorScheme.error) }
+                    IconButton(onClick = { selectedIds = emptySet() }, modifier = Modifier.size(32.dp)) { Icon(Glyph.Close, "取消多选", Modifier.size(16.dp)) }
+                }
+            }
+        }
         item {
             Column(Modifier.padding(horizontal = 24.dp)) {
                 RootHeading("我的收藏")
-                SearchBox(vm.search, vm::search, "搜索标题、链接、备注、标签")
-
-                if (vm.items.isNotEmpty()) {
-                    Row(
-                        Modifier.fillMaxWidth().padding(top = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        SegmentedPills(
+                androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
+                    val tabContent: @Composable (Modifier) -> Unit = { tabModifier ->
+                        UnderlineTabs(
                             items = listOf(0, 1, 2, 3),
                             selectedItem = vm.scope,
-                            onSelect = { index -> vm.scope(if (vm.scope == index && index != 0) 0 else index) },
+                            onSelect = { index -> vm.scope(index) },
                             label = { index -> scopeLabels[index] },
-                            badge = { index -> if (counts[index] > 0 && index != 0) counts[index].toString() else null }
+                            badge = { index -> if (counts[index] > 0 && index != 0) counts[index].toString() else null },
+                            modifier = tabModifier
                         )
-                        Spacer(Modifier.weight(1f))
+                    }
+                    if (maxWidth >= 600.dp) {
+                        val tabWidth = (maxWidth - 262.dp).coerceAtLeast(300.dp)
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Bottom) {
+                            tabContent(Modifier.width(tabWidth))
+                            SearchBox(vm.search, vm::search, "搜索收藏", Modifier.width(250.dp))
+                        }
+                    } else {
+                        Column {
+                            tabContent(Modifier.fillMaxWidth())
+                            Spacer(Modifier.height(8.dp))
+                            SearchBox(vm.search, vm::search, "搜索标题、链接、备注、标签")
+                        }
+                    }
+                }
+
+                if (vm.items.isNotEmpty()) {
+                    Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
                         Text("${visible.size} 条", fontSize = 11.5.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     if (tagNames.isNotEmpty()) {
@@ -120,7 +148,8 @@ internal fun CollectionPage(
                         vm.scope == 3 -> "归档"
                         else -> "最近收藏"
                     }
-                    Text(heading, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(heading, Modifier.weight(1f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (visible.isNotEmpty()) TextButton(onClick = { selectedIds = visible.map { it.id }.toSet() }, contentPadding = PaddingValues(horizontal = 8.dp)) { Text("多选", fontSize = 12.sp) }
                     SortMenuButton(sortOrder = vm.sortOrder, onSelectSort = vm::setSort)
                 }
             }
@@ -151,6 +180,9 @@ internal fun CollectionPage(
                 SwipeableBookmarkCard(
                     vm = vm,
                     item = item,
+                    selected = item.id in selectedIds,
+                    selectionMode = selectionMode,
+                    onToggleSelection = { selectedIds = if (item.id in selectedIds) selectedIds - item.id else selectedIds + item.id },
                     onClick = { vm.show(item) },
                     onShare = { onShare(item) },
                     onDelete = { onDelete(item) },
@@ -163,6 +195,20 @@ internal fun CollectionPage(
                 )
             }
         }
+    }
+
+    if (confirmBulkDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmBulkDelete = false },
+            title = { Text("移入回收站？") },
+            text = { Text("已选择 ${selectedIds.size} 条收藏，删除后 30 天内可以恢复。") },
+            confirmButton = {
+                TextButton(onClick = { confirmBulkDelete = false; vm.bulkDelete(selectedIds); selectedIds = emptySet() }, enabled = !vm.busy) {
+                    Text("移入回收站", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = { TextButton(onClick = { confirmBulkDelete = false }) { Text("取消") } }
+        )
     }
 }
 
@@ -215,6 +261,9 @@ private val CardShape = RoundedCornerShape(18.dp)
 private fun SwipeableBookmarkCard(
     vm: VaultViewModel,
     item: Bookmark,
+    selected: Boolean,
+    selectionMode: Boolean,
+    onToggleSelection: () -> Unit,
     onClick: () -> Unit,
     onShare: () -> Unit,
     onDelete: () -> Unit,
@@ -296,6 +345,9 @@ private fun SwipeableBookmarkCard(
         BookmarkCard(
             vm = vm,
             item = item,
+            selected = selected,
+            selectionMode = selectionMode,
+            onToggleSelection = onToggleSelection,
             onClick = onClick,
             onShare = onShare,
             onDelete = onDelete,
@@ -310,6 +362,9 @@ private fun SwipeableBookmarkCard(
 private fun BookmarkCard(
     vm: VaultViewModel,
     item: Bookmark,
+    selected: Boolean,
+    selectionMode: Boolean,
+    onToggleSelection: () -> Unit,
     onClick: () -> Unit,
     onShare: () -> Unit,
     onDelete: () -> Unit,
@@ -328,14 +383,14 @@ private fun BookmarkCard(
     Box {
         Surface(
             shape = CardShape,
-            color = MaterialTheme.colorScheme.surface,
-            border = BorderStroke(0.6.dp, MaterialTheme.colorScheme.outlineVariant),
+            color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+            border = BorderStroke(0.6.dp, if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant),
             shadowElevation = 0.5.dp,
             modifier = Modifier.fillMaxWidth().clip(CardShape).combinedClickable(
-                onClick = onClick,
+                onClick = if (selectionMode) onToggleSelection else onClick,
                 onLongClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    menu = true
+                    if (selectionMode) onToggleSelection() else menu = true
                 }
             )
         ) {

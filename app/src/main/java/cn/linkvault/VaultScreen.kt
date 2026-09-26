@@ -43,13 +43,16 @@ fun VaultScreen(vm: VaultViewModel) {
     }
     var deleteId by rememberSaveable { mutableStateOf<Long?>(null) }
     var cancelConfirm by rememberSaveable { mutableStateOf(false) }
+    var securePassword by rememberSaveable { mutableStateOf("") }
     val d = vm.draft
     val detail = vm.items.firstOrNull { it.id == vm.detailId }
 
     val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri -> uri?.let(vm::export) }
     val exportHtml = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/html")) { uri -> uri?.let(vm::exportHtml) }
     val exportMarkdown = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/markdown")) { uri -> uri?.let(vm::exportMarkdown) }
+    val secureExport = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri -> uri?.let { vm.exportEncrypted(it, securePassword.toCharArray()) } }
     val import = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(vm::prepareImport) }
+    val secureImport = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let { vm.prepareEncryptedImport(it, securePassword.toCharArray()) } }
     val folder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri -> uri?.let(vm::setBackupFolder) }
 
     // 启动时静默查一次更新（受设置开关与 12 小时节流控制，失败不打扰）
@@ -62,6 +65,8 @@ fun VaultScreen(vm: VaultViewModel) {
     fun launchExportHtml() = guarded { exportHtml.launch("链藏书签-${Stamp.fileNameStamp()}.html") }
     fun launchExportMarkdown() = guarded { exportMarkdown.launch("链藏知识库-${Stamp.fileNameStamp()}.md") }
     fun launchImport() = guarded { import.launch(arrayOf("application/json", "text/html", "text/plain", "application/octet-stream")) }
+    fun launchSecureExport(password: String) { securePassword = password; guarded { secureExport.launch("链藏加密备份-${Stamp.fileNameStamp()}.lvault") } }
+    fun launchSecureImport(password: String) { securePassword = password; guarded { secureImport.launch(arrayOf("application/octet-stream", "application/*", "*/*")) } }
     fun launchFolder() = guarded { if (vm.backupFolder.isEmpty()) folder.launch(null) else vm.clearBackupFolder() }
 
     fun openLink(item: Bookmark) {
@@ -103,8 +108,13 @@ fun VaultScreen(vm: VaultViewModel) {
         vm.toast("已复制 Markdown 链接")
     }
 
-    BackHandler(enabled = d != null || vm.detailId != null || vm.tab != 0) {
-        if (!vm.busy) { if (d != null) cancelConfirm = true else if (vm.detailId != null) vm.closeDetail() else vm.tab(0) }
+    BackHandler(enabled = d != null || vm.detailId != null || vm.trashOpen || vm.tab != 0) {
+        if (!vm.busy) {
+            if (d != null) cancelConfirm = true
+            else if (vm.detailId != null) vm.closeDetail()
+            else if (vm.trashOpen) vm.closeTrash()
+            else vm.tab(0)
+        }
     }
 
     Scaffold(
@@ -117,7 +127,7 @@ fun VaultScreen(vm: VaultViewModel) {
                         Icon(Glyph.Check, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(if (vm.busy) "保存中…" else "保存收藏", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
-            } else if (vm.detailId == null) {
+            } else if (vm.detailId == null && !vm.trashOpen) {
                 Surface(color = MaterialTheme.colorScheme.surface) {
                     Column {
                         HorizontalDivider(thickness = 0.6.dp, color = MaterialTheme.colorScheme.outlineVariant)
@@ -132,7 +142,7 @@ fun VaultScreen(vm: VaultViewModel) {
             }
         },
         floatingActionButton = {
-            if (d == null && vm.detailId == null && vm.tab == 0) FloatingActionButton(
+            if (d == null && vm.detailId == null && !vm.trashOpen && vm.tab == 0) FloatingActionButton(
                 onClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     vm.edit(Draft())
@@ -177,15 +187,16 @@ fun VaultScreen(vm: VaultViewModel) {
                     if (detail != null) DetailPage(vm, detail, onBack = vm::closeDetail, onEdit = { vm.open(detail) }, onOpen = { openLink(detail) }, onShare = { share(detail) }, onDelete = { deleteId = detail.id }, onCopyMarkdown = { copyMarkdown(detail) })
                     else { PageToolbar("收藏详情", vm::closeDetail); EmptyState(Glyph.Bookmark, if (vm.loading) "正在载入" else "这条收藏已不存在") }
                 }
+                vm.trashOpen -> TrashPage(vm, onBack = vm::closeTrash)
                 vm.tab == 1 -> TagsPage(vm)
-                vm.tab == 2 -> SettingsPage(vm, ::launchExport, ::launchExportHtml, ::launchExportMarkdown, ::launchImport, ::launchFolder)
+                vm.tab == 2 -> SettingsPage(vm, ::launchExport, ::launchExportHtml, ::launchExportMarkdown, ::launchImport, ::launchFolder, ::launchSecureExport, ::launchSecureImport)
                 else -> CollectionPage(vm, onShare = ::share, onDelete = { deleteId = it.id }, onCopy = ::copyLink, onCopyMarkdown = ::copyMarkdown, onOpen = ::openLink)
             }
         }
     }
 
     vm.error?.let { text -> AlertDialog(onDismissRequest = vm::clearError, icon = { Icon(Glyph.Bookmark, null) }, title = { Text("链藏") }, text = { Text(text) }, confirmButton = { TextButton(onClick = vm::clearError) { Text("知道了") } }) }
-    deleteId?.let { id -> AlertDialog(onDismissRequest = { deleteId = null }, title = { Text("删除这条收藏？") }, text = { Text("确定要删除这条收藏吗？此操作无法撤销。") }, confirmButton = { TextButton(onClick = { deleteId = null; vm.delete(id) }, enabled = !vm.busy) { Text("删除", color = MaterialTheme.colorScheme.error) } }, dismissButton = { TextButton(onClick = { deleteId = null }) { Text("保留收藏") } }) }
+    deleteId?.let { id -> AlertDialog(onDismissRequest = { deleteId = null }, title = { Text("移入回收站？") }, text = { Text("删除后 30 天内可以从回收站恢复。") }, confirmButton = { TextButton(onClick = { deleteId = null; vm.delete(id) }, enabled = !vm.busy) { Text("移入回收站", color = MaterialTheme.colorScheme.error) } }, dismissButton = { TextButton(onClick = { deleteId = null }) { Text("保留收藏") } }) }
     if (cancelConfirm) AlertDialog(onDismissRequest = { cancelConfirm = false }, title = { Text("放弃本次编辑？") }, text = { Text("尚未保存的改动将会丢失。") }, confirmButton = { TextButton(onClick = { cancelConfirm = false; vm.cancel() }) { Text("放弃编辑") } }, dismissButton = { TextButton(onClick = { cancelConfirm = false }) { Text("继续编辑") } })
     vm.preview?.let { preview -> AlertDialog(onDismissRequest = { if (!vm.busy) vm.cancelImport() }, icon = { Icon(Glyph.Import, null) }, title = { Text("确认导入备份") },
         text = {

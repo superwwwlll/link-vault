@@ -49,8 +49,16 @@ class VisualTest {
         runBlocking { val dao = VaultDb.get(rule.activity).bookmarks(); dao.all().forEach { dao.delete(it.id) }; samples.forEach { dao.insert(it) } }
         rule.runOnIdle { vm.reload() }
         rule.waitUntil(20000) { rule.runOnIdle { vm.items.size == 3 } }
-        rule.runOnIdle { vm.theme("light") }
+        rule.runOnIdle { vm.theme("light"); vm.scope(0); vm.search("") }
         rule.onNodeWithText("我的收藏").assertIsDisplayed()
+        // 真实点击验收：页签必须可点，搜索框必须能输入并筛选，而不是只看截图。
+        rule.onNode(hasText("未读") and hasClickAction()).performClick()
+        rule.runOnIdle { check(vm.scope == 1) { "scope after unread click=${vm.scope}" } }
+        rule.onNode(hasText("全部") and hasClickAction()).performClick()
+        rule.runOnIdle { check(vm.scope == 0) }
+        rule.onNode(hasSetTextAction()).performTextInput("Compose")
+        rule.onNodeWithText("用 Compose 构建更好的 Android 界面").assertIsDisplayed()
+        rule.onNodeWithContentDescription("清空搜索").performClick()
         capture("01-collection-light")
         rule.onNodeWithText("值得慢慢看的宇宙").performClick()
         rule.onNodeWithText("收藏详情").assertIsDisplayed()

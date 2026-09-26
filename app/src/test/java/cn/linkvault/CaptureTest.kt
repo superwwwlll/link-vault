@@ -40,6 +40,14 @@ class CaptureTest {
         assertEquals("从 HTML 拿到的标题", Links.titleFromHtml(shared.html, shared.text))
     }
 
+    @Test fun htmlOnlyShareStillExtractsTheAnchorUrl() {
+        val intent = Intent(Intent.ACTION_SEND).setType("text/html")
+            .putExtra("android.intent.extra.HTML_TEXT", """<a href="https://example.com/a?utm_source=share&amp;id=7">只有 HTML 的分享</a>""")
+        val shared = Capture.fromShare(intent)!!
+        assertEquals(listOf("https://example.com/a?utm_source=share&id=7"), Links.extract(shared.text, shared.html))
+        assertEquals("只有 HTML 的分享", Links.titleFromHtml(shared.html, Links.extract(shared.text, shared.html).first()))
+    }
+
     @Test fun multipleSharedLinksAreMerged() {
         val intent = Intent(Intent.ACTION_SEND_MULTIPLE).setType("text/plain")
             .putCharSequenceArrayListExtra(Intent.EXTRA_TEXT, arrayListOf("https://a.example", "https://b.example"))

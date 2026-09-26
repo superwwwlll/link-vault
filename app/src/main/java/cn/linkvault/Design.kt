@@ -48,12 +48,12 @@ object Glyph {
 }
 
 private val DayColors = lightColorScheme(
-    primary = Color(0xFF007AFF), onPrimary = Color.White,
-    primaryContainer = Color(0x18007AFF), onPrimaryContainer = Color(0xFF0066D6),
-    background = Color(0xFFF3EFE6), onBackground = Color(0xFF1C1917),
-    surface = Color(0xFFFAF8F5), onSurface = Color(0xFF1C1917),
-    surfaceVariant = Color(0xFFE8E2D5), onSurfaceVariant = Color(0xFF78716C),
-    outline = Color(0xFFCCC3B2), outlineVariant = Color(0xFFDFD7CA)
+    primary = Color(0xFF2F4DA8), onPrimary = Color.White,
+    primaryContainer = Color(0x182F4DA8), onPrimaryContainer = Color(0xFF29438F),
+    background = Color(0xFFE9E8E3), onBackground = Color(0xFF182033),
+    surface = Color(0xFFF8F8F5), onSurface = Color(0xFF182033),
+    surfaceVariant = Color(0xFFF0EFEA), onSurfaceVariant = Color(0xFF667085),
+    outline = Color(0xFFD8D7D0), outlineVariant = Color(0xFFE1E0D9)
 )
 private val NightColors = darkColorScheme(
     primary = Color(0xFF0A84FF), onPrimary = Color.White,

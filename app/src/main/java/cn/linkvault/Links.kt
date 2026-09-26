@@ -6,7 +6,29 @@ import java.util.Locale
 
 object Links {
     private val pattern = Regex("https?://[^\\s<>\"'，。；！？【】「」]+", RegexOption.IGNORE_CASE)
-    fun extract(text: String): List<String> = pattern.findAll(text).map { match ->
+    private val htmlHref = Regex(
+        "<a\\b[^>]*\\bhref\\s*=\\s*(?:\\\"([^\\\"]*)\\\"|'([^']*)'|([^\\s>]+))",
+        RegexOption.IGNORE_CASE
+    )
+
+    fun extract(text: String): List<String> = extractPlain(text)
+
+    /**
+     * Extract URLs from the text first, then fall back to anchor hrefs in HTML.
+     * Some share targets provide only EXTRA_HTML_TEXT (no EXTRA_TEXT); ignoring
+     * that payload makes an otherwise valid shared link look empty.
+     */
+    fun extract(text: String, html: String): List<String> {
+        val plain = extractPlain(text)
+        if (plain.isNotEmpty() || html.isBlank()) return plain
+        return htmlHref.findAll(html.take(Html.SCAN_LIMIT)).mapNotNull { match ->
+            val raw = match.groupValues[1].ifEmpty { match.groupValues[2].ifEmpty { match.groupValues[3] } }
+            val href = Html.decodeEntities(raw)
+            extractPlain(href).firstOrNull()
+        }.distinct().toList()
+    }
+
+    private fun extractPlain(text: String): List<String> = pattern.findAll(text).map { match ->
         var value = match.value.trimEnd('.', ',', ';', '!', '?', '。', '，', '）', '】')
         while (value.endsWith(")") && value.count { it == ')' } > value.count { it == '(' }) value = value.dropLast(1)
         value

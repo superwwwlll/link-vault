@@ -59,6 +59,7 @@ class VaultViewModel(app: Application, private val saved: SavedStateHandle) : An
     var detailId by mutableStateOf(saved.get<Long>("detail")); private set
     var preview by mutableStateOf<ImportPreview?>(null); private set
     private val previewFile get() = File(getApplication<Application>().cacheDir, "pending-import.json")
+    private val securePreviewFile get() = File(getApplication<Application>().cacheDir, "pending-import.lvault")
 
     /** 列表范围：0 全部 / 1 未读 / 2 已读 / 3 归档。 */
     var scope by mutableStateOf(saved.get<Int>("scope") ?: 0); private set
@@ -76,7 +77,10 @@ class VaultViewModel(app: Application, private val saved: SavedStateHandle) : An
     // ------------------------------------------------------------ 收藏数据
 
     var items by mutableStateOf(emptyList<Bookmark>()); private set
+    var trashItems by mutableStateOf(emptyList<Bookmark>()); private set
+    var trashOpen by mutableStateOf(saved.get<Boolean>("trashOpen") ?: false); private set
     private var readJob: Job? = null
+    private var trashJob: Job? = null
     var readFailed by mutableStateOf(false); private set
     var loading by mutableStateOf(true); private set
     var error by mutableStateOf<String?>(null); private set
@@ -96,7 +100,11 @@ class VaultViewModel(app: Application, private val saved: SavedStateHandle) : An
 
     init {
         reload()
+        reloadTrash()
         if (saved.get<Boolean>("importPreview") == true) restoreImport()
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { dao.purgeTrash(System.currentTimeMillis() - TRASH_RETENTION_MS) }
+        }
     }
 
     fun reload() {
@@ -108,6 +116,17 @@ class VaultViewModel(app: Application, private val saved: SavedStateHandle) : An
                 .collect { items = it; loading = false }
         }
     }
+
+    private fun reloadTrash() {
+        trashJob?.cancel()
+        trashJob = viewModelScope.launch {
+            dao.observeTrash().catch { if (it is CancellationException) throw it; fail("读取回收站失败：${it.localizedMessage}") }
+                .collect { trashItems = it }
+        }
+    }
+
+    fun openTrash() { trashOpen = true; saved["trashOpen"] = true }
+    fun closeTrash() { trashOpen = false; saved["trashOpen"] = false }
 
     fun fail(text: String) { error = text.take(600) }
     fun clearError() { error = null }
@@ -160,6 +179,58 @@ class VaultViewModel(app: Application, private val saved: SavedStateHandle) : An
     fun toggleArchived(item: Bookmark) = act(if (item.archived) "已移出归档" else "已归档") {
         check(dao.archive(item.id, !item.archived) == 1) { "收藏已不存在" }
         if (!item.archived && detailId == item.id) closeDetail()
+    }
+
+    fun bulkMarkRead(ids: Set<Long>) = bulkAct(ids, "已标记为已读") { dao.markReadBulk(it, true) }
+    fun bulkArchive(ids: Set<Long>) = bulkAct(ids, "已归档") { dao.archiveBulk(it, true) }
+
+    private fun bulkAct(ids: Set<Long>, success: String, block: suspend (List<Long>) -> Int) {
+        if (ids.isEmpty() || busy) return
+        busy = true
+        viewModelScope.launch {
+            try { block(ids.toList()); toast(success) }
+            catch (e: CancellationException) { throw e }
+            catch (e: Exception) { fail("批量操作失败：${e.localizedMessage}") }
+            finally { busy = false }
+        }
+    }
+
+    // ------------------------------------------------------------ 回收站
+
+    fun delete(id: Long) {
+        if (busy) return
+        busy = true
+        viewModelScope.launch {
+            try {
+                check(dao.softDelete(id, System.currentTimeMillis()) == 1) { "收藏已不存在" }
+                if (detailId == id) closeDetail()
+                toast("已移入回收站，可在 30 天内恢复")
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) { fail("删除失败：${e.localizedMessage}") }
+            finally { busy = false }
+        }
+    }
+
+    fun bulkDelete(ids: Set<Long>) {
+        if (ids.isEmpty() || busy) return
+        busy = true
+        viewModelScope.launch {
+            try {
+                val now = System.currentTimeMillis()
+                db.withTransaction { ids.forEach { dao.softDelete(it, now) } }
+                toast("已移入回收站，可在 30 天内恢复")
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) { fail("批量删除失败：${e.localizedMessage}") }
+            finally { busy = false }
+        }
+    }
+
+    fun restoreTrash(item: Bookmark) = act("已恢复收藏") {
+        check(dao.restore(item.id) == 1) { "这条收藏已不存在" }
+    }
+
+    fun deleteForever(item: Bookmark) = act("已永久删除") {
+        check(dao.deleteForever(item.id) == 1) { "这条收藏已不存在" }
     }
 
     // ------------------------------------------------------------ 标签管理
@@ -259,7 +330,7 @@ class VaultViewModel(app: Application, private val saved: SavedStateHandle) : An
     fun open(item: Bookmark) { notice = null; edit(Draft(item.id, item.url, item.title, item.notes, item.tags)) }
 
     fun extractText(text: String, html: String = "", suggested: String = "") {
-        val urls = Links.extract(text.take(16000))
+        val urls = Links.extract(text.take(16000), html)
         if (urls.isEmpty()) { fail("没有找到有效的 HTTP/HTTPS 链接"); return }
         notice = if (urls.size > 1) "检测到 ${urls.size} 个链接，本次仅取第一个；其余链接请分别收藏。" else null
         detected = urls
@@ -357,20 +428,6 @@ class VaultViewModel(app: Application, private val saved: SavedStateHandle) : An
         }
     }
 
-    fun delete(id: Long) {
-        if (busy) return
-        busy = true
-        viewModelScope.launch {
-            try {
-                check(dao.delete(id) == 1) { "收藏已不存在" }
-                if (detailId == id) closeDetail()
-                toast("已删除")
-            } catch (e: CancellationException) { throw e }
-            catch (e: Exception) { fail("删除失败：${e.localizedMessage}") }
-            finally { busy = false }
-        }
-    }
-
     // ------------------------------------------------------------ 可选联网抓取
 
     var fetchEnabled by mutableStateOf(settings.getBoolean("fetch", false)); private set
@@ -451,7 +508,7 @@ class VaultViewModel(app: Application, private val saved: SavedStateHandle) : An
             try {
                 preview = withContext(Dispatchers.IO) {
                     val rows = previewFile.inputStream().use { Backup.decode(Backup.read(it)) }
-                    ImportPreview(rows, Backup.countNew(rows, dao.all()))
+                    ImportPreview(rows, Backup.countNew(rows, dao.allIncludingDeleted()))
                 }
             } catch (e: CancellationException) { throw e }
             catch (_: Exception) { saved["importPreview"] = false; fail("导入预览已失效，请重新选择备份文件") }
@@ -470,7 +527,7 @@ class VaultViewModel(app: Application, private val saved: SavedStateHandle) : An
                         ?: error("无法读取文件")
                     val rows = Backup.decode(bytes)
                     previewFile.writeBytes(bytes)
-                    ImportPreview(rows, Backup.countNew(rows, dao.all()))
+                    ImportPreview(rows, Backup.countNew(rows, dao.allIncludingDeleted()))
                 }
                 saved["importPreview"] = true
                 preview = result
@@ -498,6 +555,48 @@ class VaultViewModel(app: Application, private val saved: SavedStateHandle) : An
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) { fail("导入失败，事务已回滚，没有部分写入：${e.localizedMessage}") }
             finally { busy = false }
+        }
+    }
+
+    fun exportEncrypted(uri: Uri, password: CharArray) {
+        if (busy) { password.fill('\u0000'); fail("有操作进行中，请稍后重新导出"); return }
+        busy = true
+        viewModelScope.launch {
+            try {
+                val count = withContext(Dispatchers.IO) {
+                    require(uri.scheme == "content") { "请选择系统文件选择器中的文件" }
+                    val rows = dao.all()
+                    val bytes = SecureBackup.encrypt(rows, password)
+                    getApplication<Application>().contentResolver.openOutputStream(uri, "wt")?.use { it.write(bytes); it.flush() }
+                        ?: error("无法写入文件")
+                    rows.size
+                }
+                markBackedUp()
+                toast("已导出 $count 条加密备份")
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) { fail("加密导出失败：${e.localizedMessage}") }
+            finally { password.fill('\u0000'); busy = false }
+        }
+    }
+
+    fun prepareEncryptedImport(uri: Uri, password: CharArray) {
+        if (busy) { password.fill('\u0000'); return }
+        busy = true
+        viewModelScope.launch {
+            try {
+                val result = withContext(Dispatchers.IO) {
+                    require(uri.scheme == "content") { "请选择系统文件选择器中的文件" }
+                    val bytes = getApplication<Application>().contentResolver.openInputStream(uri)?.use(SecureBackup::read)
+                        ?: error("无法读取文件")
+                    val rows = SecureBackup.decrypt(bytes, password)
+                    securePreviewFile.writeBytes(bytes)
+                    ImportPreview(rows, Backup.countNew(rows, dao.allIncludingDeleted()))
+                }
+                preview = result
+                toast("加密备份已解锁，请确认导入")
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) { fail("加密备份读取失败，没有导入任何数据：${e.localizedMessage}") }
+            finally { password.fill('\u0000'); busy = false }
         }
     }
 
@@ -721,6 +820,7 @@ class VaultViewModel(app: Application, private val saved: SavedStateHandle) : An
 
     companion object {
         private const val TAG = "LinkVault.Update"
+        private const val TRASH_RETENTION_MS = 30L * 86_400_000L
 
         /** 进程标识：只有真正重启过进程，落盘的草稿才会被捡回来。 */
         private val PROCESS_TOKEN: String = UUID.randomUUID().toString()

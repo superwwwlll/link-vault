@@ -53,11 +53,11 @@ internal fun SearchBox(value: String, onChange: (String) -> Unit, placeholder: S
         },
         leadingIcon = { Icon(Glyph.Search, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant) },
         trailingIcon = { if (value.isNotEmpty()) IconButton(onClick = { onChange("") }) { Icon(Glyph.Close, "清空搜索", Modifier.size(16.dp)) } },
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = OutlinedTextFieldDefaults.colors(
-            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-            focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f),
+            focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
             focusedContainerColor = MaterialTheme.colorScheme.surface
         ),
         modifier = modifier.fillMaxWidth()
@@ -130,6 +130,41 @@ internal fun NoteSnippetCard(
  * ChunUI CCSegmentedControl 风格凹槽分段控制。
  */
 @Composable
+internal fun <T> UnderlineTabs(
+    items: List<T>,
+    selectedItem: T,
+    onSelect: (T) -> Unit,
+    label: (T) -> String,
+    modifier: Modifier = Modifier,
+    badge: ((T) -> String?)? = null
+) {
+    Column(modifier) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+            items.forEach { item ->
+                val isSelected = item == selectedItem
+                Tab(
+                    selected = isSelected,
+                    onClick = { onSelect(item) },
+                    modifier = Modifier.weight(1f),
+                    selectedContentColor = MaterialTheme.colorScheme.primary,
+                    unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    text = {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                            Text(label(item), fontSize = 15.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
+                            badge?.invoke(item)?.takeIf { it.isNotEmpty() }?.let {
+                                Spacer(Modifier.width(4.dp))
+                                Text(it, fontSize = 11.sp)
+                            }
+                        }
+                    }
+                )
+            }
+        }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f), thickness = 1.dp)
+    }
+}
+
+@Composable
 internal fun <T> SegmentedPills(
     items: List<T>,
     selectedItem: T,
@@ -140,8 +175,8 @@ internal fun <T> SegmentedPills(
 ) {
     val isDark = LocalVaultDark.current
     Surface(
-        shape = RoundedCornerShape(11.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f),
         modifier = modifier
     ) {
         Row(
@@ -150,7 +185,7 @@ internal fun <T> SegmentedPills(
         ) {
             items.forEach { item ->
                 val selected = item == selectedItem
-                val shape = RoundedCornerShape(8.dp)
+                val shape = RoundedCornerShape(12.dp)
                 val pillColor = if (selected) {
                     if (isDark) Color(0xFF27272A) else MaterialTheme.colorScheme.surface
                 } else Color.Transparent
