@@ -118,11 +118,14 @@ fun VaultScreen(vm: VaultViewModel) {
                     }
                 }
             } else if (vm.detailId == null) {
-                Surface(color = MaterialTheme.colorScheme.surface, border = BorderStroke(0.6.dp, MaterialTheme.colorScheme.outlineVariant)) {
-                    NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
-                        listOf("收藏" to Glyph.Bookmark, "标签" to Glyph.Tag, "设置" to Glyph.Settings).forEachIndexed { index, (label, icon) ->
-                            NavigationBarItem(selected = vm.tab == index, onClick = { vm.tab(index) }, icon = { Icon(icon, label, Modifier.size(22.dp)) }, label = { Text(label, fontSize = 12.sp) },
-                                colors = NavigationBarItemDefaults.colors(indicatorColor = MaterialTheme.colorScheme.primaryContainer, selectedIconColor = MaterialTheme.colorScheme.primary, selectedTextColor = MaterialTheme.colorScheme.primary, unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant, unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant))
+                Surface(color = MaterialTheme.colorScheme.surface) {
+                    Column {
+                        HorizontalDivider(thickness = 0.6.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                        NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
+                            listOf("收藏" to Glyph.Bookmark, "标签" to Glyph.Tag, "设置" to Glyph.Settings).forEachIndexed { index, (label, icon) ->
+                                NavigationBarItem(selected = vm.tab == index, onClick = { vm.tab(index) }, icon = { Icon(icon, label, Modifier.size(22.dp)) }, label = { Text(label, fontSize = 12.sp) },
+                                    colors = NavigationBarItemDefaults.colors(indicatorColor = MaterialTheme.colorScheme.primaryContainer, selectedIconColor = MaterialTheme.colorScheme.primary, selectedTextColor = MaterialTheme.colorScheme.primary, unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant, unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant))
+                            }
                         }
                     }
                 }

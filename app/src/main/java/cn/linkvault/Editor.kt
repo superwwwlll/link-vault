@@ -64,11 +64,7 @@ internal fun EditorPage(vm: VaultViewModel, draft: Draft, onBack: () -> Unit) {
                     Surface(
                         shape = shape,
                         color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
-                        border = BorderStroke(
-                            0.7.dp,
-                            if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
-                            else MaterialTheme.colorScheme.outlineVariant
-                        ),
+                        border = if (selected) null else BorderStroke(0.7.dp, MaterialTheme.colorScheme.outlineVariant),
                         modifier = Modifier
                             .clip(shape)
                             .clickable(enabled = !vm.busy) {

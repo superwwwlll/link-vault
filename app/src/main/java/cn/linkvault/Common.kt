@@ -6,15 +6,17 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -36,9 +38,19 @@ internal fun RootHeading(title: String, subtitle: String = "") {
 internal fun SearchBox(value: String, onChange: (String) -> Unit, placeholder: String, modifier: Modifier = Modifier) {
     OutlinedTextField(
         value = value,
-        onValueChange = onChange,
+        onValueChange = { onChange(it.replace("\n", "").replace("\r", "")) },
         singleLine = true,
-        placeholder = { Text(placeholder, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)) },
+        maxLines = 1,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        placeholder = {
+            Text(
+                placeholder,
+                fontSize = 13.5.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
+            )
+        },
         leadingIcon = { Icon(Glyph.Search, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant) },
         trailingIcon = { if (value.isNotEmpty()) IconButton(onClick = { onChange("") }) { Icon(Glyph.Close, "清空搜索", Modifier.size(16.dp)) } },
         shape = RoundedCornerShape(14.dp),
@@ -139,20 +151,14 @@ internal fun <T> SegmentedPills(
             items.forEach { item ->
                 val selected = item == selectedItem
                 val shape = RoundedCornerShape(8.dp)
+                val pillColor = if (selected) {
+                    if (isDark) Color(0xFF27272A) else MaterialTheme.colorScheme.surface
+                } else Color.Transparent
+
                 Box(
                     modifier = Modifier
                         .clip(shape)
-                        .background(
-                            if (selected) {
-                                if (isDark) Color(0xFF27272A) else MaterialTheme.colorScheme.surface
-                            } else Color.Transparent
-                        )
-                        .then(
-                            if (selected && !isDark) Modifier.shadow(1.dp, shape) else Modifier
-                        )
-                        .then(
-                            if (selected && isDark) Modifier.border(BorderStroke(0.6.dp, Color(0xFF3F3F46)), shape) else Modifier
-                        )
+                        .background(pillColor)
                         .clickable { onSelect(item) }
                         .padding(horizontal = 11.dp, vertical = 6.dp),
                     contentAlignment = Alignment.Center
@@ -226,6 +232,9 @@ internal fun SectionLabel(text: String, trailing: String = "") {
     }
 }
 
+private val SmallSourceShape = RoundedCornerShape(9.dp)
+private val LargeSourceShape = RoundedCornerShape(15.dp)
+
 /**
  * 来源标识：同一个域名永远同一个颜色，带精致柔和描边。
  */
@@ -234,11 +243,11 @@ internal fun SourceMark(url: String, small: Boolean = false, muted: Boolean = fa
     val key = Links.host(url).ifEmpty { url }
     val (background, foreground) = if (muted) MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
         else sourcePalette(key, LocalVaultDark.current)
-    val cornerRadius = if (small) 9.dp else 15.dp
+    val shape = if (small) SmallSourceShape else LargeSourceShape
     Box(
         Modifier
             .size(if (small) 28.dp else 46.dp)
-            .background(background, RoundedCornerShape(cornerRadius)),
+            .background(background, shape),
         contentAlignment = Alignment.Center
     ) {
         val label = Links.siteName(url).take(1).uppercase(Locale.ROOT)

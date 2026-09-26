@@ -1,4 +1,4 @@
-# 链藏 1.2.5 · 本地链接收藏夹
+# 链藏 1.2.6 · 本地链接收藏夹
 
 Kotlin · Jetpack Compose · Room ｜ Android 8.0（API 26）及以上
 
@@ -6,7 +6,7 @@ Kotlin · Jetpack Compose · Room ｜ Android 8.0（API 26）及以上
 
 ## 安装 / 从旧版升级
 
-新版：`deliverables/lian-cang-1.2.5-debug.apk`，另复制到电脑桌面同名文件。
+新版：`deliverables/lian-cang-1.2.6-debug.apk`，另复制到电脑桌面同名文件。
 
 **更新只需在应用内点一下**：打开链藏时若发现新版本，收藏页顶部会出现提示条，点「更新」即下载并安装，
 收藏一条不丢。详见 [AUTO-UPDATE.md](AUTO-UPDATE.md)。
@@ -19,7 +19,7 @@ APK 发布在 <https://github.com/superwwwlll/link-vault/releases>。
 
 1. 将 APK 传到手机，点击安装；按系统提示给文件管理器临时允许“安装未知应用”。
 2. **已有旧版本时直接覆盖安装，不要卸载，不要清除数据。** 全版本包名、签名和数据库迁移链均兼容，
-   versionCode 依次为 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8。
+   versionCode 依次为 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9。
 3. 装好后到「设置 → 导出收藏」立即做一份 JSON 备份。设置页会显示上次备份时间，超过 30 天会以警示色提醒。
 4. 本包是个人自用 debug 版，不是应用商店正式发布版；请只安装可信来源的 APK。
 

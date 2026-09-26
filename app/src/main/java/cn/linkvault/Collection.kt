@@ -95,11 +95,7 @@ internal fun CollectionPage(
                                 Surface(
                                     shape = shape,
                                     color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
-                                    border = BorderStroke(
-                                        0.6.dp,
-                                        if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
-                                        else MaterialTheme.colorScheme.outlineVariant
-                                    ),
+                                    border = if (selected) null else BorderStroke(0.6.dp, MaterialTheme.colorScheme.outlineVariant),
                                     modifier = Modifier
                                         .clip(shape)
                                         .clickable { vm.filter(if (selected) "" else tag) }
@@ -130,11 +126,11 @@ internal fun CollectionPage(
             }
         }
 
-        if (vm.loading) item { LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 24.dp)) }
-        if (vm.readFailed) item { TextButton(onClick = vm::reload, modifier = Modifier.padding(horizontal = 24.dp)) { Text("读取失败，点击重试") } }
+        if (vm.loading) item(contentType = "progress") { LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 24.dp)) }
+        if (vm.readFailed) item(contentType = "retry") { TextButton(onClick = vm::reload, modifier = Modifier.padding(horizontal = 24.dp)) { Text("读取失败，点击重试") } }
 
         if (visible.isEmpty() && !vm.loading) {
-            item {
+            item(contentType = "empty") {
                 EmptyState(
                     Glyph.Bookmark,
                     when {
@@ -147,19 +143,24 @@ internal fun CollectionPage(
                 )
             }
         } else {
-            items(visible, key = { it.id }) { item ->
-                Box(Modifier.padding(horizontal = 24.dp).animateItem()) {
-                    SwipeableBookmarkCard(
-                        vm = vm,
-                        item = item,
-                        onClick = { vm.show(item) },
-                        onShare = { onShare(item) },
-                        onDelete = { onDelete(item) },
-                        onCopy = { onCopy(item) },
-                        onCopyMarkdown = { onCopyMarkdown(item) },
-                        onTag = vm::tag
-                    )
-                }
+            items(
+                items = visible,
+                key = { it.id },
+                contentType = { "bookmark" }
+            ) { item ->
+                SwipeableBookmarkCard(
+                    vm = vm,
+                    item = item,
+                    onClick = { vm.show(item) },
+                    onShare = { onShare(item) },
+                    onDelete = { onDelete(item) },
+                    onCopy = { onCopy(item) },
+                    onCopyMarkdown = { onCopyMarkdown(item) },
+                    onTag = vm::tag,
+                    modifier = Modifier
+                        .padding(horizontal = 24.dp)
+                        .animateItem(fadeInSpec = null, fadeOutSpec = null)
+                )
             }
         }
     }
@@ -208,6 +209,8 @@ private fun SortMenuButton(sortOrder: Int, onSelectSort: (Int) -> Unit) {
     }
 }
 
+private val CardShape = RoundedCornerShape(18.dp)
+
 @Composable
 private fun SwipeableBookmarkCard(
     vm: VaultViewModel,
@@ -217,7 +220,8 @@ private fun SwipeableBookmarkCard(
     onDelete: () -> Unit,
     onCopy: () -> Unit,
     onCopyMarkdown: () -> Unit,
-    onTag: (String) -> Unit
+    onTag: (String) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val haptic = LocalHapticFeedback.current
     val isDark = LocalVaultDark.current
@@ -242,51 +246,52 @@ private fun SwipeableBookmarkCard(
     SwipeToDismissBox(
         state = dismissState,
         backgroundContent = {
-            val direction = dismissState.dismissDirection
-            val shape = RoundedCornerShape(18.dp)
-            val isReadAction = direction == SwipeToDismissBoxValue.StartToEnd
-            val (bgColor, tintColor) = if (isReadAction) {
-                if (isDark) Color(0xFF1E3A8A) to Color(0xFF60A5FA)
-                else Color(0xFFEFF6FF) to Color(0xFF007AFF)
-            } else {
-                if (isDark) Color(0xFF27272A) to Color(0xFFD4D4D8)
-                else Color(0xFFF4F4F5) to Color(0xFF52525B)
-            }
-            val alignment = if (isReadAction) Alignment.CenterStart else Alignment.CenterEnd
-            val icon = if (isReadAction) {
-                if (item.read) Glyph.Bookmark else Glyph.Check
-            } else {
-                Glyph.Archive
-            }
-            val label = if (isReadAction) {
-                if (item.read) "标为未读" else "标为已读"
-            } else {
-                if (item.archived) "移出归档" else "归档"
-            }
+            if (dismissState.targetValue != SwipeToDismissBoxValue.Settled || dismissState.progress > 0.05f) {
+                val direction = dismissState.dismissDirection
+                val isReadAction = direction == SwipeToDismissBoxValue.StartToEnd
+                val (bgColor, tintColor) = if (isReadAction) {
+                    if (isDark) Color(0xFF1E3A8A) to Color(0xFF60A5FA)
+                    else Color(0xFFEFF6FF) to Color(0xFF007AFF)
+                } else {
+                    if (isDark) Color(0xFF27272A) to Color(0xFFD4D4D8)
+                    else Color(0xFFF4F4F5) to Color(0xFF52525B)
+                }
+                val alignment = if (isReadAction) Alignment.CenterStart else Alignment.CenterEnd
+                val icon = if (isReadAction) {
+                    if (item.read) Glyph.Bookmark else Glyph.Check
+                } else {
+                    Glyph.Archive
+                }
+                val label = if (isReadAction) {
+                    if (item.read) "标为未读" else "标为已读"
+                } else {
+                    if (item.archived) "移出归档" else "归档"
+                }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(shape)
-                    .background(bgColor)
-                    .padding(horizontal = 20.dp),
-                contentAlignment = alignment
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CardShape)
+                        .background(bgColor)
+                        .padding(horizontal = 20.dp),
+                    contentAlignment = alignment
                 ) {
-                    if (isReadAction) {
-                        Icon(icon, null, Modifier.size(18.dp), tint = tintColor)
-                        Text(label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = tintColor)
-                    } else {
-                        Text(label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = tintColor)
-                        Icon(icon, null, Modifier.size(18.dp), tint = tintColor)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        if (isReadAction) {
+                            Icon(icon, null, Modifier.size(18.dp), tint = tintColor)
+                            Text(label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = tintColor)
+                        } else {
+                            Text(label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = tintColor)
+                            Icon(icon, null, Modifier.size(18.dp), tint = tintColor)
+                        }
                     }
                 }
             }
         },
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth()
     ) {
         BookmarkCard(
             vm = vm,
@@ -314,16 +319,19 @@ private fun BookmarkCard(
 ) {
     val haptic = LocalHapticFeedback.current
     var menu by remember { mutableStateOf(false) }
-    val shape = RoundedCornerShape(18.dp)
     val titleColor = if (item.read) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
-    val site = Links.siteName(item.url)
+    val site = remember(item.url) { Links.siteName(item.url) }
+    val displayTitle = remember(item.url, item.title) { Links.displayTitle(item.url, item.title) }
+    val stamp = remember(item.createdAt) { Stamp.date(item.createdAt) }
+    val tags = remember(item.tags) { parseTags(item.tags) }
+
     Box {
         Surface(
-            shape = shape,
+            shape = CardShape,
             color = MaterialTheme.colorScheme.surface,
             border = BorderStroke(0.6.dp, MaterialTheme.colorScheme.outlineVariant),
             shadowElevation = 0.5.dp,
-            modifier = Modifier.fillMaxWidth().clip(shape).combinedClickable(
+            modifier = Modifier.fillMaxWidth().clip(CardShape).combinedClickable(
                 onClick = onClick,
                 onLongClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -343,10 +351,10 @@ private fun BookmarkCard(
                         Icon(Glyph.Pin, "已置顶", Modifier.size(13.dp), tint = MaterialTheme.colorScheme.primary)
                         Spacer(Modifier.width(6.dp))
                     }
-                    Text(Stamp.date(item.createdAt), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f))
+                    Text(stamp, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f))
                 }
                 Text(
-                    Links.displayTitle(item.url, item.title),
+                    displayTitle,
                     fontSize = 16.5.sp,
                     lineHeight = 23.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -367,21 +375,22 @@ private fun BookmarkCard(
                 if (item.notes.isNotBlank()) {
                     NoteSnippetCard(text = item.notes, maxLines = 2)
                 }
-                val tags = parseTags(item.tags)
                 if (tags.isNotEmpty()) FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     tags.take(4).forEach { tag -> TagPill(tag, onClick = { onTag(tag) }) }
                     if (tags.size > 4) TagPill("+${tags.size - 4}")
                 }
             }
         }
-        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-            DropdownMenuItem(text = { Text(if (item.pinned) "取消置顶" else "置顶") }, leadingIcon = { Icon(Glyph.Pin, null, Modifier.size(18.dp)) }, onClick = { menu = false; vm.togglePin(item) })
-            DropdownMenuItem(text = { Text(if (item.read) "标为未读" else "标为已读") }, leadingIcon = { Icon(Glyph.Check, null, Modifier.size(18.dp)) }, onClick = { menu = false; vm.toggleRead(item) })
-            DropdownMenuItem(text = { Text(if (item.archived) "移出归档" else "归档") }, leadingIcon = { Icon(Glyph.Archive, null, Modifier.size(18.dp)) }, onClick = { menu = false; vm.toggleArchived(item) })
-            DropdownMenuItem(text = { Text("复制链接") }, leadingIcon = { Icon(Glyph.Copy, null, Modifier.size(18.dp)) }, onClick = { menu = false; onCopy() })
-            DropdownMenuItem(text = { Text("复制为 Markdown") }, leadingIcon = { Icon(Glyph.Markdown, null, Modifier.size(18.dp)) }, onClick = { menu = false; onCopyMarkdown() })
-            DropdownMenuItem(text = { Text("分享") }, leadingIcon = { Icon(Glyph.Share, null, Modifier.size(18.dp)) }, onClick = { menu = false; onShare() })
-            DropdownMenuItem(text = { Text("删除", color = MaterialTheme.colorScheme.error) }, leadingIcon = { Icon(Glyph.Delete, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error) }, onClick = { menu = false; onDelete() })
+        if (menu) {
+            DropdownMenu(expanded = true, onDismissRequest = { menu = false }) {
+                DropdownMenuItem(text = { Text(if (item.pinned) "取消置顶" else "置顶") }, leadingIcon = { Icon(Glyph.Pin, null, Modifier.size(18.dp)) }, onClick = { menu = false; vm.togglePin(item) })
+                DropdownMenuItem(text = { Text(if (item.read) "标为未读" else "标为已读") }, leadingIcon = { Icon(Glyph.Check, null, Modifier.size(18.dp)) }, onClick = { menu = false; vm.toggleRead(item) })
+                DropdownMenuItem(text = { Text(if (item.archived) "移出归档" else "归档") }, leadingIcon = { Icon(Glyph.Archive, null, Modifier.size(18.dp)) }, onClick = { menu = false; vm.toggleArchived(item) })
+                DropdownMenuItem(text = { Text("复制链接") }, leadingIcon = { Icon(Glyph.Copy, null, Modifier.size(18.dp)) }, onClick = { menu = false; onCopy() })
+                DropdownMenuItem(text = { Text("复制为 Markdown") }, leadingIcon = { Icon(Glyph.Markdown, null, Modifier.size(18.dp)) }, onClick = { menu = false; onCopyMarkdown() })
+                DropdownMenuItem(text = { Text("分享") }, leadingIcon = { Icon(Glyph.Share, null, Modifier.size(18.dp)) }, onClick = { menu = false; onShare() })
+                DropdownMenuItem(text = { Text("删除", color = MaterialTheme.colorScheme.error) }, leadingIcon = { Icon(Glyph.Delete, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error) }, onClick = { menu = false; onDelete() })
+            }
         }
     }
 }

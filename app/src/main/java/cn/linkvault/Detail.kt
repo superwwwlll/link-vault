@@ -296,11 +296,7 @@ private fun DetailStatusPill(
     Surface(
         shape = shape,
         color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
-        border = BorderStroke(
-            0.6.dp,
-            if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
-            else MaterialTheme.colorScheme.outlineVariant
-        ),
+        border = if (selected) null else BorderStroke(0.6.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier
             .clip(shape)
             .clickable(enabled = enabled, onClick = onClick)
