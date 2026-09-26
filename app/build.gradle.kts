@@ -11,8 +11,8 @@ android {
         applicationId = "cn.linkvault"
         minSdk = 26
         targetSdk = 35
-        versionCode = 13
-        versionName = "1.3.2"
+        versionCode = 14
+        versionName = "1.3.3"
     }
     buildFeatures { compose = true }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }

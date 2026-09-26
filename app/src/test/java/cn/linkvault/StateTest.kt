@@ -41,4 +41,40 @@ class StateTest {
             assertEquals(2, restored.sortOrder)
         } finally { Dispatchers.resetMain() }
     }
+
+    @Test fun clipboardSnoopAndQuickSave() {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
+        try {
+            val app = ApplicationProvider.getApplicationContext<Application>()
+            val vm = VaultViewModel(app, SavedStateHandle())
+            val cm = app.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            cm.setPrimaryClip(android.content.ClipData.newPlainText("url", "看看这个 https://news.ycombinator.com/item?id=123 很有意思"))
+
+            vm.checkClipboard(app)
+            assertEquals("https://news.ycombinator.com/item?id=123", vm.clipboardCandidate)
+
+            vm.quickSaveClipboard()
+            kotlinx.coroutines.runBlocking {
+                kotlinx.coroutines.withTimeout(10_000) {
+                    while (vm.busy || vm.message == null) kotlinx.coroutines.delay(10)
+                }
+            }
+            assertNull(vm.clipboardCandidate)
+            assertEquals("已收录剪贴板链接", vm.message)
+
+            // Once saved, checking again should not surface it
+            vm.checkClipboard(app)
+            assertNull(vm.clipboardCandidate)
+        } finally { Dispatchers.resetMain() }
+    }
+
+    @Test fun randomReadPicksBookmark() {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
+        try {
+            val app = ApplicationProvider.getApplicationContext<Application>()
+            val vm = VaultViewModel(app, SavedStateHandle())
+            vm.randomRead()
+            assertEquals("暂无收藏可供温故", vm.message)
+        } finally { Dispatchers.resetMain() }
+    }
 }

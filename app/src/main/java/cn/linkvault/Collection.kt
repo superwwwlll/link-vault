@@ -62,6 +62,7 @@ internal fun CollectionPage(
     var selectedIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
     val selectionMode = selectedIds.isNotEmpty()
     var confirmBulkDelete by remember { mutableStateOf(false) }
+    val haptic = LocalHapticFeedback.current
     LaunchedEffect(visible) { selectedIds = selectedIds.intersect(visible.map { it.id }.toSet()) }
 
     LazyColumn(
@@ -149,7 +150,20 @@ internal fun CollectionPage(
                         else -> "最近收藏"
                     }
                     Text(heading, Modifier.weight(1f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    if (visible.isNotEmpty()) TextButton(onClick = { selectedIds = visible.map { it.id }.toSet() }, contentPadding = PaddingValues(horizontal = 8.dp)) { Text("多选", fontSize = 12.sp) }
+                    if (visible.isNotEmpty()) {
+                        TextButton(
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                vm.randomRead()
+                            },
+                            contentPadding = PaddingValues(horizontal = 6.dp)
+                        ) {
+                            Icon(Glyph.Shuffle, null, Modifier.size(13.dp))
+                            Spacer(Modifier.width(3.dp))
+                            Text("翻一篇", fontSize = 12.sp)
+                        }
+                        TextButton(onClick = { selectedIds = visible.map { it.id }.toSet() }, contentPadding = PaddingValues(horizontal = 6.dp)) { Text("多选", fontSize = 12.sp) }
+                    }
                     SortMenuButton(sortOrder = vm.sortOrder, onSelectSort = vm::setSort)
                 }
             }

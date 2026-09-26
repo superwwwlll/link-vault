@@ -181,6 +181,33 @@ fun VaultScreen(vm: VaultViewModel) {
                     }
                 }
             }
+            if (d == null && vm.detailId == null && vm.tab == 0 && !vm.trashOpen) {
+                vm.clipboardCandidate?.let { candidate ->
+                    Surface(
+                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.85f),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 6.dp),
+                        border = BorderStroke(0.6.dp, MaterialTheme.colorScheme.outlineVariant)
+                    ) {
+                        Row(Modifier.padding(start = 14.dp, end = 4.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Glyph.LinkChain, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                            Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
+                                Text("检测到剪贴板链接", fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                Text(candidate, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            TextButton(onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                vm.quickSaveClipboard()
+                            }, contentPadding = PaddingValues(horizontal = 8.dp)) {
+                                Text("收录", fontSize = 12.5.sp, fontWeight = FontWeight.Bold)
+                            }
+                            IconButton(onClick = vm::dismissClipboard, modifier = Modifier.size(30.dp)) {
+                                Icon(Glyph.Close, "忽略", Modifier.size(14.dp))
+                            }
+                        }
+                    }
+                }
+            }
             when {
                 d != null -> EditorPage(vm, d, onBack = { cancelConfirm = true })
                 vm.detailId != null -> {

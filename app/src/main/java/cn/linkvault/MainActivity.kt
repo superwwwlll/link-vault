@@ -27,6 +27,10 @@ class MainActivity : ComponentActivity() {
             VaultTheme(dark) { VaultScreen(vm) }
         }
     }
+    override fun onResume() {
+        super.onResume()
+        vm.checkClipboard(this)
+    }
     override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); setIntent(intent); receive(intent) }
     private fun receive(intent: Intent?) {
         val shared = Capture.fromShare(intent) ?: return

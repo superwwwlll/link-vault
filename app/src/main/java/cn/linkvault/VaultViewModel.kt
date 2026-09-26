@@ -95,6 +95,8 @@ class VaultViewModel(app: Application, private val saved: SavedStateHandle) : An
     /** 最近一次粘贴/分享里检测到的全部链接，用于「全部收藏」。 */
     var detected by mutableStateOf(saved.get<ArrayList<String>>("detected")?.toList() ?: emptyList()); private set
     var fetchingId by mutableStateOf<Long?>(null); private set
+    var clipboardCandidate by mutableStateOf<String?>(null); private set
+    private var lastDismissedClipboard: String? = null
 
     var draft by mutableStateOf(restoreDraft()); private set
 
@@ -367,6 +369,83 @@ class VaultViewModel(app: Application, private val saved: SavedStateHandle) : An
     }
 
     fun cancel() { if (!busy) { edit(null); notice = null; detected = emptyList(); saved["detected"] = null } }
+
+    fun checkClipboard(context: Context) {
+        if (draft != null || detailId != null || busy || trashOpen) return
+        val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager ?: return
+        if (!cm.hasPrimaryClip()) return
+        val clip = cm.primaryClip ?: return
+        if (clip.itemCount == 0) return
+        val text = clip.getItemAt(0)?.coerceToText(context)?.toString()?.trim().orEmpty()
+        if (text.isBlank()) return
+        val urls = Links.extract(text.take(4000))
+        if (urls.isEmpty()) return
+        val candidate = urls.first()
+        if (candidate == lastDismissedClipboard) return
+        val key = runCatching { Links.canonical(candidate) }.getOrNull() ?: return
+        if (items.any { it.canonical == key || it.url == candidate }) return
+        if (trashItems.any { it.canonical == key || it.url == candidate }) return
+        clipboardCandidate = candidate
+    }
+
+    fun dismissClipboard() {
+        lastDismissedClipboard = clipboardCandidate
+        clipboardCandidate = null
+    }
+
+    fun quickSaveClipboard() {
+        val url = clipboardCandidate ?: return
+        dismissClipboard()
+        if (busy) return
+        val key = try { Links.canonical(url) } catch (_: Exception) { return }
+        busy = true
+        viewModelScope.launch {
+            try {
+                if (dao.byKey(key) != null) {
+                    toast("此链接已存在于收藏中")
+                    return@launch
+                }
+                val now = System.currentTimeMillis()
+                val readableTitle = Links.readable(url).take(200)
+                val item = Bookmark(url = url, canonical = key, title = readableTitle, createdAt = now, updatedAt = now)
+                val id = dao.insert(item)
+                toast("已收录剪贴板链接")
+                if (fetchEnabled && url.startsWith("https://", true)) {
+                    val head = runCatching { withContext(Dispatchers.IO) { Net.fetchHead(url) } }.getOrNull()
+                    if (head != null && !head.isEmpty) {
+                        val title = if (head.title.isNotBlank()) head.title.take(200) else readableTitle
+                        dao.applyFetch(id, head.description.take(8000), head.siteName.take(200), title, System.currentTimeMillis())
+                    }
+                }
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) { fail("收录失败：${e.localizedMessage}") }
+            finally { busy = false }
+        }
+    }
+
+    fun randomRead() {
+        if (items.isEmpty()) {
+            toast("暂无收藏可供温故")
+            return
+        }
+        val pool = when (scope) {
+            1 -> items.filter { !it.archived && !it.read }
+            2 -> items.filter { !it.archived && it.read }
+            3 -> items.filter { it.archived }
+            else -> {
+                val unread = items.filter { !it.archived && !it.read }
+                if (unread.isNotEmpty()) unread else items.filter { !it.archived }
+            }
+        }
+        val scoped = if (filter.isNotBlank()) pool.filter { matches(it, "", filter) } else pool
+        val target = scoped.randomOrNull() ?: items.filter { !it.archived }.randomOrNull() ?: items.randomOrNull()
+        if (target != null) {
+            show(target)
+            toast("为你翻出：${Links.displayTitle(target.url, target.title)}")
+        } else {
+            toast("暂无符合条件的收藏可供温故")
+        }
+    }
 
     // ------------------------------------------------------------ 保存
 
