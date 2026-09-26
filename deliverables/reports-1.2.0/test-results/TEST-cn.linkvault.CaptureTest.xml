@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="cn.linkvault.CaptureTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-09-26T04:11:05" hostname="b635a5892e08" time="0.319">
+  <properties/>
+  <testcase name="multipleSharedLinksAreMerged" classname="cn.linkvault.CaptureTest" time="0.046"/>
+  <testcase name="nonTextSharesAreIgnored" classname="cn.linkvault.CaptureTest" time="0.035"/>
+  <testcase name="titleExtraIsAcceptedToo" classname="cn.linkvault.CaptureTest" time="0.033"/>
+  <testcase name="htmlExtraIsKeptSoTheTitleCanBeReadOffline" classname="cn.linkvault.CaptureTest" time="0.054"/>
+  <testcase name="clipboardCarriesBothPlainTextAndHtml" classname="cn.linkvault.CaptureTest" time="0.053"/>
+  <testcase name="emptyClipboardIsHarmless" classname="cn.linkvault.CaptureTest" time="0.037"/>
+  <testcase name="titleComesFromTheSystemShare" classname="cn.linkvault.CaptureTest" time="0.034"/>
+  <testcase name="selectedTextIsTreatedAsAShare" classname="cn.linkvault.CaptureTest" time="0.024"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

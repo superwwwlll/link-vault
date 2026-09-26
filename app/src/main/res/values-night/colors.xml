@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 与 Compose 侧 NightColors.background 保持一致。 -->
+    <color name="vault_background">#FF12151D</color>
+</resources>

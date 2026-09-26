@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="cn.linkvault.BackupTest" tests="13" skipped="0" failures="0" errors="0" timestamp="2026-09-26T04:11:04" hostname="b635a5892e08" time="0.985">
+  <properties/>
+  <testcase name="olderBackupsWithoutTheNewFieldsStillImport" classname="cn.linkvault.BackupTest" time="0.04"/>
+  <testcase name="mergeIsIdempotentAndDoesNotOverwrite" classname="cn.linkvault.BackupTest" time="0.142"/>
+  <testcase name="nestingBombRejectedBeforeParsing" classname="cn.linkvault.BackupTest" time="0.044"/>
+  <testcase name="byteAndRecordLimits" classname="cn.linkvault.BackupTest" time="0.091"/>
+  <testcase name="newFieldsRoundTripExactly" classname="cn.linkvault.BackupTest" time="0.178"/>
+  <testcase name="malformedInputRejected" classname="cn.linkvault.BackupTest" time="0.04"/>
+  <testcase name="formatAndVersionAreRequired" classname="cn.linkvault.BackupTest" time="0.032"/>
+  <testcase name="roundTripPreservesUnicodeAndOriginalUrl" classname="cn.linkvault.BackupTest" time="0.032"/>
+  <testcase name="invalidNewFieldTypesOrLengthsAreRejected" classname="cn.linkvault.BackupTest" time="0.069"/>
+  <testcase name="failedMergeRollsBackAllRows" classname="cn.linkvault.BackupTest" time="0.112"/>
+  <testcase name="unsafeUrlRejectsWholeFile" classname="cn.linkvault.BackupTest" time="0.083"/>
+  <testcase name="invalidFieldTypesAndLengthsRejected" classname="cn.linkvault.BackupTest" time="0.039"/>
+  <testcase name="emptyBackupIsValid" classname="cn.linkvault.BackupTest" time="0.079"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

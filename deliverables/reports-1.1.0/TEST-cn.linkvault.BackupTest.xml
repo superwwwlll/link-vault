@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="cn.linkvault.BackupTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-09-09T12:58:58" hostname="af92e63be8e7" time="1.181">
+  <properties/>
+  <testcase name="mergeIsIdempotentAndDoesNotOverwrite" classname="cn.linkvault.BackupTest" time="0.184"/>
+  <testcase name="nestingBombRejectedBeforeParsing" classname="cn.linkvault.BackupTest" time="0.108"/>
+  <testcase name="byteAndRecordLimits" classname="cn.linkvault.BackupTest" time="0.122"/>
+  <testcase name="malformedInputRejected" classname="cn.linkvault.BackupTest" time="0.282"/>
+  <testcase name="formatAndVersionAreRequired" classname="cn.linkvault.BackupTest" time="0.095"/>
+  <testcase name="roundTripPreservesUnicodeAndOriginalUrl" classname="cn.linkvault.BackupTest" time="0.085"/>
+  <testcase name="failedMergeRollsBackAllRows" classname="cn.linkvault.BackupTest" time="0.105"/>
+  <testcase name="unsafeUrlRejectsWholeFile" classname="cn.linkvault.BackupTest" time="0.028"/>
+  <testcase name="invalidFieldTypesAndLengthsRejected" classname="cn.linkvault.BackupTest" time="0.102"/>
+  <testcase name="emptyBackupIsValid" classname="cn.linkvault.BackupTest" time="0.067"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

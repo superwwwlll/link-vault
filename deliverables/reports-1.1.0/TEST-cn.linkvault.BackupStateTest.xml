@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="cn.linkvault.BackupStateTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-09-09T12:58:57" hostname="af92e63be8e7" time="0.89">
+  <properties/>
+  <testcase name="contentResolverExportAndImportRoundTrip" classname="cn.linkvault.BackupStateTest" time="0.472"/>
+  <testcase name="writeFailureIsVisibleAndPreservesDraft" classname="cn.linkvault.BackupStateTest" time="0.214"/>
+  <testcase name="missingPreviewFailsClosedAndKeepsDraft" classname="cn.linkvault.BackupStateTest" time="0.098"/>
+  <testcase name="restoreImportPreviewWithoutMutatingDatabase" classname="cn.linkvault.BackupStateTest" time="0.106"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

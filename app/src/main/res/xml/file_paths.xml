@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  只暴露应用私有 cache 下的 updates/ 一个子目录。
+  自更新下载的 APK 放这里，安装时单次授权给系统安装器。
+  绝不能在这里写成 "." 或外部存储路径，否则等于把整个私有目录开放出去。
+-->
+<paths>
+    <cache-path name="updates" path="updates/" />
+</paths>

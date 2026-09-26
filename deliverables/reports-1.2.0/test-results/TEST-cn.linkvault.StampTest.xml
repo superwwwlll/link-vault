@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="cn.linkvault.StampTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-09-26T04:11:07" hostname="b635a5892e08" time="0.019">
+  <properties/>
+  <testcase name="backupFreshness" classname="cn.linkvault.StampTest" time="0.018"/>
+  <testcase name="todayAndYesterdayAreNamedAndYearOnlyAppearsAcrossYears" classname="cn.linkvault.StampTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

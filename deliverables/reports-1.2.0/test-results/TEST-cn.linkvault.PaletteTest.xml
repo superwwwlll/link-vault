@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="cn.linkvault.PaletteTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-09-26T04:11:07" hostname="b635a5892e08" time="0.132">
+  <properties/>
+  <testcase name="aBroadSampleStaysMostlyDistinct" classname="cn.linkvault.PaletteTest" time="0.046"/>
+  <testcase name="colourIsStableForAStableKey" classname="cn.linkvault.PaletteTest" time="0.019"/>
+  <testcase name="sameHostAlwaysGetsTheSameColour" classname="cn.linkvault.PaletteTest" time="0.018"/>
+  <testcase name="lightAndDarkUseDifferentColoursButBothStayReadable" classname="cn.linkvault.PaletteTest" time="0.025"/>
+  <testcase name="commonSourcesAreAllDistinct" classname="cn.linkvault.PaletteTest" time="0.024"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

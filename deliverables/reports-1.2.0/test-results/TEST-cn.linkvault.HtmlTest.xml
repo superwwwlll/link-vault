@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="cn.linkvault.HtmlTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-09-26T04:11:06" hostname="b635a5892e08" time="0.021">
+  <properties/>
+  <testcase name="textStripsNestedTags" classname="cn.linkvault.HtmlTest" time="0.002"/>
+  <testcase name="parseHeadFallsBackToTitleAndDescription" classname="cn.linkvault.HtmlTest" time="0.007"/>
+  <testcase name="attributesAreReadInEveryQuoteStyle" classname="cn.linkvault.HtmlTest" time="0.0"/>
+  <testcase name="parseHeadPrefersOpenGraphThenTitleTag" classname="cn.linkvault.HtmlTest" time="0.001"/>
+  <testcase name="fetcherRefusesAnythingButHttpsBeforeTouchingTheNetwork" classname="cn.linkvault.HtmlTest" time="0.007"/>
+  <testcase name="namedAndNumericEntitiesDecode" classname="cn.linkvault.HtmlTest" time="0.0"/>
+  <testcase name="metaContentPrefersEarlierKeysAndSkipsIrrelevantTags" classname="cn.linkvault.HtmlTest" time="0.001"/>
+  <testcase name="parseHeadOnAnEmptyPageIsEmpty" classname="cn.linkvault.HtmlTest" time="0.001"/>
+  <testcase name="titleTagIsCollapsedAndDecoded" classname="cn.linkvault.HtmlTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,13 @@
+**/build/
+.gradle/
+local.properties
+*.keystore
+*.jks
+*.log
+
+# 发布与构建归档二进制（由 GitHub Releases 分发，不纳入 git 历史）
+publish/
+*.apk
+*.zip
+*.tar.gz
+.DS_Store

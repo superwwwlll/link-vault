@@ -1,0 +1,17 @@
+链藏 · 签名证书记录（公开信息，可安全备份与共享）
+
+包名         cn.linkvault
+签名证书     C=US, O=Android, CN=Android Debug
+别名         androiddebugkey
+有效期       2026-09-09 ~ 2056-09-01
+算法         SHA256withRSA
+
+证书 SHA-256 指纹
+    5105679d9dab4656582dd7e6c3b85c2e40a2a1bd09146ac3474e052677ad3e7d
+
+这个指纹自 1.0.0 起未变，1.0.0 / 1.1.0 / 1.2.0 三个 APK 完全一致。
+release.sh 在发布前会核对它：一旦不一致就中止发布，因为那样的 APK 装不上
+已安装的版本，用户只能卸载重装并丢失全部收藏。
+
+注意：这只是证书摘要，不含私钥。私钥在 Docker 卷 link-vault-debug-signing 内，
+用 ./signing-key.sh backup 导出。
