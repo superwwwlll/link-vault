@@ -97,18 +97,25 @@ val LocalVaultDark = staticCompositionLocalOf { false }
  * 来源标识配色：同一个域名永远同一个颜色，不同域名尽量拉开色相。
  *
  * 以前所有来源方块都用同一个 primaryContainer，字母标识等于只是把首字母重复了一遍，
- * 整个列表扫下来没有任何可用于快速定位的视觉线索。
+ * 列表扫下来没有任何可用于快速定位的视觉线索。
  *
- * 两点实现说明：
+ * 三点实现说明：
  * - String.hashCode 对短字符串的低位分布很差，直接取模会让相差一个字符的域名频繁撞色；
  *   先用 Murmur3 风格的位混合把高位搅进低位，实测 40 个常见域名可从 20 种分散到 24 种配色。
  * - 调色板是有限的，域名是无限的，所以**撞色不可能完全消除**；这里的目标是「不再千篇一律、
- *   且同一来源永远可辨认」，而不是「全球唯一」。色相 × 明度两档共 32 种组合。
+ *   且同一来源永远可辨认」，而不是「全球唯一」。色相 × 深浅两档共 32 种组合。
+ * - 深色下不能用「暗底 + 亮字」直接压暗色相：1.2.0 那版把明度压到 0.19/0.25、饱和度 0.32，
+ *   实测色块之间最小 ΔE 只有 3.8（人眼约需 5 以上才分得出），几个来源看起来是一片相同的灰。
+ *   现在改成在卡片底色上叠一层高饱和色，色相由叠加比例承担，ΔE 分离度与字/块对比同时上升。
  */
-private val sourceHues = floatArrayOf(
+internal val sourceHues = floatArrayOf(
     232f, 205f, 268f, 158f, 28f, 348f, 190f, 45f,
     300f, 120f, 15f, 250f, 175f, 85f, 320f, 62f
 )
+
+/** 卡片实际底色，色块要在这块底上看得出来。 */
+val DaySourceBase = Color(0xFFF8F8F5)
+val NightSourceBase = Color(0xFF18181B)
 
 private fun spread(key: String): Int {
     var h = key.hashCode()
@@ -120,13 +127,32 @@ private fun spread(key: String): Int {
     return h
 }
 
+/** 单个色相 × 深浅档的取色。抽出来是为了让 PaletteTest 能逐色相测分离度，而不是靠域名抽样。 */
+internal fun sourceColorFor(hue: Float, deep: Boolean, dark: Boolean): Pair<Color, Color> = if (dark) {
+    val tint = Color.hsl(hue, 0.85f, 0.60f)
+    NightSourceBase.blend(tint, if (deep) 0.34f else 0.22f) to Color.hsl(hue, 0.62f, 0.86f)
+} else {
+    // 深浅两档要拉得开：0.90/0.95 的两档在同一色相下 ΔE 仅 5.7，等于白占一个比特位
+    Color.hsl(hue, 0.55f, if (deep) 0.80f else 0.935f) to Color.hsl(hue, 0.60f, 0.27f)
+}
+
 fun sourcePalette(key: String, dark: Boolean): Pair<Color, Color> {
     val hash = spread(key)
-    val hue = sourceHues[(hash and 0x7fffffff) % sourceHues.size]
-    val deep = (hash ushr 16) and 1 == 1
-    return if (dark) Color.hsl(hue, 0.32f, if (deep) 0.19f else 0.25f) to Color.hsl(hue, 0.62f, 0.76f)
-    else Color.hsl(hue, 0.62f, if (deep) 0.90f else 0.95f) to Color.hsl(hue, 0.55f, 0.36f)
+    return sourceColorFor(
+        hue = sourceHues[(hash and 0x7fffffff) % sourceHues.size],
+        deep = (hash ushr 16) and 1 == 1,
+        dark = dark
+    )
 }
+
+/** 色块描边：给色块一个可辨认的边缘，色相与字母同色系。 */
+fun sourceBorder(key: String, dark: Boolean): Color = sourcePalette(key, dark).second.copy(alpha = 0.28f)
+
+private fun Color.blend(other: Color, weight: Float): Color = Color(
+    red = red + (other.red - red) * weight,
+    green = green + (other.green - green) * weight,
+    blue = blue + (other.blue - blue) * weight,
+)
 
 @Composable
 fun VaultTheme(dark: Boolean, content: @Composable () -> Unit) {

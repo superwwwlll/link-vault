@@ -12,7 +12,9 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -23,6 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -43,7 +46,8 @@ internal fun CollectionPage(
     onDelete: (Bookmark) -> Unit,
     onCopy: (Bookmark) -> Unit,
     onCopyMarkdown: (Bookmark) -> Unit = {},
-    onOpen: ((Bookmark) -> Unit)? = null
+    onOpen: ((Bookmark) -> Unit)? = null,
+    listState: LazyListState = rememberLazyListState()
 ) {
     // 筛选与聚合都只在输入真的变了时才算，避免每次重组都全量遍历一遍收藏
     val visible = remember(vm.items, vm.search, vm.filter, vm.scope, vm.sortOrder) { vm.visible() }
@@ -66,8 +70,10 @@ internal fun CollectionPage(
     LaunchedEffect(visible) { selectedIds = selectedIds.intersect(visible.map { it.id }.toSet()) }
 
     LazyColumn(
+        state = listState,
+        modifier = Modifier.testTag("collection-list"),
         contentPadding = PaddingValues(bottom = 100.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         if (selectionMode) item(contentType = "selection") {
             Surface(color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.fillMaxWidth()) {
@@ -109,35 +115,30 @@ internal fun CollectionPage(
                     }
                 }
 
-                if (vm.items.isNotEmpty()) {
-                    Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
-                        Text("${visible.size} 条", fontSize = 11.5.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    if (tagNames.isNotEmpty()) {
-                        Row(
-                            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            tagNames.forEach { tag ->
-                                val selected = vm.filter == tag
-                                val shape = RoundedCornerShape(8.dp)
-                                Surface(
-                                    shape = shape,
-                                    color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
-                                    border = if (selected) null else BorderStroke(0.6.dp, MaterialTheme.colorScheme.outlineVariant),
-                                    modifier = Modifier
-                                        .clip(shape)
-                                        .clickable { vm.filter(if (selected) "" else tag) }
-                                ) {
-                                    Text(
-                                        tag,
-                                        fontSize = 11.5.sp,
-                                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                                        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
-                                        maxLines = 1
-                                    )
-                                }
+                if (tagNames.isNotEmpty() && vm.items.isNotEmpty()) {
+                    Row(
+                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        tagNames.forEach { tag ->
+                            val selected = vm.filter == tag
+                            val shape = RoundedCornerShape(8.dp)
+                            Surface(
+                                shape = shape,
+                                color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+                                border = if (selected) null else BorderStroke(0.6.dp, MaterialTheme.colorScheme.outlineVariant),
+                                modifier = Modifier
+                                    .clip(shape)
+                                    .clickable { vm.filter(if (selected) "" else tag) }
+                            ) {
+                                Text(
+                                    tag,
+                                    fontSize = 11.5.sp,
+                                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+                                    maxLines = 1
+                                )
                             }
                         }
                     }
@@ -149,7 +150,14 @@ internal fun CollectionPage(
                         vm.scope == 3 -> "归档"
                         else -> "最近收藏"
                     }
-                    Text(heading, Modifier.weight(1f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    // 条数并进分区标题：单独占一行右对齐，白占一行高度却只有一句话
+                    Text(
+                        buildString {
+                            append(heading)
+                            if (vm.items.isNotEmpty()) append(" · ${visible.size} 条")
+                        },
+                        Modifier.weight(1f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     if (visible.isNotEmpty()) {
                         TextButton(
                             onClick = {
@@ -408,24 +416,13 @@ private fun BookmarkCard(
                 }
             )
         ) {
-            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    SourceMark(item.url, small = true, muted = item.read)
-                    if (site.length > 1) {
-                        Text(site, Modifier.weight(1f).padding(start = 9.dp), fontSize = 13.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    } else {
-                        Spacer(Modifier.weight(1f))
-                    }
-                    if (item.pinned) {
-                        Icon(Glyph.Pin, "已置顶", Modifier.size(13.dp), tint = MaterialTheme.colorScheme.primary)
-                        Spacer(Modifier.width(6.dp))
-                    }
-                    Text(stamp, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f))
-                }
+            // 标题是卡片的第一视觉：来源色块从顶部横排挪到底部元信息行，
+            // 正文因此占满宽度，两行标题不再被色块挤成三行。
+            Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                 Text(
                     displayTitle,
-                    fontSize = 16.5.sp,
-                    lineHeight = 23.sp,
+                    fontSize = 16.sp,
+                    lineHeight = 22.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = titleColor,
                     maxLines = 2,
@@ -434,8 +431,8 @@ private fun BookmarkCard(
                 if (item.summary.isNotBlank()) {
                     Text(
                         item.summary,
-                        fontSize = 13.sp,
-                        lineHeight = 19.sp,
+                        fontSize = 12.5.sp,
+                        lineHeight = 18.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
@@ -444,9 +441,19 @@ private fun BookmarkCard(
                 if (item.notes.isNotBlank()) {
                     NoteSnippetCard(text = item.notes, maxLines = 2)
                 }
-                if (tags.isNotEmpty()) FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (tags.isNotEmpty()) FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                     tags.take(4).forEach { tag -> TagPill(tag, onClick = { onTag(tag) }) }
                     if (tags.size > 4) TagPill("+${tags.size - 4}")
+                }
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    SourceMark(item.url, size = MarkSize.Tiny, muted = item.read)
+                    if (site.length > 1) {
+                        Text(site, Modifier.weight(1f), fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    } else {
+                        Spacer(Modifier.weight(1f))
+                    }
+                    if (item.pinned) Icon(Glyph.Pin, "已置顶", Modifier.size(11.dp), tint = MaterialTheme.colorScheme.primary)
+                    Text(stamp, fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f))
                 }
             }
         }

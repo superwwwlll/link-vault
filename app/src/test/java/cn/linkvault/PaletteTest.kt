@@ -1,5 +1,8 @@
 package cn.linkvault
 
+import androidx.compose.ui.graphics.Color
+import kotlin.math.pow
+import kotlin.math.sqrt
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -69,4 +72,84 @@ class PaletteTest {
         // 相差一个字符的域名应该被位混合打散，而不是落到相邻下标
         assertNotEquals(sourcePalette("a.example.com", false), sourcePalette("b.example.com", false))
     }
+
+    /**
+     * 哈希不重复 ≠ 看得出来不一样。
+     *
+     * 1.2.0 那版深色把明度压到 0.19/0.25、饱和度 0.32，32 个色块在哈希上互不重复，
+     * 但两两平均 ΔE 只有 27.7、同一色相的深浅两档只差 7.5，扫过去是一片相同的灰。
+     * 下面四条测的是「肉眼分得出」，四条按 1.2.0 的实现都会失败。
+     */
+    @Test fun everyChipStaysReadableAgainstItsOwnLetter() {
+        for (dark in listOf(false, true)) for (deep in listOf(false, true)) for (hue in sourceHues) {
+            val (background, foreground) = sourceColorFor(hue, deep, dark)
+            val ratio = contrast(background, foreground)
+            assertTrue("色相 $hue ${if (dark) "深色" else "浅色"}档 $deep 字/块对比只有 $ratio", ratio >= 4.0)
+        }
+    }
+
+    @Test fun chipsAreVisibleAgainstTheCardTheySitOn() {
+        for (hue in sourceHues) for (deep in listOf(false, true)) {
+            val night = deltaE(sourceColorFor(hue, deep, dark = true).first, NightSourceBase)
+            assertTrue("深色下色块与卡片底几乎重合（ΔE=$night）", night >= 12.0)
+            val day = deltaE(sourceColorFor(hue, deep, dark = false).first, DaySourceBase)
+            assertTrue("浅色下色块与卡片底几乎重合（ΔE=$day）", day >= 4.0)
+        }
+    }
+
+    @Test fun distinctHuesActuallySpreadOut() {
+        for (dark in listOf(false, true)) {
+            val chips = sourceHues.flatMap { listOf(sourceColorFor(it, false, dark).first, sourceColorFor(it, true, dark).first) }
+            var sum = 0.0
+            var pairs = 0
+            for (i in chips.indices) for (j in chips.indices) if (i < j) { sum += deltaE(chips[i], chips[j]); pairs++ }
+            val mean = sum / pairs
+            assertTrue("${if (dark) "深色" else "浅色"}下 32 个色块两两平均 ΔE 只有 $mean，列表会看成一片灰", mean >= if (dark) 30.0 else 20.0)
+        }
+    }
+
+    @Test fun theDepthBitIsNotWasted() {
+        // 深浅档如果同色相下分不出来，等于只用掉 16 色而不是 32 色
+        for (dark in listOf(false, true)) for (hue in sourceHues) {
+            val spread = deltaE(sourceColorFor(hue, false, dark).first, sourceColorFor(hue, true, dark).first)
+            assertTrue("色相 $hue 的深浅两档只差 ΔE=$spread", spread >= if (dark) 8.0 else 10.0)
+        }
+    }
+}
+
+/**
+ * CIE Lab 的 ΔE：人眼可辨距离，比 RGB 逐通道差值靠谱得多。
+ *
+ * 「两个颜色不一样」在 sRGB 空间里量不出来——明度相近、色相不同的两块灰，
+ * 逐通道差值很大，肉眼却分不出。这里用 ΔE 才能把「看成一片灰」这种回归测出来。
+ */
+private fun Color.lab(): DoubleArray {
+    fun lin(v: Float): Double {
+        val x = v.toDouble()
+        return if (x <= 0.04045) x / 12.92 else ((x + 0.055) / 1.055).pow(2.4)
+    }
+    val r = lin(red); val g = lin(green); val b = lin(blue)
+    fun pivot(t: Double) = if (t > 0.008856) t.pow(1.0 / 3.0) else 7.787 * t + 16.0 / 116.0
+    val x = pivot((0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047)
+    val y = pivot(0.2126 * r + 0.7152 * g + 0.0722 * b)
+    val z = pivot((0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883)
+    return doubleArrayOf(116 * y - 16, 500 * (x - y), 200 * (y - z))
+}
+
+private fun deltaE(a: Color, b: Color): Double {
+    val x = a.lab(); val y = b.lab()
+    return sqrt((x[0] - y[0]).pow(2) + (x[1] - y[1]).pow(2) + (x[2] - y[2]).pow(2))
+}
+
+/** WCAG 相对亮度对比度。 */
+private fun contrast(a: Color, b: Color): Double {
+    fun luminance(c: Color): Double {
+        fun lin(v: Float): Double {
+            val x = v.toDouble()
+            return if (x <= 0.04045) x / 12.92 else ((x + 0.055) / 1.055).pow(2.4)
+        }
+        return 0.2126 * lin(c.red) + 0.7152 * lin(c.green) + 0.0722 * lin(c.blue)
+    }
+    val (hi, lo) = listOf(luminance(a), luminance(b)).sortedDescending()
+    return (hi + 0.05) / (lo + 0.05)
 }

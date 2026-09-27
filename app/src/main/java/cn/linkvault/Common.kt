@@ -1,6 +1,10 @@
 package cn.linkvault
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,14 +14,20 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.Locale
@@ -138,25 +148,44 @@ internal fun <T> UnderlineTabs(
     modifier: Modifier = Modifier,
     badge: ((T) -> String?)? = null
 ) {
+    val count = items.size.coerceAtLeast(1)
+    val selectedIndex = items.indexOf(selectedItem).coerceAtLeast(0)
+    val progress by animateFloatAsState(selectedIndex.toFloat(), tween(220), label = "tabIndicator")
+    val indicatorColor = MaterialTheme.colorScheme.primary
     Column(modifier) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
-            items.forEach { item ->
-                val isSelected = item == selectedItem
-                Tab(
-                    selected = isSelected,
-                    onClick = { onSelect(item) },
-                    modifier = Modifier.weight(1f),
-                    selectedContentColor = MaterialTheme.colorScheme.primary,
-                    unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    text = {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-                            Text(label(item), fontSize = 15.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
-                            badge?.invoke(item)?.takeIf { it.isNotEmpty() }?.let {
-                                Spacer(Modifier.width(4.dp))
-                                Text(it, fontSize = 11.sp)
+        Box {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+                items.forEach { item ->
+                    val isSelected = item == selectedItem
+                    Tab(
+                        selected = isSelected,
+                        onClick = { onSelect(item) },
+                        modifier = Modifier.weight(1f),
+                        selectedContentColor = MaterialTheme.colorScheme.primary,
+                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text = {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                                Text(label(item), fontSize = 15.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
+                                badge?.invoke(item)?.takeIf { it.isNotEmpty() }?.let {
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(it, fontSize = 11.sp)
+                                }
                             }
                         }
-                    }
+                    )
+                }
+            }
+            // 指示条按页签等宽插值滑动；以前只有一条整宽分隔线，选中项只靠加粗区分，扫一眼看不出可点
+            Canvas(Modifier.matchParentSize()) {
+                val cell = size.width / count
+                val barWidth = cell * 0.52f
+                val left = cell * (progress + 0.5f) - barWidth / 2f
+                val height = 2.dp.toPx()
+                drawRoundRect(
+                    color = indicatorColor,
+                    topLeft = Offset(left, size.height - height),
+                    size = Size(barWidth, height),
+                    cornerRadius = CornerRadius(height / 2f)
                 )
             }
         }
@@ -186,9 +215,13 @@ internal fun <T> SegmentedPills(
             items.forEach { item ->
                 val selected = item == selectedItem
                 val shape = RoundedCornerShape(12.dp)
-                val pillColor = if (selected) {
-                    if (isDark) Color(0xFF27272A) else MaterialTheme.colorScheme.surface
-                } else Color.Transparent
+                val pillColor by animateColorAsState(
+                    if (selected) {
+                        if (isDark) Color(0xFF27272A) else MaterialTheme.colorScheme.surface
+                    } else Color.Transparent,
+                    animationSpec = tween(160),
+                    label = "segmentedPill"
+                )
 
                 Box(
                     modifier = Modifier
@@ -267,29 +300,33 @@ internal fun SectionLabel(text: String, trailing: String = "") {
     }
 }
 
-private val SmallSourceShape = RoundedCornerShape(9.dp)
-private val LargeSourceShape = RoundedCornerShape(15.dp)
+enum class MarkSize(val box: Dp, val text: TextUnit, val shape: RoundedCornerShape) {
+    Tiny(20.dp, 10.sp, RoundedCornerShape(7.dp)),
+    Small(28.dp, 13.sp, RoundedCornerShape(9.dp)),
+    Large(46.dp, 20.sp, RoundedCornerShape(15.dp))
+}
 
 /**
  * 来源标识：同一个域名永远同一个颜色，带精致柔和描边。
  */
 @Composable
-internal fun SourceMark(url: String, small: Boolean = false, muted: Boolean = false) {
+internal fun SourceMark(url: String, size: MarkSize = MarkSize.Small, muted: Boolean = false) {
     val key = Links.host(url).ifEmpty { url }
+    val dark = LocalVaultDark.current
     val (background, foreground) = if (muted) MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
-        else sourcePalette(key, LocalVaultDark.current)
-    val shape = if (small) SmallSourceShape else LargeSourceShape
+        else sourcePalette(key, dark)
     Box(
         Modifier
-            .size(if (small) 28.dp else 46.dp)
-            .background(background, shape),
+            .size(size.box)
+            .background(background, size.shape)
+            .border(0.7.dp, if (muted) MaterialTheme.colorScheme.outlineVariant else sourceBorder(key, dark), size.shape),
         contentAlignment = Alignment.Center
     ) {
         val label = Links.siteName(url).take(1).uppercase(Locale.ROOT)
         Text(
             if (label.isEmpty()) "•" else label,
             color = foreground,
-            fontSize = if (small) 13.sp else 20.sp,
+            fontSize = size.text,
             fontWeight = FontWeight.Bold
         )
     }

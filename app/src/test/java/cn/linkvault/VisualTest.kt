@@ -24,8 +24,22 @@ import java.io.File
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class VisualTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
-    private fun capture(name: String) {
+
+    /**
+     * 等短动画落地再截图。
+     *
+     * 页签指示条 220ms、筛选胶囊 160ms、添加按钮 180ms。waitForIdle 只跑到当前帧，
+     * 直接截图会拍到半截的指示条。
+     */
+    private fun settle() {
+        rule.mainClock.autoAdvance = false
+        rule.mainClock.advanceTimeBy(600)
+        rule.mainClock.autoAdvance = true
         rule.waitForIdle()
+    }
+
+    private fun capture(name: String) {
+        settle()
         val file = File(System.getProperty("vault.screenshots"), "$name.png")
         file.parentFile!!.mkdirs()
         // PixelCopy/forceRedraw requires a real Window compositor. Draw the actual Android
@@ -60,9 +74,23 @@ class VisualTest {
         rule.onNodeWithText("用 Compose 构建更好的 Android 界面").assertIsDisplayed()
         rule.onNodeWithContentDescription("清空搜索").performClick()
         capture("01-collection-light")
+        // 添加按钮压在列表右下角，必须给卡片让位：向下滚收起、回到顶部再出现。
+        // 截图看不到这件事，所以这里按语义节点断言，而不是靠肉眼看图。
+        rule.onAllNodes(hasContentDescription("收藏链接")).assertCountEquals(1)
+        rule.onNodeWithTag("collection-list").performTouchInput { swipeUp() }
+        rule.waitForIdle()
+        rule.onAllNodes(hasContentDescription("收藏链接")).assertCountEquals(0)
+        rule.onNodeWithTag("collection-list").performTouchInput { swipeDown() }
+        rule.waitForIdle()
+        rule.onAllNodes(hasContentDescription("收藏链接")).assertCountEquals(1)
         rule.onNodeWithText("值得慢慢看的宇宙").performClick()
         rule.onNodeWithText("收藏详情").assertIsDisplayed()
         capture("02-detail-light")
+        // 抓取默认关闭，详情页的「抓取页面信息 / 提取正文快照」入口在上面的图里根本不出现。
+        // 空态收纳后这三行是详情页的主要入口，必须单独拍一张。
+        rule.runOnIdle { vm.fetchEnabled(true) }
+        capture("02b-detail-empty-light")
+        rule.runOnIdle { vm.fetchEnabled(false) }
         rule.onNodeWithContentDescription("编辑收藏").performClick()
         rule.onNodeWithText("保存收藏").assertIsDisplayed()
         capture("03-editor-light")

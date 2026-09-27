@@ -9,9 +9,18 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.browser.customtabs.CustomTabColorSchemeParams
 import androidx.browser.customtabs.CustomTabsIntent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -46,6 +55,8 @@ fun VaultScreen(vm: VaultViewModel) {
     var securePassword by rememberSaveable { mutableStateOf("") }
     val d = vm.draft
     val detail = vm.items.firstOrNull { it.id == vm.detailId }
+    val collectionListState = rememberLazyListState()
+    val fabShown = rememberFabShown(collectionListState)
 
     val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri -> uri?.let(vm::export) }
     val exportHtml = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/html")) { uri -> uri?.let(vm::exportHtml) }
@@ -144,18 +155,24 @@ fun VaultScreen(vm: VaultViewModel) {
             }
         },
         floatingActionButton = {
-            if (d == null && vm.detailId == null && !vm.trashOpen && vm.tab == 0) FloatingActionButton(
-                onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    vm.edit(Draft())
-                },
-                shape = RoundedCornerShape(14.dp),
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 2.dp, pressedElevation = 0.dp),
-                modifier = Modifier.size(52.dp)
+            if (d == null && vm.detailId == null && !vm.trashOpen && vm.tab == 0) AnimatedVisibility(
+                visible = fabShown,
+                enter = fadeIn(tween(180)) + scaleIn(tween(180), initialScale = 0.86f),
+                exit = fadeOut(tween(130)) + scaleOut(tween(130), targetScale = 0.86f)
             ) {
-                Icon(Glyph.Add, contentDescription = "收藏链接", modifier = Modifier.size(22.dp))
+                FloatingActionButton(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        vm.edit(Draft())
+                    },
+                    shape = RoundedCornerShape(14.dp),
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 2.dp, pressedElevation = 0.dp),
+                    modifier = Modifier.size(52.dp)
+                ) {
+                    Icon(Glyph.Add, contentDescription = "收藏链接", modifier = Modifier.size(22.dp))
+                }
             }
         }
     ) { padding ->
@@ -219,7 +236,7 @@ fun VaultScreen(vm: VaultViewModel) {
                 vm.trashOpen -> TrashPage(vm, onBack = vm::closeTrash)
                 vm.tab == 1 -> TagsPage(vm)
                 vm.tab == 2 -> SettingsPage(vm, ::launchExport, ::launchExportHtml, ::launchExportPortalHtml, ::launchExportMarkdown, ::launchImport, ::launchFolder, ::launchSecureExport, ::launchSecureImport)
-                else -> CollectionPage(vm, onShare = ::share, onDelete = { deleteId = it.id }, onCopy = ::copyLink, onCopyMarkdown = ::copyMarkdown, onOpen = ::openLink)
+                else -> CollectionPage(vm, onShare = ::share, onDelete = { deleteId = it.id }, onCopy = ::copyLink, onCopyMarkdown = ::copyMarkdown, onOpen = ::openLink, listState = collectionListState)
             }
         }
     }
@@ -235,4 +252,32 @@ fun VaultScreen(vm: VaultViewModel) {
                 preview.items.take(3).forEach { Text("• ${Links.displayTitle(it.url, it.title)}", maxLines = 2, overflow = TextOverflow.Ellipsis) }
             }
         }, confirmButton = { Button(onClick = vm::confirmImport, enabled = !vm.busy) { Text(if (vm.busy) "导入中…" else "确认合并") } }, dismissButton = { TextButton(onClick = vm::cancelImport, enabled = !vm.busy) { Text("取消") } }) }
+}
+
+/**
+ * 向下滚动时收起添加按钮。
+ *
+ * 它停在右下角，正好压住列表第三张卡片的来源与时间；列表越长，被挡住的那张越靠不上前。
+ * 回到列表顶部时必须显示，否则首屏会没有添加入口。
+ */
+@Composable
+private fun rememberFabShown(listState: LazyListState): Boolean {
+    var shown by remember { mutableStateOf(true) }
+    LaunchedEffect(listState) {
+        var lastIndex = listState.firstVisibleItemIndex
+        var lastOffset = listState.firstVisibleItemScrollOffset
+        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+            .collect { (index, offset) ->
+                val down = index > lastIndex || (index == lastIndex && offset > lastOffset)
+                val up = index < lastIndex || (index == lastIndex && offset < lastOffset)
+                when {
+                    index == 0 && offset == 0 -> shown = true
+                    down -> shown = false
+                    up -> shown = true
+                }
+                lastIndex = index
+                lastOffset = offset
+            }
+    }
+    return shown
 }
