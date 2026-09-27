@@ -15,9 +15,8 @@
 #   https://github.com/<owner>/<repo>/releases/latest/download/lian-cang-debug.apk
 #   就是一个永远指向最新版的固定地址。
 #
-# 文件名里的 "debug" 是历史遗留：从 1.3.5 起发出去的正式包已经改成
-# 正式签名 + 关闭调试开关 + 代码收缩，但这个文件名被手机端的更新逻辑写死在
-# Updater.APK_URL 里，改一个字老用户就收不到更新，所以只能留着。
+# 文件名里的 "debug" 是历史遗留：1.3.6 起发出去的是正式签名包（关闭调试开关 + 代码收缩），
+# 但这个文件名被手机端的更新逻辑写死在 Updater.APK_URL 里，改一个字老用户就收不到更新，所以只能留着。
 # 本地构建产物不再带这个后缀（deliverables/lian-cang-<版本>.apk）。
 #
 set -euo pipefail

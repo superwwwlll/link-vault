@@ -11,8 +11,8 @@ android {
         applicationId = "cn.linkvault"
         minSdk = 26
         targetSdk = 35
-        versionCode = 16
-        versionName = "1.3.5"
+        versionCode = 17
+        versionName = "1.3.6"
     }
     buildFeatures { compose = true }
     // 发布包沿用与调试包同一把签名钥匙，这样已装在手机上的版本能直接覆盖升级
