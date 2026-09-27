@@ -42,6 +42,10 @@ interface BookmarkDao {
     @Query("SELECT * FROM bookmarks ORDER BY createdAt ASC, id ASC")
     suspend fun allIncludingDeleted(): List<Bookmark>
 
+    /** 清理回收站前先拿到将被删掉的 id：正文快照是散在磁盘上的文件，行没了得跟着清。 */
+    @Query("SELECT id FROM bookmarks WHERE deletedAt > 0 AND deletedAt < :before")
+    suspend fun trashedIdsBefore(before: Long): List<Long>
+
     @Query("DELETE FROM bookmarks WHERE deletedAt > 0 AND deletedAt < :before")
     suspend fun purgeTrash(before: Long): Int
 

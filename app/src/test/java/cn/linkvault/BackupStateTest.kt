@@ -33,6 +33,7 @@ class BackupStateTest {
         try {
             val app = ApplicationProvider.getApplicationContext<Application>()
             val file = File(app.cacheDir, "pending-import.json")
+            val secure = File(app.cacheDir, "pending-import.lvault").apply { writeBytes(byteArrayOf(1, 2, 3)) }
             val sample = Bookmark(url = "https://example.com/import-state", canonical = "https://example.com/import-state", title = "预览恢复")
             file.writeBytes(Backup.encode(listOf(sample)))
             val handle = SavedStateHandle(mapOf("importPreview" to true))
@@ -41,7 +42,10 @@ class BackupStateTest {
             assertEquals("预览恢复", vm.preview!!.items.single().title)
             assertNull(runBlocking { VaultDb.get(app).bookmarks().byKey(sample.canonical) })
             vm.cancelImport()
+            // 临时文件在 IO 线程上删，主线程不等它
+            runBlocking { withTimeout(10000) { while (file.exists() || secure.exists()) delay(10) } }
             assertNull(vm.preview); assertFalse(file.exists()); assertEquals(false, handle.get<Boolean>("importPreview"))
+            assertFalse("加密预览的临时底稿也不能留在 cache 里", secure.exists())
         } finally { store.clear(); Dispatchers.resetMain() }
     }
     @Test fun missingPreviewFailsClosedAndKeepsDraft() {

@@ -104,6 +104,24 @@ class BackupTest {
         changed("summary", "x".repeat(8001)); changed("siteName", "x".repeat(201))
     }
 
+    /** 一键备份只清理自己写出去的文件，其余一概不动。 */
+    @Test fun backupPruningKeepsOnlyTheNewestBackupsAndIgnoresEverythingElse() {
+        val names = listOf(
+            "链藏备份-20260101-0900.json",
+            "链藏备份-20260301-0900.json",
+            "链藏备份-20260201-0900.json",
+            "链藏书签-20251201-0900.html",
+            "链藏加密备份-20260101-0900.lvault",
+            "我的报销单.json",
+        )
+
+        assertEquals(listOf("链藏备份-20260101-0900.json"), Backup.staleBackups(names, 2))
+        assertTrue(Backup.staleBackups(names, 3).isEmpty())
+        val all = Backup.staleBackups(names, 0)
+        assertEquals(3, all.size)
+        assertTrue(all.all { it.startsWith(Backup.BACKUP_PREFIX) && it.endsWith(".json") })
+    }
+
     @Test fun htmlBookmarksRoundTrip() {
         val sample = listOf(
             Bookmark(url = "https://example.com/test", canonical = "https://example.com/test", title = "测试标题", tags = "设计,灵感", createdAt = 1700000000000L),

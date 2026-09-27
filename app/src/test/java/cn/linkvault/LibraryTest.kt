@@ -191,4 +191,32 @@ class LibraryTest {
         assertEquals("备注", restored.draft!!.notes)
         assertEquals("标签", restored.draft!!.tags)
     }
+
+    /** 正文快照是散在磁盘上的文件：行删掉之后文件不能留在手机里。 */
+    @Test fun permanentlyDeletingABookmarkAlsoDeletesItsArticleSnapshot() {
+        val id = insert("https://example.com/gone", title = "要删掉")
+        runBlocking { dao.softDelete(id, System.currentTimeMillis()) }
+        Snapshots.save(app, id, "不该留下的正文")
+        assertTrue(Snapshots.has(app, id))
+
+        val vm = viewModel()
+        vm.deleteForever(runBlocking { dao.byId(id) }!!)
+        settle(vm)
+
+        assertFalse(Snapshots.has(app, id))
+        assertNull(runBlocking { dao.byId(id) })
+    }
+
+    /** 回收站满 30 天时会自动清理，快照文件也要跟着走。 */
+    @Test fun autoPurgeOfExpiredTrashRemovesTheArticleSnapshot() {
+        val id = insert("https://example.com/ancient", title = "过期")
+        runBlocking { dao.softDelete(id, System.currentTimeMillis() - 31L * 86_400_000L) }
+        Snapshots.save(app, id, "过期回收站的正文")
+
+        viewModel()
+        runBlocking { withTimeout(10_000) { while (Snapshots.has(app, id)) delay(10) } }
+
+        assertFalse(Snapshots.has(app, id))
+        assertNull(runBlocking { dao.byId(id) })
+    }
 }

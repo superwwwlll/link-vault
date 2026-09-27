@@ -182,7 +182,13 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
         detailId?.let { loadSnapshot(it) }
         if (saved.get<Boolean>("importPreview") == true) restoreImport()
         viewModelScope.launch(Dispatchers.IO) {
-            runCatching { dao.purgeTrash(System.currentTimeMillis() - TRASH_RETENTION_MS) }
+            runCatching {
+                // 正文快照是散在磁盘上的文件：行被清掉之前先把对应文件一起清掉，否则会永久残留。
+                val cutoff = System.currentTimeMillis() - TRASH_RETENTION_MS
+                val gone = dao.trashedIdsBefore(cutoff)
+                dao.purgeTrash(cutoff)
+                gone.forEach { Snapshots.delete(app, it) }
+            }
         }
     }
 
@@ -310,6 +316,8 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
 
     fun deleteForever(item: Bookmark) = act("已永久删除") {
         check(dao.deleteForever(item.id) == 1) { "这条收藏已不存在" }
+        withContext(Dispatchers.IO) { Snapshots.delete(app, item.id) }
+        if (detailId == item.id) currentSnapshot = null
     }
 
     // ------------------------------------------------------------ 标签管理
@@ -646,13 +654,14 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
         busy = true
         viewModelScope.launch {
             try {
-                val name = "链藏备份-${Stamp.fileNameStamp()}.json"
+                val name = "${Backup.BACKUP_PREFIX}${Stamp.fileNameStamp()}.json"
                 val count = withContext(Dispatchers.IO) {
                     val resolver = getApplication<Application>().contentResolver
                     val rows = dao.all()
                     val target = DocumentsContract.createDocument(resolver, Uri.parse(folder), "application/json", name)
                         ?: error("无法在所选文件夹中创建文件")
                     resolver.openOutputStream(target, "wt")?.use { it.write(Backup.encode(rows)); it.flush() } ?: error("无法写入文件")
+                    pruneBackups(folder)
                     rows.size
                 }
                 markBackedUp()
@@ -660,6 +669,42 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) { fail("备份到文件夹失败：${e.localizedMessage}。可改用「导出收藏」手动选择位置。") }
             finally { busy = false }
+        }
+    }
+
+    /**
+     * 备份文件夹里只留最近 BACKUP_KEEP 份链藏自己的备份。
+     *
+     * 没有 queryChildDocuments / findDocument 这两个 API，只能自己查子文件列表再删。
+     * 删除失败不影响这次备份已经成功这件事，所以逐个吞掉。
+     */
+    private fun pruneBackups(folder: String) {
+        val root = Uri.parse(folder)
+        val resolver = getApplication<Application>().contentResolver
+        val children = DocumentsContract.buildChildDocumentsUriUsingTree(root, DocumentsContract.getTreeDocumentId(root))
+        val ids = HashMap<String, String>()
+        resolver.query(
+            children,
+            arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME),
+            null, null, null,
+        )?.use { cursor ->
+            while (cursor.moveToNext()) {
+                val id = cursor.getString(0) ?: continue
+                val name = cursor.getString(1) ?: continue
+                ids[name] = id
+            }
+        }
+        Backup.staleBackups(ids.keys.toList(), BACKUP_KEEP).forEach { name ->
+            val id = ids[name] ?: return@forEach
+            runCatching { DocumentsContract.deleteDocument(resolver, DocumentsContract.buildDocumentUriUsingTree(root, id)) }
+        }
+    }
+
+    /** 预览用的两份临时备份文件（明文 / 加密）用完即清，不在 cache 里留底。 */
+    private fun clearPreviewFiles() {
+        viewModelScope.launch(Dispatchers.IO) {
+            previewFile.delete()
+            securePreviewFile.delete()
         }
     }
 
@@ -672,7 +717,11 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
                     ImportPreview(rows, Backup.countNew(rows, dao.allIncludingDeleted()))
                 }
             } catch (e: CancellationException) { throw e }
-            catch (_: Exception) { saved["importPreview"] = false; fail("导入预览已失效，请重新选择备份文件") }
+            catch (_: Exception) {
+                saved["importPreview"] = false
+                clearPreviewFiles()
+                fail("导入预览已失效，请重新选择备份文件")
+            }
             finally { busy = false }
         }
     }
@@ -688,6 +737,7 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
                         ?: error("无法读取文件")
                     val rows = Backup.decode(bytes)
                     previewFile.writeBytes(bytes)
+                    securePreviewFile.delete()
                     ImportPreview(rows, Backup.countNew(rows, dao.allIncludingDeleted()))
                 }
                 saved["importPreview"] = true
@@ -701,7 +751,7 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
     fun cancelImport() {
         if (busy) return
         preview = null; saved["importPreview"] = false
-        previewFile.delete()
+        clearPreviewFiles()
     }
 
     fun confirmImport() {
@@ -711,7 +761,11 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
         viewModelScope.launch {
             try {
                 val result = Backup.merge(db, data.items)
-                preview = null; saved["importPreview"] = false; previewFile.delete()
+                preview = null; saved["importPreview"] = false
+                withContext(Dispatchers.IO) {
+                    previewFile.delete()
+                    securePreviewFile.delete()
+                }
                 toast("导入完成：新增 ${result.added} 条，跳过 ${result.skipped} 条重复收藏。原有数据未被覆盖。")
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) { fail("导入失败，事务已回滚，没有部分写入：${e.localizedMessage}") }
@@ -1004,6 +1058,8 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
     companion object {
         private const val TAG = "LinkVault.Update"
         private const val TRASH_RETENTION_MS = 30L * 86_400_000L
+        /** 一键备份文件夹里保留的份数。再手动导出的文件不在这个范围内。 */
+        private const val BACKUP_KEEP = 12
 
         /** 进程标识：只有真正重启过进程，落盘的草稿才会被捡回来。 */
         private val PROCESS_TOKEN: String = UUID.randomUUID().toString()

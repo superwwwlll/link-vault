@@ -19,11 +19,22 @@ object Backup {
     const val MAX_ITEMS = 10000
     const val FORMAT = "cn.linkvault.backup"
     const val VERSION = 1
+    /** 一键备份的文件名前缀。清理旧备份时只认这个前缀，文件夹里别人的文件一概不碰。 */
+    const val BACKUP_PREFIX = "链藏备份-"
     private const val MAX_TITLE = 200
     private const val MAX_NOTES = 8000
     private const val MAX_SUMMARY = 8000
     private const val MAX_SITE = 200
     private const val MAX_TAGS = 1000
+
+    /**
+     * 从文件夹里的文件名中挑出该删掉的那些：只认「链藏备份-*.json」，按文件名从新到旧排，
+     * 留下前 keep 份。时间戳是 yyyyMMdd-HHmm，所以字典序就是时间序。
+     */
+    fun staleBackups(names: List<String>, keep: Int): List<String> =
+        names.filter { it.startsWith(BACKUP_PREFIX) && it.endsWith(".json") }
+            .sortedDescending()
+            .drop(keep.coerceAtLeast(0))
 
     fun read(input: InputStream): ByteArray {
         val output = java.io.ByteArrayOutputStream()
