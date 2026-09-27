@@ -34,6 +34,20 @@ object Links {
         value
     }.filter { valid(it) }.distinct().toList()
 
+    /**
+     * 把页面里取到的相对地址按最终 URL 展开。
+     *
+     * 展不开一律返回空串，而不是回退成原样：`<img src="foo.png">` 直接当绝对地址用，
+     * 拼出来的是一张必然 404 的请求。data: 内联图会被无限撑大快照，也一起丢掉。
+     * 只认 https —— 与 Net 的抓取策略保持一致，明文 http 图片宁可不显示。
+     */
+    fun absolute(base: String, href: String): String {
+        val value = href.trim()
+        if (value.isEmpty() || base.isEmpty() || value.startsWith("data:", true)) return ""
+        val resolved = runCatching { URI(base).resolve(value).toString() }.getOrNull() ?: return ""
+        return resolved.takeIf { valid(it) && it.startsWith("https://", true) }.orEmpty()
+    }
+
     fun valid(value: String): Boolean = try {
         val uri = URI(value)
         val host = uri.host

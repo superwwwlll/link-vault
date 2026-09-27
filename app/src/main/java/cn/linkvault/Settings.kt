@@ -133,7 +133,7 @@ internal fun SettingsPage(
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 SectionLabel("联网抓取", trailing = if (vm.fetchEnabled) "已开启" else "默认关闭")
                 Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(0.7.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)), shadowElevation = 0.5.dp) {
-                    SwitchRow(Glyph.Cloud, "页面信息抓取", "保存链接后自动补齐标题与正文，详情页可手动重抓", vm.fetchEnabled, !vm.busy) { vm.fetchEnabled(it) }
+                    SwitchRow(Glyph.Cloud, "页面信息抓取", "保存链接后自动补齐标题、封面与正文，详情页可手动重抓", vm.fetchEnabled, !vm.busy) { vm.fetchEnabled(it) }
                 }
             }
 

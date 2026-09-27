@@ -23,6 +23,13 @@ data class Bookmark(
     val summary: String = "",
     /** 抓取到的站点名，可为空；为空时用内置站点表。 */
     val siteName: String = "",
+    /**
+     * 抓取到的封面图绝对地址，可为空。
+     *
+     * 只存 URL，不存图片本体：快照是纯文本文件，图片跟着下载就要管配额、清理和备份体积。
+     * 因此断网时文字读得懂、图裂，这是「离线可读」承诺的边界，写在这里以免日后当成 bug。
+     */
+    val image: String = "",
     val fetchedAt: Long = 0,
     /** 回收站时间；0 表示正常收藏。 */
     val deletedAt: Long = 0
@@ -70,11 +77,11 @@ interface BookmarkDao {
     @Query("UPDATE bookmarks SET archived = :value WHERE id = :id") suspend fun archive(id: Long, value: Boolean): Int
     @Query("UPDATE bookmarks SET read = :value WHERE id = :id") suspend fun markRead(id: Long, value: Boolean): Int
     @Query("UPDATE bookmarks SET tags = :tags WHERE id = :id") suspend fun setTags(id: Long, tags: String): Int
-    @Query("UPDATE bookmarks SET summary = :summary, siteName = :siteName, title = :title, fetchedAt = :now WHERE id = :id")
-    suspend fun applyFetch(id: Long, summary: String, siteName: String, title: String, now: Long): Int
+    @Query("UPDATE bookmarks SET summary = :summary, siteName = :siteName, title = :title, image = :image, fetchedAt = :now WHERE id = :id")
+    suspend fun applyFetch(id: Long, summary: String, siteName: String, title: String, image: String, now: Long): Int
 }
 
-@Database(entities = [Bookmark::class], version = 3, exportSchema = true)
+@Database(entities = [Bookmark::class], version = 4, exportSchema = true)
 abstract class VaultDb : RoomDatabase() {
     abstract fun bookmarks(): BookmarkDao
 

@@ -17,19 +17,20 @@ import java.util.zip.InflaterInputStream
  * 可选的联网抓取。
  *
  * 设计边界（有意为之，请勿放宽）：
- * - 只在用户逐条点击「抓取页面信息」且设置开关已打开时才会发起请求，绝不自动联网；
+ * - 只在「设置 → 联网抓取」开启时才会发起请求，且抓取页面信息仍是逐条点击触发的，绝不后台轮询；
  * - 只请求 https，明文 http 直接拒绝；
- * - 只读页面开头一小段，不下载正文、图片或整页；
- * - 不发送 Cookie、不带凭据、不执行脚本、不跟随跨站重定向链（最多 3 跳，且必须仍是 https）；
+ * - 页面只读开头一段（标题 96KB、正文 384KB），图片单张封顶 4MB 且只进内存缓存、不落盘；
+ * - 不发送 Cookie、不带凭据、不发 Referer、不执行脚本、不跟随跨站重定向链（最多 3 跳，且必须仍是 https）；
  * - 解析出的内容只存在本机数据库里。
  */
 object Net {
     const val MAX_BYTES = 96 * 1024
     const val MAX_ARTICLE_BYTES = 384 * 1024
+    const val MAX_IMAGE_BYTES = 4 * 1024 * 1024
     const val TIMEOUT_MS = 12_000
     const val MAX_REDIRECTS = 3
 
-    data class Head(val title: String, val description: String, val siteName: String) {
+    data class Head(val title: String, val description: String, val siteName: String, val image: String) {
         val isEmpty: Boolean get() = title.isEmpty() && description.isEmpty()
     }
 
@@ -68,7 +69,7 @@ object Net {
                 require(code in 200..299) { "服务器返回 HTTP $code" }
                 val bytes = openStream(connection).use { readBounded(it, MAX_BYTES) }
                 val charset = charsetOf(connection.contentType, bytes)
-                return parseHead(decode(bytes, charset))
+                return parseHead(decode(bytes, charset), target)
             } catch (e: java.io.IOException) {
                 throw java.io.IOException(e.message ?: "网络请求失败", e)
             } finally {
@@ -77,12 +78,28 @@ object Net {
         }
     }
 
-    /** 纯解析：不碰网络，可以直接单测。 */
-    fun parseHead(html: String): Head = Head(
-        title = (Html.metaContent(html, listOf("og:title", "twitter:title")) ?: Html.titleTag(html)).orEmpty().take(200),
-        description = Html.metaContent(html, listOf("og:description", "description", "twitter:description")).orEmpty().take(300),
-        siteName = Html.metaContent(html, listOf("og:site_name", "application-name")).orEmpty().take(60)
-    )
+    /**
+     * 纯解析：不碰网络，可以直接单测。
+     *
+     * baseUrl 用来把 `og:image="/a.png"` 这类相对地址展开；留空时相对地址一律丢弃。
+     */
+    fun parseHead(html: String, baseUrl: String = ""): Head {
+        // secure_url 优先：它就是同一张图的 https 版本。逐个试而不是交给 metaContent 一次挑，
+        // 因为「存在但展不开」的图（http:// 或畸形相对路径）要跳过，去试下一个候选。
+        val image = IMAGE_KEYS.firstNotNullOfOrNull { key ->
+            Html.metaContent(html, listOf(key))
+                ?.let { Links.absolute(baseUrl, it) }
+                ?.takeIf { it.isNotEmpty() }
+        }.orEmpty()
+        return Head(
+            title = (Html.metaContent(html, listOf("og:title", "twitter:title")) ?: Html.titleTag(html)).orEmpty().take(200),
+            description = Html.metaContent(html, listOf("og:description", "description", "twitter:description")).orEmpty().take(300),
+            siteName = Html.metaContent(html, listOf("og:site_name", "application-name")).orEmpty().take(60),
+            image = image.take(500)
+        )
+    }
+
+    private val IMAGE_KEYS = listOf("og:image:secure_url", "og:image", "og:image:url", "twitter:image:src", "twitter:image")
 
     /**
      * 离线正文抓取（Reader Mode Snapshot）。
@@ -124,9 +141,55 @@ object Net {
                 val bytes = openStream(connection).use { readBounded(it, MAX_ARTICLE_BYTES) }
                 val charset = charsetOf(connection.contentType, bytes)
                 val html = decode(bytes, charset)
-                val article = Html.extractArticle(html)
+                val article = Html.extractArticle(html, target)
                 require(article.isNotBlank()) { "未能从页面提取到有效正文" }
                 return article
+            } catch (e: java.io.IOException) {
+                throw java.io.IOException(e.message ?: "网络请求失败", e)
+            } finally {
+                connection.disconnect()
+            }
+        }
+    }
+
+    /**
+     * 下载一张图片的原始字节，交给 Images 解码。
+     *
+     * 图片地址有两个来源：抓回来的网页，以及用户自己导入的备份文件。后者可以手填任何
+     * 字符串，所以这里必须重新验一遍 https 与合法性，不能因为「入库时查过」就放行。
+     * 故意不发 Referer：加载谁的图，不该让那个站顺带知道这条收藏存在。
+     */
+    fun fetchImage(url: String): ByteArray {
+        require(Links.valid(url)) { "图片地址不合法" }
+        require(url.startsWith("https://", true)) { "只加载 https 图片，明文 http 已禁用" }
+        var target = url
+        var hops = 0
+        while (true) {
+            val connection = (URL(target).openConnection() as HttpURLConnection).apply {
+                connectTimeout = TIMEOUT_MS
+                readTimeout = TIMEOUT_MS
+                instanceFollowRedirects = false
+                requestMethod = "GET"
+                setRequestProperty("Accept", "image/avif,image/webp,image/png,image/jpeg;q=0.9,*/*;q=0.1")
+                setRequestProperty("User-Agent", "LinkVault/1.3 (local bookmark manager)")
+                setRequestProperty("Connection", "close")
+            }
+            try {
+                val code = connection.responseCode
+                if (code in 300..399) {
+                    val location = connection.getHeaderField("Location")
+                    require(!location.isNullOrBlank()) { "服务器返回了空的重定向地址" }
+                    require(hops++ < MAX_REDIRECTS) { "重定向次数过多，已停止" }
+                    val next = runCatching { URI(target).resolve(location) }.getOrNull()
+                        ?: error("服务器返回的重定向地址无法解析")
+                    target = next.toString()
+                    require(target.startsWith("https://", true) && Links.valid(target)) {
+                        "重定向到了不安全或无效的地址，已停止"
+                    }
+                    continue
+                }
+                require(code in 200..299) { "图片服务器返回 HTTP $code" }
+                return openStream(connection).use { readBounded(it, MAX_IMAGE_BYTES) }
             } catch (e: java.io.IOException) {
                 throw java.io.IOException(e.message ?: "网络请求失败", e)
             } finally {

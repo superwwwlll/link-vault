@@ -14,6 +14,11 @@ internal object Html {
     private val metaTag = Regex("<meta\\b[^>]*>", RegexOption.IGNORE_CASE)
     private val titleTag = Regex("<title\\b[^>]*>(.*?)</title\\s*>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
     private val attrCache = ConcurrentHashMap<String, Regex>()
+    private val imgTag = Regex("<img\\b[^>]*>", RegexOption.IGNORE_CASE)
+    private val brackets = Regex("[\\[\\]]")
+
+    /** 懒加载站点的真实地址常在这些属性里，src 往往是一张占位图，所以 src 排最后。 */
+    private val IMAGE_ATTRS = listOf("data-src", "data-original", "data-lazy-src", "src")
 
     /** 只扫描文件头部这么多字符，避免超大页面拖慢解析。 */
     const val SCAN_LIMIT = 200_000
@@ -93,10 +98,13 @@ internal object Html {
     /**
      * 本地正文快照提取与结构化 Markdown 转换（Reader Mode + Pangu Spacing）。
      * 1. 过滤脚本、样式、广告、弹窗与页脚导航噪音；
-     * 2. 转换为规范 Markdown 语法：标题 (#, ##, ###)、引用 (>)、列表 (-)、粗体 (**)、链接 ([text](url)) 与代码块 (```)；
+     * 2. 转换为规范 Markdown 语法：标题 (#, ##, ###)、引用 (>)、列表 (-)、粗体 (**)、图片 (![alt](url))、链接 ([text](url)) 与代码块 (```)；
      * 3. 盘古排版：中英文与数字间自动补充空格，段落排版优雅舒适。
+     *
+     * baseUrl 用于把 `<img src="/a.png">` 这类相对地址展开；留空时正文图片一律丢弃，
+     * 因为原样写进快照就是一张必然加载失败的图。
      */
-    fun extractArticle(html: String): String {
+    fun extractArticle(html: String, baseUrl: String = ""): String {
         if (html.isBlank()) return ""
         val source = html.take(600_000)
 
@@ -132,7 +140,21 @@ internal object Html {
             .replace(Regex("<(em|i)\\b[^>]*>(.*?)</\\1\\s*>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)), "*$2*")
             .replace(Regex("<code\\b[^>]*>(.*?)</code>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)), "`$1`")
 
-        // 7. 超链接转换：<a href="...">text</a> -> [text](url)
+        // 7. 图片转换：<img src="..."> -> ![alt](url)，必须排在超链接之前，
+        //    这样 <a href><img></a> 会组合成 [![alt](图)](链接) 而不是丢掉图
+        s = s.replace(imgTag) { m ->
+            val tag = m.value
+            val src = IMAGE_ATTRS.firstNotNullOfOrNull { name ->
+                attribute(tag, name)?.let { Links.absolute(baseUrl, it) }.orEmpty().takeIf { it.isNotEmpty() }
+            } ?: return@replace ""
+            // 1x1 占位图是埋点，不是内容；它甚至常常就是正文里唯一的“图”
+            val spacer = listOf("width", "height").any { attribute(tag, it) in setOf("1", "1px") }
+            if (spacer) return@replace ""
+            val alt = attribute(tag, "alt").orEmpty().replace(brackets, "").take(200)
+            "\n\n![${alt}]($src)\n\n"
+        }
+
+        // 8. 超链接转换：<a href="...">text</a> -> [text](url)
         s = s.replace(Regex("""<a\b[^>]*href=["'](https?://[^"'\s]+)["'][^>]*>(.*?)</a>""", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))) { m ->
             val href = m.groupValues[1].trim()
             val text = m.groupValues[2].replace(tags, " ").trim()
@@ -141,15 +163,15 @@ internal object Html {
             else "[$cleanText]($href)"
         }
 
-        // 8. 块级标签换行与普通断行
+        // 9. 块级标签换行与普通断行
         s = s.replace(Regex("(?i)<br\\s*/?>"), "\n")
             .replace(Regex("(?i)</?(p|div|section|article|tr|hr|table|tbody)\\b[^>]*>"), "\n\n")
 
-        // 9. 清除残留标签并解码 HTML 实体
+        // 10. 清除残留标签并解码 HTML 实体
         val stripped = s.replace(tags, " ")
         val decoded = decodeEntities(stripped)
 
-        // 10. 分行整理、盘古排版（中英文数字混排加空格）与空行归一化
+        // 11. 分行整理、盘古排版（中英文数字混排加空格）与空行归一化
         val lines = mutableListOf<String>()
         var inCodeBlock = false
         for (rawLine in decoded.lines()) {

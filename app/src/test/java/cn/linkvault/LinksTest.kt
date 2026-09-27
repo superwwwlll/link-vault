@@ -104,6 +104,28 @@ class LinksTest {
         assertEquals("", Links.titleFromHtml("<a href=\"https://example.com/x\">", "https://example.com/x"))
     }
 
+    // ---------------------------------------------------------- 图片相对地址展开
+
+    @Test fun relativeImageUrlsResolveAgainstTheFinalPage() {
+        val base = "https://example.com/blog/2026/post"
+        assertEquals("https://example.com/blog/2026/cover.png", Links.absolute(base, "cover.png"))
+        assertEquals("https://example.com/static/a.png", Links.absolute(base, "/static/a.png"))
+        assertEquals("https://cdn.example.com/a.png", Links.absolute(base, "//cdn.example.com/a.png"))
+        assertEquals("https://other.example/a.png", Links.absolute(base, "https://other.example/a.png"))
+    }
+
+    @Test fun unresolvableImageUrlsAreDroppedRatherThanKeptRaw() {
+        val base = "https://example.com/post"
+        // 内联 data 图会把快照撑到无限大
+        assertEquals("", Links.absolute(base, "data:image/png;base64,iVBORw0KGgo="))
+        // 明文 http 图片与抓取策略一致，宁可不显示
+        assertEquals("", Links.absolute(base, "http://example.com/a.png"))
+        assertEquals("", Links.absolute(base, "javascript:alert(1)"))
+        assertEquals("", Links.absolute(base, "not a url"))
+        assertEquals("", Links.absolute(base, ""))
+        assertEquals("", Links.absolute("", "https://example.com/a.png"))
+    }
+
     // ---------------------------------------------------------- 新增：标签归一化
 
     @Test fun tagKeysIgnoreCaseAndWhitespace() {

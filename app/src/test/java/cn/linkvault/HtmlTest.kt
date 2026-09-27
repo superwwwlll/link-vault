@@ -127,6 +127,83 @@ class HtmlTest {
         assertTrue(md.contains("```\nval name = \"LinkVault\"\n```"))
     }
 
+    // ------------------------------------------------------ 正文里的图片
+
+    @Test fun extractArticleTurnsImagesIntoMarkdownWithAbsoluteUrls() {
+        val html = """
+            <article>
+              <p>第一段。</p>
+              <img src="/img/cover.png" alt="封面图">
+              <p>第二段。</p>
+            </article>
+        """.trimIndent()
+        val md = Html.extractArticle(html, "https://example.com/blog/post")
+        assertTrue(md, md.contains("![封面图](https://example.com/img/cover.png)"))
+        assertTrue(md.contains("第一段。"))
+        assertTrue(md.contains("第二段。"))
+    }
+
+    @Test fun extractArticlePrefersTheLazyLoadSourceOverThePlaceholder() {
+        val html = """<img src="placeholder.gif" data-src="https://cdn.example.com/real.jpg">"""
+        val md = Html.extractArticle(html, "https://example.com/post")
+        assertTrue(md, md.contains("![](https://cdn.example.com/real.jpg)"))
+        assertFalse(md.contains("placeholder.gif"))
+    }
+
+    @Test fun extractArticleDropsTrackingPixelsInlineImagesAndProtocollessUrls() {
+        val html = """
+            <img src="/pixel.gif" width="1" height="1">
+            <img src="data:image/gif;base64,R0lGOD">
+            <img src="http://insecure.example/a.png">
+            <img>
+            <p>只有文字。</p>
+        """.trimIndent()
+        val md = Html.extractArticle(html, "https://example.com/post")
+        assertFalse(md, md.contains("!["))
+        assertTrue(md.contains("只有文字。"))
+    }
+
+    @Test fun extractArticleWithoutBaseUrlKeepsTextButNoImages() {
+        val md = Html.extractArticle("""<p>正文</p><img src="/a.png">""")
+        assertTrue(md.contains("正文"))
+        assertFalse(md, md.contains("!["))
+    }
+
+    @Test fun imageInsideALinkKeepsBothTheImageAndTheTarget() {
+        val html = """<p><a href="https://shop.example/item"><img src="/i.png" alt="商品图"></a></p>"""
+        val md = Html.extractArticle(html, "https://example.com/page")
+        assertTrue(md, md.contains("[![商品图](https://example.com/i.png)](https://shop.example/item)"))
+    }
+
+    @Test fun bracketsInAltTextCannotBreakTheMarkdown() {
+        val html = """<img src="/a.png" alt="方括号 [测试] 结束">"""
+        val md = Html.extractArticle(html, "https://example.com/")
+        assertTrue(md, md.contains("![方括号 测试 结束](https://example.com/a.png)"))
+    }
+
+    @Test fun parseHeadTakesTheHttpsSocialImageAndResolvesIt() {
+        val html = """
+            <head><meta property="og:title" content="标题">
+            <meta property="og:image" content="/share.png">
+            <meta property="og:image:secure_url" content="https://cdn.example.com/secure.png"></head>
+        """.trimIndent()
+        val head = Net.parseHead(html, "https://example.com/post")
+        assertEquals("https://cdn.example.com/secure.png", head.image)
+    }
+
+    @Test fun parseHeadSkipsAnImageThatCannotBeResolvedAndTriesTheNextCandidate() {
+        val html = """
+            <head><meta property="og:image" content="http://plain.example/a.png">
+            <meta property="twitter:image" content="https://cdn.example.com/t.png"></head>
+        """.trimIndent()
+        assertEquals("https://cdn.example.com/t.png", Net.parseHead(html, "https://example.com/post").image)
+        assertEquals("", Net.parseHead(html, "").image)
+    }
+
+    @Test fun emptyHeadStillHasAnEmptyImage() {
+        assertEquals("", Net.parseHead("<html><body>无</body></html>", "https://example.com/").image)
+    }
+
     @Test fun panguSpacingBeautifiesChineseAndEnglish() {
         assertEquals("Kotlin 协程在 Android14 上性能提升 20%", Html.pangu("Kotlin协程在Android14上性能提升20%"))
         assertEquals("这是纯中文测试", Html.pangu("这是纯中文测试"))

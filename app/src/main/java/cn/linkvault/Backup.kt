@@ -25,6 +25,7 @@ object Backup {
     private const val MAX_NOTES = 8000
     private const val MAX_SUMMARY = 8000
     private const val MAX_SITE = 200
+    private const val MAX_IMAGE = 500
     private const val MAX_TAGS = 1000
 
     /**
@@ -112,6 +113,7 @@ object Backup {
                 read = flag(row, "read"),
                 summary = optional(row, "summary", MAX_SUMMARY),
                 siteName = optional(row, "siteName", MAX_SITE),
+                image = optional(row, "image", MAX_IMAGE),
                 fetchedAt = timestamp(row, "fetchedAt") ?: 0L
             )
         }
@@ -156,7 +158,8 @@ object Backup {
                     .put("tags", JSONArray(parseTags(item.tags)))
                     .put("createdAt", item.createdAt).put("updatedAt", item.updatedAt)
                     .put("pinned", item.pinned).put("archived", item.archived).put("read", item.read)
-                    .put("summary", item.summary).put("siteName", item.siteName).put("fetchedAt", item.fetchedAt)
+                    .put("summary", item.summary).put("siteName", item.siteName).put("image", item.image)
+                    .put("fetchedAt", item.fetchedAt)
             )
         }
         val bytes = JSONObject().put("format", FORMAT).put("version", VERSION).put("exportedAt", System.currentTimeMillis())

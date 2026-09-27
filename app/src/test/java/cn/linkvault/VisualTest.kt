@@ -38,6 +38,24 @@ class VisualTest {
         rule.waitForIdle()
     }
 
+    /**
+     * 一张能看出「位图真的被画出来了」的图：两块不同深度的色带，而不是和卡片底色接近的纯色。
+     *
+     * 截图通道绝不能碰真实网络，所以 Images.fetcher 在用例里换成这个固定字节。
+     */
+    private fun stubImage(width: Int, height: Int): ByteArray {
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        canvas.drawColor(android.graphics.Color.rgb(58, 96, 160))
+        canvas.drawRect(0f, height * 0.62f, width.toFloat(), height.toFloat(), android.graphics.Paint().apply {
+            color = android.graphics.Color.rgb(196, 148, 96)
+        })
+        val out = java.io.ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+        bitmap.recycle()
+        return out.toByteArray()
+    }
+
     private fun capture(name: String) {
         settle()
         val file = File(System.getProperty("vault.screenshots"), "$name.png")
@@ -90,7 +108,57 @@ class VisualTest {
         // 空态收纳后这三行是详情页的主要入口，必须单独拍一张。
         rule.runOnIdle { vm.fetchEnabled(true) }
         capture("02b-detail-empty-light")
+        // 上面两张是「什么都没抓到」的样子。抓到封面图和带图正文之后长什么样，得再拍两张。
+        val coverUrl = "https://pbs.twimg.com/media/cover.png"
+        val inlineUrl = "https://example.com/diagram.png"
+        val cover = stubImage(1000, 300)
+        val diagram = stubImage(900, 640)
+        Images.fetcher = { url -> if (url == coverUrl) cover else if (url == inlineUrl) diagram else ByteArray(0) }
+        val before = runBlocking {
+            val dao = VaultDb.get(rule.activity).bookmarks()
+            val stored = dao.byKey(samples[0].canonical)!!
+            dao.update(stored.copy(image = coverUrl, summary = "一条已经抓到封面图和描述的收藏，用来检查有内容时的排版。", fetchedAt = 1788950400000))
+            Snapshots.save(
+                rule.activity, stored.id,
+                """
+                    # 带图的正文
+
+                    这一段的文字要足够长，才能看清折叠态只留八行、展开态铺开全文的差别，也才点得到下面那个展开按钮。
+                    第二段接着补充一些内容：图片出现在正文中间时，不应该把上下文的行距挤乱，也不该让卡片的高度跟着抖一下。
+                    第三段再写几句，凑够真实文章的密度：标题、正文、引用、列表和图片各自的位置都要能一眼分得清。
+
+                    ![一张流程图](%INLINE%)
+
+                    > 引用一句：留白让内容呼吸。
+
+                    - 列表第一项
+                    - 列表第二项
+                """.trimIndent().replace("%INLINE%", inlineUrl)
+            )
+            stored
+        }
+        rule.onNodeWithContentDescription("返回").performClick()
+        rule.onNodeWithText("值得慢慢看的宇宙").performClick()
+        rule.onNodeWithText("收藏详情").assertIsDisplayed()
+        // 图片在后台线程解码，等它真的进到语义树再截图，否则拍到的是「还没加载完」的空页。
+        // 用未合并树查：正文快照整块包在 SelectionContainer 里，图片的描述会被合并到父节点上。
+        rule.waitUntil(20_000) { rule.onAllNodes(hasContentDescription("封面图"), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
+        capture("02c-detail-cover-light")
+        // 展开按钮被封面图顶到屏幕外了，不先滚到位点击是空操作。
+        rule.onNodeWithText("展开全文阅读").performScrollTo().performClick()
+        rule.waitUntil(20_000) { Images.cached(inlineUrl) != null }
+        rule.onNode(hasContentDescription("一张流程图"), useUnmergedTree = true).performScrollTo()
+        capture("02d-detail-snapshot-image-light")
+        // 造出来的封面图和快照只为了拍这两张图，必须还原：后面的列表与深色截图不能带上测试文案。
+        runBlocking {
+            val dao = VaultDb.get(rule.activity).bookmarks()
+            dao.update(before)
+            Snapshots.delete(rule.activity, before.id)
+        }
+        Images.clear()
+        rule.onNodeWithText("收起阅读模式").performScrollTo().performClick()
         rule.runOnIdle { vm.fetchEnabled(false) }
+        Images.fetcher = { Net.fetchImage(it) }
         rule.onNodeWithContentDescription("编辑收藏").performClick()
         rule.onNodeWithText("保存收藏").assertIsDisplayed()
         capture("03-editor-light")

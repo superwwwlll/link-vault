@@ -79,17 +79,19 @@ class BackupTest {
     @Test fun olderBackupsWithoutTheNewFieldsStillImport() {
         val root = JSONObject(String(Backup.encode(listOf(item()))))
         val row = root.getJSONArray("bookmarks").getJSONObject(0)
-        listOf("createdAt", "pinned", "archived", "read", "summary", "siteName", "fetchedAt").forEach { row.remove(it) }
+        listOf("createdAt", "pinned", "archived", "read", "summary", "siteName", "image", "fetchedAt").forEach { row.remove(it) }
         val restored = Backup.decode(root.toString().toByteArray()).single()
         // 缺少收藏时间时退回更新时间，宁可近似也不能让排序变成 1970 年
         assertEquals(1234L, restored.createdAt)
         assertEquals(1234L, restored.updatedAt)
         assertFalse(restored.pinned); assertFalse(restored.archived); assertFalse(restored.read)
         assertEquals("", restored.summary); assertEquals("", restored.siteName); assertEquals(0L, restored.fetchedAt)
+        // 1.3.8 之前的备份根本没有 image 这个键，导入后就是「没有封面图」，不能报错
+        assertEquals("", restored.image)
     }
 
     @Test fun newFieldsRoundTripExactly() {
-        val rich = item().copy(createdAt = 99L, pinned = true, archived = true, read = true, summary = "页面描述", siteName = "示例站", fetchedAt = 555L)
+        val rich = item().copy(createdAt = 99L, pinned = true, archived = true, read = true, summary = "页面描述", siteName = "示例站", image = "https://cdn.example.com/cover.jpg", fetchedAt = 555L)
         assertEquals(listOf(rich), Backup.decode(Backup.encode(listOf(rich))))
     }
 
@@ -102,6 +104,7 @@ class BackupTest {
         changed("pinned", "yes"); changed("read", 1); changed("archived", JSONObject.NULL.let { listOf(1) })
         changed("createdAt", -1); changed("createdAt", 1.5); changed("fetchedAt", -5)
         changed("summary", "x".repeat(8001)); changed("siteName", "x".repeat(201))
+        changed("image", "x".repeat(501)); changed("image", 42)
     }
 
     /** 一键备份只清理自己写出去的文件，其余一概不动。 */

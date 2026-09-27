@@ -5,6 +5,7 @@
 package cn.linkvault
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -20,6 +21,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.AnnotatedString
@@ -45,6 +47,8 @@ internal fun DetailPage(
     var menu by remember { mutableStateOf(false) }
     val fetching = vm.fetchingId == item.id
     val noteColors = LocalNoteColors.current
+    // 抓取和看图共用同一个联网开关：默认关闭时，一个请求都不该发出去
+    val canFetch = vm.fetchEnabled && item.url.startsWith("https://", true)
 
     PageToolbar("收藏详情", onBack) {
         IconButton(onClick = onEdit, enabled = !vm.busy) {
@@ -110,6 +114,20 @@ internal fun DetailPage(
                 fontWeight = FontWeight.Bold,
                 letterSpacing = (-0.4).sp,
                 color = MaterialTheme.colorScheme.onBackground
+            )
+        }
+
+        // 封面图：库里只有 URL，每次进页面现取；取不到就一行都不占，不画灰块也不画破图。
+        val cover = if (canFetch) rememberLoadedImage(item.image) else null
+        if (cover != null) {
+            Image(
+                bitmap = cover,
+                contentDescription = "封面图",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio((cover.width.toFloat() / cover.height).coerceIn(0.8f, 2.2f))
+                    .clip(RoundedCornerShape(14.dp)),
+                contentScale = ContentScale.Crop
             )
         }
 
@@ -224,7 +242,6 @@ internal fun DetailPage(
         }
 
         // 页面描述：抓不到就不占一整张卡片，只留抓取入口
-        val canFetch = vm.fetchEnabled && item.url.startsWith("https://", true)
         if (item.summary.isNotBlank()) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 SectionLabel("页面描述", trailing = if (item.fetchedAt > 0) "抓取于 ${Stamp.date(item.fetchedAt)}" else "")
@@ -277,7 +294,8 @@ internal fun DetailPage(
                         SelectionContainer {
                             SnapshotMarkdownViewer(
                                 markdown = snapshot,
-                                expanded = expandedReader
+                                expanded = expandedReader,
+                                showImages = canFetch
                             )
                         }
                         Row(
@@ -424,15 +442,20 @@ private fun DetailStatusPill(
     }
 }
 
+/** 快照里独立成行的图片：`![alt](https://…)`。混在句子里的图片链接仍按原文显示。 */
+private val snapshotImageLine = Regex("^!\\[(.*?)]\\((https?://[^)\\s]+)\\)$")
+
 @Composable
 private fun SnapshotMarkdownViewer(
     markdown: String,
-    expanded: Boolean
+    expanded: Boolean,
+    showImages: Boolean
 ) {
     if (!expanded) {
-        // 折叠态：显示简要预览（限制行数）
+        // 折叠态：显示简要预览（限制行数）。图片语法在这几行里只会是一串源码，直接去掉；
+        // 图本身在展开态才画，折叠态没有位置容纳它。
         Text(
-            text = markdown,
+            text = markdown.lineSequence().filterNot { snapshotImageLine.matches(it.trim()) }.joinToString("\n"),
             fontSize = 14.sp,
             lineHeight = 22.sp,
             maxLines = 8,
@@ -477,6 +500,25 @@ private fun SnapshotMarkdownViewer(
                 }
                 if (trimmed.isBlank()) {
                     Spacer(Modifier.height(3.dp))
+                    continue
+                }
+                // 图片行单独处理：不画进正文，也不留一行 markdown 源码
+                val imageLine = snapshotImageLine.matchEntire(trimmed)
+                if (imageLine != null) {
+                    if (showImages) {
+                        val loaded = rememberLoadedImage(imageLine.groupValues[2])
+                        if (loaded != null) {
+                            Image(
+                                bitmap = loaded,
+                                contentDescription = imageLine.groupValues[1].ifBlank { "正文图片" },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio((loaded.width.toFloat() / loaded.height).coerceIn(0.5f, 3f))
+                                    .clip(RoundedCornerShape(10.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                    }
                     continue
                 }
 

@@ -108,7 +108,7 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
             fetchingId = null
             if (head != null && !head.isEmpty) {
                 dao.applyFetch(item.id, head.description.take(8000), head.siteName.take(200),
-                    item.title.ifBlank { head.title.take(200) }, System.currentTimeMillis())
+                    item.title.ifBlank { head.title.take(200) }, head.image.ifBlank { item.image }, System.currentTimeMillis())
             }
             fetchingSnapshot = true
             val text = runCatching { fetchAndSaveSnapshot(item) }.getOrNull()
@@ -499,7 +499,7 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
                     val head = runCatching { withContext(Dispatchers.IO) { Net.fetchHead(url) } }.getOrNull()
                     if (head != null && !head.isEmpty) {
                         val title = if (head.title.isNotBlank()) head.title.take(200) else readableTitle
-                        dao.applyFetch(id, head.description.take(8000), head.siteName.take(200), title, System.currentTimeMillis())
+                        dao.applyFetch(id, head.description.take(8000), head.siteName.take(200), title, head.image, System.currentTimeMillis())
                     }
                     runCatching { fetchAndSaveSnapshot(item.copy(id = id)) }
                 }
@@ -612,7 +612,7 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
             try {
                 val head = withContext(Dispatchers.IO) { Net.fetchHead(item.url) }
                 val title = if (item.title.isBlank()) head.title.take(200) else item.title
-                check(dao.applyFetch(item.id, head.description.take(8000), head.siteName.take(200), title, System.currentTimeMillis()) == 1) { "收藏已不存在" }
+                check(dao.applyFetch(item.id, head.description.take(8000), head.siteName.take(200), title, head.image.ifBlank { item.image }, System.currentTimeMillis()) == 1) { "收藏已不存在" }
                 toast(if (head.isEmpty) "页面里没有找到标题或描述" else "已抓取页面标题与描述")
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) { fail("抓取失败：${e.localizedMessage}") }

@@ -50,5 +50,17 @@ class Migration2To3 : Migration(2, 3) {
     }
 }
 
+/**
+ * v3 → v4：封面图。
+ *
+ * 老数据一律空串，不回填：抓一次图是一次对外请求，不能在用户没点过「抓取」的情况下
+ * 于升级路径上偷偷发出去。升级完列表看起来和升级前一模一样，这是有意的。
+ */
+class Migration3To4 : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `bookmarks` ADD COLUMN `image` TEXT NOT NULL DEFAULT ''")
+    }
+}
+
 /** 全部迁移，按版本顺序排列。升级安装时由 Room 依序执行。 */
-val VAULT_MIGRATIONS: Array<Migration> = arrayOf(Migration1To2(), Migration2To3())
+val VAULT_MIGRATIONS: Array<Migration> = arrayOf(Migration1To2(), Migration2To3(), Migration3To4())
