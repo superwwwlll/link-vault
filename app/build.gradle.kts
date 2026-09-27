@@ -15,6 +15,29 @@ android {
         versionName = "1.3.5"
     }
     buildFeatures { compose = true }
+    // 发布包沿用与调试包同一把签名钥匙，这样已装在手机上的版本能直接覆盖升级
+    // （换钥匙会让老用户只能卸载重装、连带丢光收藏）。
+    // 钥匙由 Docker 卷 link-vault-debug-signing 挂在 /root/.android 下提供；
+    // 换机器先 ./signing-key.sh restore，或用下面这几个环境变量指到别处。
+    signingConfigs {
+        create("release") {
+            val home = System.getProperty("user.home")
+            storeFile = file(System.getenv("VAULT_KEYSTORE") ?: "$home/.android/debug.keystore")
+            storePassword = System.getenv("VAULT_STOREPASS") ?: "android"
+            keyAlias = System.getenv("VAULT_KEYALIAS") ?: "androiddebugkey"
+            keyPassword = System.getenv("VAULT_KEYPASS") ?: "android"
+        }
+    }
+    buildTypes {
+        release {
+            // 调试包留着 adb 读私有目录的通道，发布包必须关掉；顺带打开代码与资源收缩。
+            isDebuggable = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.getByName("release")
+        }
+    }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
     testOptions {

@@ -13,7 +13,12 @@
 #   latest.json           机器可读的版本清单
 # GitHub 上每个版本只上传这一个同名 APK，于是
 #   https://github.com/<owner>/<repo>/releases/latest/download/lian-cang-debug.apk
-# 就是一个永远指向最新版的固定地址。
+#   就是一个永远指向最新版的固定地址。
+#
+# 文件名里的 "debug" 是历史遗留：从 1.3.5 起发出去的正式包已经改成
+# 正式签名 + 关闭调试开关 + 代码收缩，但这个文件名被手机端的更新逻辑写死在
+# Updater.APK_URL 里，改一个字老用户就收不到更新，所以只能留着。
+# 本地构建产物不再带这个后缀（deliverables/lian-cang-<版本>.apk）。
 #
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -65,12 +70,8 @@ step "构建（测试 + lint + 打包）"
 docker exec "$CONTAINER" bash -lc "cd /project && VERSION=$VERSION bash build-in-container.sh" \
     | tee /tmp/link-vault-release-build.log | tail -5
 
-APK_SRC=""
-for f in deliverables/lian-cang-*-debug.apk; do
-    [ -e "$f" ] || continue
-    if [ -z "$APK_SRC" ] || [ "$f" -nt "$APK_SRC" ]; then APK_SRC="$f"; fi
-done
-[ -n "$APK_SRC" ] || die "构建结束但没找到 APK"
+APK_SRC="deliverables/lian-cang-${VERSION}.apk"
+[ -f "$APK_SRC" ] || die "构建结束但没找到 $APK_SRC"
 
 # ---------------------------------------------------------------- 签名校验（发布前的闸门）
 

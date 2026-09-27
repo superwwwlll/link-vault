@@ -6,7 +6,7 @@ Kotlin · Jetpack Compose · Room ｜ Android 8.0（API 26）及以上
 
 ## 安装 / 从旧版升级
 
-新版：`deliverables/lian-cang-1.3.5-debug.apk`，另复制到电脑桌面同名文件。
+新版：`deliverables/lian-cang-1.3.5.apk`（正式签名包，已关闭调试开关、代码与资源已收缩）。
 
 **更新只需在应用内点一下**：打开链藏时若发现新版本，收藏页顶部会出现提示条，点「更新」即下载并安装，
 收藏一条不丢。详见 [AUTO-UPDATE.md](AUTO-UPDATE.md)。
@@ -19,9 +19,11 @@ APK 发布在 <https://github.com/superwwwlll/link-vault/releases>。
 
 1. 将 APK 传到手机，点击安装；按系统提示给文件管理器临时允许“安装未知应用”。
 2. **已有旧版本时直接覆盖安装，不要卸载，不要清除数据。** 全版本包名、签名和数据库迁移链均兼容，
-   versionCode 依次为 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → 13 → 14。
+   versionCode 依次为 1 → 2 → … → 15 → 16。
 3. 装好后到「设置 → 导出收藏」立即做一份 JSON 备份。设置页会显示上次备份时间，超过 30 天会以警示色提醒。
-4. 本包是个人自用 debug 版，不是应用商店正式发布版；请只安装可信来源的 APK。
+4. 从 1.3.5 起本包是**正式签名包**（`debuggable` 已关闭、代码经 R8 收缩），不再是调试包；
+   但它仍属个人自用分发，不是应用商店版本，请只安装可信来源的 APK。
+   下载地址里的 `-debug` 只是历史文件名，手机端更新逻辑写死了它，所以留着不动。
 
 原包 `lian-cang-1.0.0-debug.apk`、`lian-cang-1.1.0-debug.apk` 与原源码压缩包均保留。各版本的最终验证报告
 （`VERIFICATION-1.2.0.md` / `VERIFICATION-1.1.0.md` / `VERIFICATION.md`）与按版本的校验记录
@@ -139,7 +141,7 @@ bash docker-build.sh
 
 固定兼容工具链：AGP 8.7.3 / Gradle 8.9 / JDK17 / Kotlin2.0.21 / KSP2.0.21-1.0.28 / Compose BOM2024.12.01 / Room2.6.1 / compile & target35。
 
-在 linux/amd64 专用 Docker 环境执行 `testDebugUnitTest lintDebug assembleDebug`；支持标准 `gradlew`，Gradle 分发已固定 SHA-256。单次构建 30 分钟超时。
+在 linux/amd64 专用 Docker 环境执行 `testDebugUnitTest lintDebug assembleRelease`；支持标准 `gradlew`，Gradle 分发已固定 SHA-256。单次构建 30 分钟超时。
 
 仅挂载本项目和专用缓存：`link-vault-gradle`、`link-vault-robolectric`、`link-vault-debug-signing`。
 

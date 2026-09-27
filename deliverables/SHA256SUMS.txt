@@ -1,1 +1,1 @@
-7ac580f906bea8c3ccd688aed90aa9aa6753618a6fb337f1f55b89fce57fdf09  deliverables/lian-cang-1.3.5-debug.apk
+3d06a4e91f7f7108b679cae3b7d53096228c36d2ad21422be136a5ea566c6862  deliverables/lian-cang-1.3.5.apk
