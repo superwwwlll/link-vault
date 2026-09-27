@@ -519,7 +519,7 @@ object Backup {
                 sb.append("          <span class=\"card-tag\">#${escapeHtml(tag)}</span>\n")
             }
             sb.append("        </div>\n")
-            sb.append("        <button class=\"copy-btn\" onclick=\"copyUrl('${escapeHtml(item.url)}', this)\">复制</button>\n")
+            sb.append("        <button class=\"copy-btn\" data-url=\"${escapeHtml(item.url)}\">复制</button>\n")
             sb.append("      </div>\n")
             sb.append("    </div>\n")
         }
@@ -566,6 +566,12 @@ object Backup {
                     currentTag = btn.getAttribute('data-tag') || '';
                     filter();
                 });
+            });
+
+            // 链接从按钮的 data-url 属性取，不拼进 JS 源码：
+            // HTML 属性里的转义在交给脚本执行前会被还原，拼进源码等于给链接一个越狱机会。
+            document.querySelectorAll('.copy-btn').forEach(btn => {
+                btn.addEventListener('click', () => copyUrl(btn.getAttribute('data-url') || '', btn));
             });
 
             function copyUrl(url, btn) {

@@ -150,4 +150,23 @@ class BackupTest {
         assertTrue(html.contains("id=\"search\""))
         assertTrue(html.contains("copyUrl"))
     }
+
+    /**
+     * 回归：链接里带引号时不能把页面脚本里的字符串提前闭合。
+     *
+     * 生成端把链接写进 onclick="copyUrl('...')" 时，HTML 属性会在交给 JS 之前先把 &#39; 还原成
+     * 单引号，于是链接内容变成了代码。现在链接只待在 data-url 属性里，由脚本自己取。
+     */
+    @Test fun portalHtmlExportKeepsBookmarkUrlOutOfInlineScript() {
+        val hostile = "https://example.com/-');steal('all');"
+        val html = String(Backup.encodePortalHtml(listOf(Bookmark(url = hostile, canonical = hostile, title = "可疑链接"))))
+
+        assertFalse("页面里不允许出现任何内联事件处理器",
+            Regex("""(?i)\sonclick\s*=""").containsMatchIn(html))
+        val script = Regex("(?s)<script>(.*?)</script>").find(html)!!.groupValues[1]
+        assertFalse("内联脚本里不允许出现链接原文", script.contains(hostile))
+        assertFalse("链接里的内容不允许变成可执行代码", script.contains("steal("))
+        val embedded = Regex("""data-url="([^"]*)"""").find(html)!!.groupValues[1]
+        assertEquals("链接应以转义形式留在属性里", "https://example.com/-&#39;);steal(&#39;all&#39;);", embedded)
+    }
 }

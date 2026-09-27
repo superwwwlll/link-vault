@@ -781,6 +781,7 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
                         ?: error("无法写入文件")
                     rows.size
                 }
+                markBackedUp()
                 toast("已导出 $count 条 Markdown 知识合辑，支持导入 Obsidian/Notion。")
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) { fail("导出 Markdown 失败：${e.localizedMessage}") }
