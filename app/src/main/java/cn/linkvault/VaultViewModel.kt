@@ -79,8 +79,42 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
     var currentSnapshot by mutableStateOf<String?>(null); private set
     var fetchingSnapshot by mutableStateOf(false); private set
 
-    fun loadSnapshot(id: Long) {
-        currentSnapshot = Snapshots.get(app, id)
+    private fun loadSnapshot(id: Long) {
+        viewModelScope.launch {
+            val text = withContext(Dispatchers.IO) { Snapshots.get(app, id) }
+            // 只认当前这条详情：快速连点两条时，先读完的那条不该把正文塞给后打开的那条。
+            if (detailId == id) currentSnapshot = text
+        }
+    }
+
+    /** 抓正文并落盘。网络与文件写入都留在 IO 线程上。 */
+    private suspend fun fetchAndSaveSnapshot(item: Bookmark): String = withContext(Dispatchers.IO) {
+        val text = Net.fetchArticle(item.url)
+        Snapshots.save(app, item.id, text)
+        text
+    }
+
+    /**
+     * 保存之后自动补齐：先页面标题与描述，再离线正文。
+     *
+     * 全程静默。成功时内容自己就出现在详情页里，失败时详情页那两个手动按钮就是重试入口，
+     * 两种情况都不该用一句提示打断用户。抓取开关没打开时一条请求都不发。
+     */
+    private fun autoComplete(item: Bookmark) {
+        if (!fetchEnabled || !item.url.startsWith("https://", true)) return
+        viewModelScope.launch {
+            fetchingId = item.id
+            val head = runCatching { withContext(Dispatchers.IO) { Net.fetchHead(item.url) } }.getOrNull()
+            fetchingId = null
+            if (head != null && !head.isEmpty) {
+                dao.applyFetch(item.id, head.description.take(8000), head.siteName.take(200),
+                    item.title.ifBlank { head.title.take(200) }, System.currentTimeMillis())
+            }
+            fetchingSnapshot = true
+            val text = runCatching { fetchAndSaveSnapshot(item) }.getOrNull()
+            fetchingSnapshot = false
+            if (text != null && detailId == item.id) currentSnapshot = text
+        }
     }
 
     fun captureSnapshot(item: Bookmark) {
@@ -94,30 +128,26 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
             return
         }
         fetchingSnapshot = true
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
             try {
-                val text = Net.fetchArticle(item.url)
-                Snapshots.save(app, item.id, text)
-                withContext(Dispatchers.Main) {
-                    currentSnapshot = text
-                    toast("已提取 Markdown 正文快照 (${text.length} 字)")
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    toast("正文抓取失败: ${e.message ?: "未知错误"}")
-                }
+                val text = fetchAndSaveSnapshot(item)
+                if (detailId == item.id) currentSnapshot = text
+                toast("已提取 Markdown 正文快照 (${text.length} 字)")
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) {
+                toast("正文抓取失败: ${e.message ?: "未知错误"}")
             } finally {
-                withContext(Dispatchers.Main) {
-                    fetchingSnapshot = false
-                }
+                fetchingSnapshot = false
             }
         }
     }
 
     fun removeSnapshot(id: Long) {
-        Snapshots.delete(app, id)
-        currentSnapshot = null
-        toast("已删除正文快照")
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { Snapshots.delete(app, id) }
+            if (detailId == id) currentSnapshot = null
+            toast("已删除正文快照")
+        }
     }
 
     // ------------------------------------------------------------ 收藏数据
@@ -463,6 +493,7 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
                         val title = if (head.title.isNotBlank()) head.title.take(200) else readableTitle
                         dao.applyFetch(id, head.description.take(8000), head.siteName.take(200), title, System.currentTimeMillis())
                     }
+                    runCatching { fetchAndSaveSnapshot(item.copy(id = id)) }
                 }
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) { fail("收录失败：${e.localizedMessage}") }
@@ -519,7 +550,11 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
                         createdAt = now, updatedAt = now
                     )
                     val id = if (d.id == 0L) dao.insert(item) else { check(dao.update(item) == 1) { "原收藏已不存在" }; d.id }
-                    show(item.copy(id = id)); tab(0)
+                    val written = item.copy(id = id)
+                    show(written); tab(0)
+                    // 只补没抓过的。已经抓到过信息的条目即便改了网址也不自动重抓，
+                    // 想在编辑后刷新还有详情页那个「重新抓取」。
+                    if (written.fetchedAt == 0L) autoComplete(written)
                     edit(null); notice = null; detected = emptyList(); saved["detected"] = null
                 }
             } catch (e: CancellationException) { throw e }

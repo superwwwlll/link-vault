@@ -148,6 +148,32 @@ class LibraryTest {
         assertFalse("两种拒绝都必须在发起请求之前返回", vm.busy)
     }
 
+    /** 保存后的自动补齐走的是同一个开关：没打开就一条请求都不发。 */
+    @Test fun savingWithTheSwitchOffStartsNoRequest() {
+        val vm = viewModel()
+        vm.edit(Draft(url = "https://example.com/silent", title = "自己写的标题"))
+        vm.save()
+        settle(vm)
+        runBlocking { delay(300) }
+
+        assertEquals("抓取开关没打开，不该有任何一条被联网抓过", 0L, runBlocking { dao.byKey("https://example.com/silent") }!!.fetchedAt)
+        assertNull(vm.fetchingId)
+        assertFalse(vm.fetchingSnapshot)
+    }
+
+    /** 开关开着也不会碰明文 http —— 自动路径不能成为 http 请求的漏口。 */
+    @Test fun savingPlainHttpStartsNoRequestEvenWithTheSwitchOn() {
+        val vm = viewModel()
+        vm.fetchEnabled(true)
+        vm.edit(Draft(url = "http://example.com/plain", title = "明文"))
+        vm.save()
+        settle(vm)
+        runBlocking { delay(300) }
+
+        assertEquals(0L, runBlocking { dao.byKey("http://example.com/plain") }!!.fetchedAt)
+        assertFalse(vm.fetchingSnapshot)
+    }
+
     @Test fun draftIsRestoredOnlyAfterARealProcessRestart() {
         val first = viewModel()
         first.edit(Draft(url = "https://example.com/current", title = "当前会话"))

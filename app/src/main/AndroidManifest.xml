@@ -1,7 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!-- 唯一新增的权限：可选的「页面信息抓取」。应用默认不联网，
-         只有用户在设置里主动打开开关、并对某条收藏手动点击时才会发起请求。 -->
+         只有用户在设置里主动打开开关之后才会发起请求 —— 用于补齐刚保存链接的标题与正文。 -->
     <uses-permission android:name="android.permission.INTERNET" />
 
     <!-- 应用内自更新：下载自己的新版 APK 后交给系统安装器。

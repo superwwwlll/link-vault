@@ -3,9 +3,12 @@ import android.app.Application
 import androidx.lifecycle.SavedStateHandle
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.withTimeout
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -90,12 +93,19 @@ class StateTest {
             assertTrue(Snapshots.has(app, sampleId))
             assertEquals(content, Snapshots.get(app, sampleId))
 
-            vm.loadSnapshot(sampleId)
+            // 正文读取在 IO 线程上做，所以要等；而且只有「当前详情页就是这条」时才写入状态。
+            vm.show(Bookmark(id = sampleId, url = "https://example.com/snapshot", canonical = "example.com/snapshot"))
+            awaitUntil { vm.currentSnapshot == content }
             assertEquals(content, vm.currentSnapshot)
 
             vm.removeSnapshot(sampleId)
+            awaitUntil { vm.currentSnapshot == null }
             assertNull(vm.currentSnapshot)
             assertFalse(Snapshots.has(app, sampleId))
         } finally { Dispatchers.resetMain() }
+    }
+
+    private fun awaitUntil(condition: () -> Boolean) = runBlocking {
+        withTimeout(10_000) { while (!condition()) delay(10) }
     }
 }
