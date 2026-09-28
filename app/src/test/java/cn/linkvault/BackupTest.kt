@@ -7,6 +7,7 @@ import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.*
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -15,6 +16,8 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
 class BackupTest {
+    @Before fun fastKeyDerivation() { NoteCrypto.iterations = 10_000 }
+
     private fun item(url: String = "https://x.com/Astronaut_1216/status/2097610542127223251?s=20") = Bookmark(url = url, canonical = Links.canonical(url), title = "中文标题", notes = "备注\n第二行 ✨", tags = "技术,稍后读", updatedAt = 1234)
     private fun invalid(bytes: ByteArray) { assertThrows(Exception::class.java) { Backup.decode(bytes) } }
     @Test fun roundTripPreservesUnicodeAndOriginalUrl() {
@@ -26,8 +29,8 @@ class BackupTest {
     @Test fun emptyBackupIsValid() { assertEquals(emptyList<Bookmark>(), Backup.decode(Backup.encode(emptyList()))) }
     @Test fun formatAndVersionAreRequired() {
         val root = JSONObject(String(Backup.encode(listOf(item()))))
-        root.put("version", 2); invalid(root.toString().toByteArray())
-        root.put("version", "1"); invalid(root.toString().toByteArray())
+        root.put("version", Backup.VERSION + 1); invalid(root.toString().toByteArray())
+        root.put("version", Backup.VERSION.toString()); invalid(root.toString().toByteArray())
         root.put("version", 1).put("format", "other"); invalid(root.toString().toByteArray())
     }
     @Test fun malformedInputRejected() {
@@ -189,5 +192,159 @@ class BackupTest {
         assertFalse("链接里的内容不允许变成可执行代码", script.contains("steal("))
         val embedded = Regex("""data-url="([^"]*)"""").find(html)!!.groupValues[1]
         assertEquals("链接应以转义形式留在属性里", "https://example.com/-&#39;);steal(&#39;all&#39;);", embedded)
+    }
+
+    // ------------------------------------------------------------ v2：笔记与主密码
+
+    private fun sealedNote(password: String, text: String): Note = Note(
+        cipher = NoteCrypto.sealText(password.toCharArray(), NoteCrypto.newSalt(), text),
+        secret = true, createdAt = 1000, updatedAt = 2000
+    )
+
+    private fun masterRecord(password: String): VaultMaster = VaultMaster(
+        salt = NoteCrypto.encode(NoteCrypto.newSalt()),
+        verifier = NoteCrypto.verifierText(password.toCharArray(), NoteCrypto.newSalt()),
+        createdAt = 1000
+    )
+
+    /** 1.4.0 及更早的设备导出的文件：没有 notes / vault 两项，必须照常导入。 */
+    @Test fun v1FilesWithoutNotesStillImport() {
+        val original = item()
+        val root = JSONObject(String(Backup.encode(listOf(original)))).put("version", 1)
+        val contents = Backup.decodeContents(root.toString().toByteArray())
+        assertEquals(listOf(original), contents.bookmarks)
+        assertTrue(contents.notes.isEmpty())
+        assertNull(contents.master)
+    }
+
+    /** v1 文件里冒出笔记或主密码，只可能是手工改的：读一半等于骗用户说导入成功了。 */
+    @Test fun v1FilesClaimingNotesOrMasterAreRejected() {
+        val withNotes = JSONObject(String(Backup.encode(listOf(item()), listOf(Note(text = "普通笔记")))))
+            .put("version", 1)
+        invalid(withNotes.toString().toByteArray())
+        val withVault = JSONObject(String(Backup.encode(listOf(item()))))
+            .put("version", 1).put("vault", JSONObject().put("salt", "c2FsdA").put("verifier", "abc"))
+        invalid(withVault.toString().toByteArray())
+    }
+
+    @Test fun notesAndMasterRoundTripThroughTheEncryptedChannel() {
+        val original = item()
+        val plain = Note(text = "内网代理 10.20.30.40:8888", createdAt = 1000, updatedAt = 2000)
+        val secret = sealedNote(PASSWORD, "WiFi 口令")
+        val master = masterRecord(PASSWORD)
+        val contents = Backup.decodeContents(Backup.encode(listOf(original), listOf(plain, secret), master))
+        assertEquals(listOf(original), contents.bookmarks)
+        assertEquals(listOf(plain, secret), contents.notes)
+        assertEquals(master.salt, contents.master?.salt)
+        assertEquals(master.verifier, contents.master?.verifier)
+    }
+
+    /** 明文备份走的是默认参数这条路，所以挡下私密笔记的是 encode 本身，不是调用方记性。 */
+    @Test fun fileWithoutAMasterCannotDescribeSecretNotes() {
+        assertThrows(Exception::class.java) { Backup.encode(listOf(item()), listOf(sealedNote(PASSWORD, "口令"))) }
+    }
+
+    @Test fun inconsistentNoteRowsAreRejected() {
+        fun file(vararg rows: JSONObject) = JSONObject(String(Backup.encode(listOf(item()))))
+            .put("notes", JSONArray().apply { rows.forEach { put(it) } }).toString().toByteArray()
+        // 私密笔记只该带密文：带明文等于把口令同时写两份，一份还是没加密的那份。
+        invalid(file(JSONObject().put("secret", true).put("text", "明文冒充私密").put("updatedAt", 1)))
+        invalid(file(JSONObject().put("secret", false).put("cipher", sealedNote(PASSWORD, "x").cipher).put("updatedAt", 1)))
+        invalid(file(JSONObject().put("secret", true).put("cipher", "!!!不是 Base64!!!").put("updatedAt", 1)))
+        invalid(file(JSONObject().put("secret", false).put("text", "没有时间戳")))
+        invalid(file(JSONObject().put("secret", false)))
+    }
+
+    @Test fun malformedMasterRecordIsRejected() {
+        val root = JSONObject(String(Backup.encode(listOf(item()))))
+            .put("vault", JSONObject().put("salt", "!!!").put("verifier", "abc"))
+        invalid(root.toString().toByteArray())
+        val missingVerifier = JSONObject(String(Backup.encode(listOf(item()))))
+            .put("vault", JSONObject().put("salt", NoteCrypto.encode(NoteCrypto.newSalt())))
+        invalid(missingVerifier.toString().toByteArray())
+    }
+
+    /** 别人主密码封的密文要原样搬进来：本机此刻读不出，但一条都不该丢。 */
+    @Test fun foreignSecretNotesSurviveImportUntouched() = runBlocking {
+        val db = newDb()
+        try {
+            val contents = Backup.decodeContents(
+                Backup.encode(listOf(item()), listOf(sealedNote(FOREIGN, "路由器管理口令")), masterRecord(FOREIGN))
+            )
+            val outcome = Backup.mergeAll(db, contents.bookmarks, contents.notes, contents.master)
+            assertEquals(1, outcome.bookmarks.added)
+            assertEquals(NotesMergeResult(1, 0, true), outcome.notes)
+            val stored = db.notes().all().single()
+            assertEquals("", stored.text)
+            assertEquals(contents.notes.single().cipher, stored.cipher)
+            // 文件里那个密码仍然打得开：导入没动过密文一个字节
+            val key = KeySession(FOREIGN.toCharArray())
+            assertEquals("路由器管理口令", NoteCrypto.openText(key, stored.cipher))
+            key.lock()
+            val wrong = KeySession(PASSWORD.toCharArray())
+            assertFalse(NoteCrypto.check(wrong, NoteCrypto.decode(db.vault().master()!!.verifier)))
+            wrong.lock()
+        } finally { db.close() }
+    }
+
+    /** 本机已经设过主密码时，绝不能被这份备份换掉——那等于让现有全部私密笔记当场变解不开。 */
+    @Test fun localMasterIsNeverReplacedByABackup() = runBlocking {
+        val db = newDb()
+        try {
+            val local = masterRecord(PASSWORD)
+            db.vault().insert(local.copy(id = VaultMaster.ROW_ID))
+            val outcome = Backup.mergeNotes(db, listOf(sealedNote(FOREIGN, "口令")), masterRecord(FOREIGN))
+            assertFalse(outcome.masterAdopted)
+            assertEquals(local.salt, db.vault().master()?.salt)
+        } finally { db.close() }
+    }
+
+    /** 明文按正文去重；私密的比对密文，而 iv 每次不同，所以换一次导出就会多出一条。 */
+    @Test fun plainNotesDedupeButReExportedSecretNotesCannot() = runBlocking {
+        val db = newDb()
+        try {
+            val text = Note(text = "同一句话", createdAt = 1, updatedAt = 1)
+            assertEquals(NotesMergeResult(1, 1, false), Backup.mergeNotes(db, listOf(text, text), null))
+            assertEquals(NotesMergeResult(0, 1, false), Backup.mergeNotes(db, listOf(text), null))
+            assertEquals(1, db.notes().all().size)
+
+            val first = sealedNote(PASSWORD, "同一句口令")
+            assertEquals(NotesMergeResult(1, 0, false), Backup.mergeNotes(db, listOf(first), null))
+            val second = sealedNote(PASSWORD, "同一句口令")
+            assertNotEquals(first.cipher, second.cipher)
+            assertEquals(NotesMergeResult(1, 0, false), Backup.mergeNotes(db, listOf(second), null))
+            assertEquals(NotesMergeResult(0, 1, false), Backup.mergeNotes(db, listOf(second), null))
+            assertEquals(3, db.notes().all().size)
+        } finally { db.close() }
+    }
+
+    /** 界面那句「失败已整体回滚」：两条通道要么都写进去，要么一条都不留。 */
+    @Test fun mergeAllRollsBackEveryTableWhenAnyRowFails() = runBlocking {
+        val db = newDb()
+        try {
+            var failed = false
+            try {
+                Backup.mergeAll(
+                    db,
+                    listOf(item(), item().copy(url = "file:///unsafe")),
+                    listOf(Note(text = "普通笔记"), sealedNote(PASSWORD, "口令")),
+                    masterRecord(PASSWORD)
+                )
+            } catch (_: Exception) { failed = true }
+            assertTrue("有一份内容没写进去就必须整体失败", failed)
+            assertTrue(db.bookmarks().all().isEmpty())
+            assertTrue(db.notes().all().isEmpty())
+            assertNull(db.vault().master())
+        } finally { db.close() }
+    }
+
+    private fun newDb(): VaultDb {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        return Room.inMemoryDatabaseBuilder(context, VaultDb::class.java).build()
+    }
+
+    private companion object {
+        const val PASSWORD = "本机的主密码password"
+        const val FOREIGN = "另一台设备的主密码"
     }
 }

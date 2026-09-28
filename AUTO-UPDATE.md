@@ -48,8 +48,8 @@ cd ~/Documents/Android/android-link-vault
 
 ```kotlin
 // app/build.gradle.kts —— 版本号的唯一来源
-versionCode = 20         // 必须递增，Android 靠它判断能否覆盖
-versionName = "1.4.0"
+versionCode = 21         // 必须递增，Android 靠它判断能否覆盖
+versionName = "1.5.0"
 ```
 
 同一个版本号绝不发两次：Android 靠 `versionCode` 判断能否覆盖安装，

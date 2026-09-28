@@ -18,7 +18,11 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) receive(intent)
         setContent {
             val dark = when (vm.theme) { "dark" -> true; "light" -> false; else -> isSystemInDarkTheme() }
+            // 解锁期间禁止截屏：屏幕上正明文显示着账号口令，一次截屏就把它交给了相册。
+            val unlocked = vm.notes.unlocked
             SideEffect {
+                if (unlocked) window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+                else window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
                 WindowCompat.getInsetsController(window, window.decorView).apply {
                     isAppearanceLightStatusBars = !dark
                     isAppearanceLightNavigationBars = !dark
@@ -30,6 +34,12 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         vm.checkClipboard(this)
+    }
+
+    /** 退到后台就锁上：主密码只在这一次前台会话里有效。 */
+    override fun onStop() {
+        super.onStop()
+        vm.notes.lock()
     }
     override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); setIntent(intent); receive(intent) }
     private fun receive(intent: Intent?) {

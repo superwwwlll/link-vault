@@ -14,10 +14,15 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
 class CompatibilityTest {
-    private fun openV1(name: String): SQLiteDatabase {
+    private fun openV1(name: String): SQLiteDatabase = openFixture("room-v1-schema.json", name)
+
+    private fun openV4(name: String): SQLiteDatabase = openFixture("room-v4-schema.json", name)
+
+    /** 按某个历史版本的 schema 手工建库，用来真实走一遍升级路径。 */
+    private fun openFixture(resource: String, name: String): SQLiteDatabase {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val file = context.getDatabasePath(name); file.parentFile!!.mkdirs()
-        val schema = JSONObject(javaClass.classLoader!!.getResourceAsStream("room-v1-schema.json")!!.bufferedReader().use { it.readText() }).getJSONObject("database")
+        val schema = JSONObject(javaClass.classLoader!!.getResourceAsStream(resource)!!.bufferedReader().use { it.readText() }).getJSONObject("database")
         val old = SQLiteDatabase.openOrCreateDatabase(file, null)
         val entities = schema.getJSONArray("entities")
         for (i in 0 until entities.length()) {
@@ -77,6 +82,53 @@ class CompatibilityTest {
             assertEquals("原文链接永远不改写", "https://example.com/keep?utm_source=newsletter", colliding.url)
             assertEquals("带跟踪参数", colliding.title)
             assertEquals(2000L, colliding.createdAt)
+        } finally { db.close(); context.deleteDatabase(file.name) }
+        Unit
+    }
+
+    @Test fun upgradingFromV4AddsNoteTablesAndLeavesExistingBookmarksAlone() = runBlocking {
+        NoteCrypto.iterations = 10_000
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val file = context.getDatabasePath("v4-upgrade-fixture.db")
+        val old = openV4(file.name)
+        old.execSQL(
+            "INSERT INTO bookmarks (id,url,canonical,title,notes,tags,createdAt,updatedAt,pinned,archived,read," +
+                "summary,siteName,image,fetchedAt,deletedAt) " +
+                "VALUES (9,'https://example.com/v4','https://example.com/v4','升级前就在','原备注','技术'," +
+                "1000,2000,1,0,0,'描述','Example','',1500,0)"
+        )
+        old.version = 4; old.close()
+        var db = Room.databaseBuilder(context, VaultDb::class.java, file.name).addMigrations(*VAULT_MIGRATIONS).build()
+        val kept: Bookmark
+        try {
+            kept = db.bookmarks().byId(9L)!!
+            assertEquals("原备注", kept.notes)
+            assertEquals(1000L, kept.createdAt)
+            assertTrue(kept.pinned)
+            // 升级不该凭空长出笔记，也不该替用户设一个主密码。
+            assertEquals(emptyList<Note>(), db.notes().all())
+            assertNull(db.vault().master())
+
+            val secretId = db.notes().insert(
+                Note(cipher = NoteCrypto.sealText("MiMa-1234567".toCharArray(), NoteCrypto.newSalt(), "会议室门牌 4102"),
+                    secret = true, createdAt = 2000, updatedAt = 2000)
+            )
+            val plainId = db.notes().insert(Note(text = "后来的明文笔记", createdAt = 3000, updatedAt = 3000))
+            db.vault().insert(VaultMaster(salt = "c2FsdA==", verifier = "dmVyaWZpZXI="))
+            assertEquals(2, db.notes().count())
+            db.close()
+
+            db = Room.databaseBuilder(context, VaultDb::class.java, file.name).addMigrations(*VAULT_MIGRATIONS).build()
+            assertEquals("重开后收藏仍是一条，且内容没变", kept, db.bookmarks().byId(9L))
+            assertEquals(listOf(plainId, secretId), db.notes().all().map { it.id })
+            val secret = db.notes().byId(secretId)!!
+            assertTrue(secret.secret)
+            assertEquals("", secret.text)
+            assertEquals("会议室门牌 4102", NoteCrypto.openText(KeySession("MiMa-1234567".toCharArray()), secret.cipher))
+            assertThrows(IllegalArgumentException::class.java) {
+                NoteCrypto.openText(KeySession("BieRen-MiMa-1".toCharArray()), secret.cipher)
+            }
+            assertEquals("c2FsdA==", db.vault().master()!!.salt)
         } finally { db.close(); context.deleteDatabase(file.name) }
         Unit
     }

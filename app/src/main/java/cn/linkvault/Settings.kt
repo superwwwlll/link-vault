@@ -209,6 +209,31 @@ internal fun SettingsPage(
                 )
             }
 
+            var changeMaster by rememberSaveable { mutableStateOf(false) }
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                SectionLabel("私密笔记", trailing = if (vm.notes.hasMaster) "" else "未设主密码")
+                Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(0.7.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)), shadowElevation = 0.5.dp) {
+                    Column {
+                        SettingRow(
+                            Glyph.Shield,
+                            if (vm.notes.hasMaster) "修改主密码" else "设置主密码",
+                            if (vm.notes.hasMaster) "全部私密笔记会用新密码重新加密一遍；有一条解不开就整体放弃，不改一半"
+                            else "私密笔记要先有主密码才能保存。它不记在任何地方，忘了无法找回",
+                            !vm.notes.busy
+                        ) { if (vm.notes.hasMaster) changeMaster = true else vm.notes.requireKey() }
+                        if (vm.notes.hasMaster) {
+                            HorizontalDivider(Modifier.padding(start = 58.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+                            SettingRow(
+                                Glyph.Note, "${vm.notes.secretTotal} 条私密 / 共 ${vm.notes.total} 条",
+                                if (vm.notes.unlocked) "已解锁 · 退到后台会自动锁上" else "未解锁 · 列表只显示掩码",
+                                true
+                            ) { vm.tab(1) }
+                        }
+                    }
+                }
+                if (changeMaster) ChangeMasterDialog(vm, onDismiss = { changeMaster = false })
+            }
+
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 SectionLabel("本地备份")
                 Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(0.7.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)), shadowElevation = 0.5.dp) {

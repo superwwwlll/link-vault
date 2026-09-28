@@ -83,9 +83,90 @@ interface BookmarkDao {
     suspend fun applyFetch(id: Long, summary: String, siteName: String, title: String, image: String, now: Long): Int
 }
 
-@Database(entities = [Bookmark::class], version = 4, exportSchema = true)
+/**
+ * 一条笔记。
+ *
+ * 密文用 Base64 字符串存而不是 BLOB：Room 的 data class 放数组会让 equals/hashCode 走引用比较，
+ * 而且加密备份的 payload 本来就是 JSON —— 到那里也得编成字符串，不如一开始就一种形态。
+ *
+ * `secret` 决定正文在哪：普通笔记写在 [text]（明文，与收藏备注同级），
+ * 私密笔记 [text] 留空、正文进 [cipher]。没有"半私密"第三种状态。
+ */
+@Entity(tableName = "notes")
+data class Note(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val text: String = "",
+    /** [NoteCrypto] 的自描述封套（Base64）；非私密笔记为空串。 */
+    val cipher: String = "",
+    val secret: Boolean = false,
+    val createdAt: Long = System.currentTimeMillis(),
+    /** 排序与列表首行都按它，所以「从剪贴板存为笔记」也要正经刷新时间。 */
+    val updatedAt: Long = System.currentTimeMillis()
+)
+
+/**
+ * 主密码的验证数据，全库只有一行（id 固定为 1）。
+ *
+ * verifier 是用主密码派生的密钥加密的一段固定文本：先有它，用户才能在没有一条私密笔记的时候
+ * 就知道自己这次密码输对了没有 —— 否则只能"存一条试试"，错了就得重来。
+ */
+@Entity(tableName = "vault")
+data class VaultMaster(
+    @PrimaryKey val id: Long = ROW_ID,
+    val salt: String,
+    val verifier: String,
+    val createdAt: Long = System.currentTimeMillis()
+) {
+    companion object {
+        /** 全库只有这一行，id 写死；导入别人的备份时也要用它盖掉文件里带来的任意 id。 */
+        const val ROW_ID = 1L
+    }
+}
+
+@Dao
+interface NoteDao {
+    @Query("SELECT * FROM notes ORDER BY updatedAt DESC, id DESC")
+    fun observe(): Flow<List<Note>>
+
+    @Query("SELECT * FROM notes ORDER BY updatedAt DESC, id DESC")
+    suspend fun all(): List<Note>
+
+    @Query("SELECT * FROM notes WHERE id = :id LIMIT 1")
+    suspend fun byId(id: Long): Note?
+
+    /** 改密码要判断"是否一条都没漏"，靠条数对账。 */
+    @Query("SELECT COUNT(*) FROM notes")
+    suspend fun count(): Int
+
+    /** 导入去重只比对非私密笔记的明文正文；密文每条都不同，比了也没意义。 */
+    @Query("SELECT `text` FROM notes WHERE `cipher` = ''")
+    suspend fun plainTexts(): List<String>
+
+    @Insert suspend fun insert(item: Note): Long
+    @Insert suspend fun insertAll(items: List<Note>): List<Long>
+    @Update suspend fun update(item: Note): Int
+    /** 笔记刻意不做回收站：密码正文在磁盘上多留 30 天是纯负担。 */
+    @Query("DELETE FROM notes WHERE id = :id") suspend fun delete(id: Long): Int
+    /** 测试沙箱与整库重建使用；用户界面一律走逐条 delete。 */
+    @Query("DELETE FROM notes") suspend fun clear(): Int
+}
+
+@Dao
+interface VaultDao {
+    @Query("SELECT * FROM vault WHERE id = 1 LIMIT 1")
+    suspend fun master(): VaultMaster?
+
+    @Insert suspend fun insert(item: VaultMaster): Long
+    @Update suspend fun update(item: VaultMaster): Int
+    /** 与 [NoteDao.clear] 同因：只给测试和整库重建，界面上没有"清除主密码"这条路。 */
+    @Query("DELETE FROM vault") suspend fun clear(): Int
+}
+
+@Database(entities = [Bookmark::class, Note::class, VaultMaster::class], version = 5, exportSchema = true)
 abstract class VaultDb : RoomDatabase() {
     abstract fun bookmarks(): BookmarkDao
+    abstract fun notes(): NoteDao
+    abstract fun vault(): VaultDao
 
     companion object {
         @Volatile private var instance: VaultDb? = null

@@ -156,7 +156,8 @@ internal fun CollectionPage(
                             append(heading)
                             if (vm.items.isNotEmpty()) append(" · ${visible.size} 条")
                         },
-                        Modifier.weight(1f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant
+                        Modifier.weight(1f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis
                     )
                     if (visible.isNotEmpty()) {
                         TextButton(

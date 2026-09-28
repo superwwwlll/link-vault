@@ -28,9 +28,17 @@ object SecureBackup {
     private const val MIN_PASSWORD = 8
     private const val MAX_ENCRYPTED = Backup.MAX_BYTES + 4096
 
-    fun encrypt(items: List<Bookmark>, password: CharArray): ByteArray {
+    /**
+     * 加密一份完整备份。
+     *
+     * [notes] 与 [master] 原样写进内层 JSON：私密笔记在那里已经是密文，外层再套一次信封，
+     * 所以口令对不上时连"有多少条笔记"都读不出来。传了笔记就必须传主密码记录，
+     * 否则导入端没法知道该用哪个 salt 去解那些密文。
+     */
+    fun encrypt(items: List<Bookmark>, notes: List<Note>, master: VaultMaster?, password: CharArray): ByteArray {
         require(password.size >= MIN_PASSWORD) { "密码至少需要 $MIN_PASSWORD 个字符" }
-        val plain = Backup.encode(items)
+        if (notes.any { it.secret }) require(master != null) { "私密笔记需要连同主密码记录一起导出" }
+        val plain = Backup.encode(items, notes, master)
         val salt = ByteArray(SALT_BYTES)
         val iv = ByteArray(IV_BYTES)
         SecureRandom().nextBytes(salt)
@@ -59,7 +67,7 @@ object SecureBackup {
         return output.toByteArray()
     }
 
-    fun decrypt(bytes: ByteArray, password: CharArray): List<Bookmark> {
+    fun decrypt(bytes: ByteArray, password: CharArray): Contents {
         require(bytes.size <= MAX_ENCRYPTED) { "加密备份超过 10 MB 上限" }
         require(password.size >= MIN_PASSWORD) { "密码至少需要 $MIN_PASSWORD 个字符" }
         val header = MAGIC.size + 1 + SALT_BYTES + IV_BYTES
@@ -72,7 +80,7 @@ object SecureBackup {
         return try {
             val cipher = Cipher.getInstance("AES/GCM/NoPadding")
             cipher.init(Cipher.DECRYPT_MODE, derive(password, salt), GCMParameterSpec(128, iv))
-            Backup.decode(cipher.doFinal(encrypted))
+            Backup.decodeContents(cipher.doFinal(encrypted))
         } catch (e: GeneralSecurityException) {
             throw IllegalArgumentException("密码错误或备份已损坏", e)
         }

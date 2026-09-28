@@ -62,5 +62,28 @@ class Migration3To4 : Migration(3, 4) {
     }
 }
 
+/**
+ * v4 → v5：笔记区。
+ *
+ * 只建两张新表，`bookmarks` 一行都不碰 —— 升级安装绝不能改动用户已有的收藏，
+ * 这条规矩从 v1→v2 起就没变过。
+ *
+ * 建表语句刻意与 Room 为实体生成的 SQL 一致（不加 DEFAULT）：
+ * 迁移完就直接用新实体读写，靠 CompatibilityTest 里那条真实往返来兜住差异。
+ */
+class Migration4To5 : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `notes` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`text` TEXT NOT NULL, `cipher` TEXT NOT NULL, `secret` INTEGER NOT NULL, " +
+                "`createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL)"
+        )
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `vault` (`id` INTEGER NOT NULL, `salt` TEXT NOT NULL, " +
+                "`verifier` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, PRIMARY KEY(`id`))"
+        )
+    }
+}
+
 /** 全部迁移，按版本顺序排列。升级安装时由 Room 依序执行。 */
-val VAULT_MIGRATIONS: Array<Migration> = arrayOf(Migration1To2(), Migration2To3(), Migration3To4())
+val VAULT_MIGRATIONS: Array<Migration> = arrayOf(Migration1To2(), Migration2To3(), Migration3To4(), Migration4To5())

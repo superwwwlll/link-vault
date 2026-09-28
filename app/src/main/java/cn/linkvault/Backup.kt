@@ -11,14 +11,15 @@ import java.nio.charset.CodingErrorAction
 /**
  * 便携备份格式。文件里的 ID 和去重键一律不信任。
  *
- * 格式版本刻意停留在 1：v2 新增的字段在读取时全部可选（缺失就用默认值），
- * 这样 1.0.0 / 1.1.0 导出的备份仍然能原样导入，不会因为升级而失效。
+ * v1 的读路径原样保留（`notes` / `vault` 缺失就是空），所以 1.0.0~1.4.0 导出的文件仍然能导入。
+ * v2 只多这两项：**反向**不兼容 —— 老版本遇到 `version: 2` 会按"不支持此备份版本"拒绝，
+ * 这是把私密笔记挡在明文备份之外的必要代价，宁可让用户先用新版导入，也不能悄悄漏掉内容。
  */
 object Backup {
     const val MAX_BYTES = 10 * 1024 * 1024
     const val MAX_ITEMS = 10000
     const val FORMAT = "cn.linkvault.backup"
-    const val VERSION = 1
+    const val VERSION = 2
     /** 一键备份的文件名前缀。清理旧备份时只认这个前缀，文件夹里别人的文件一概不碰。 */
     const val BACKUP_PREFIX = "链藏备份-"
     private const val MAX_TITLE = 200
@@ -49,7 +50,10 @@ object Backup {
         return output.toByteArray()
     }
 
-    fun decode(bytes: ByteArray): List<Bookmark> {
+    fun decode(bytes: ByteArray): List<Bookmark> = decodeContents(bytes).bookmarks
+
+    /** 一份备份里的全部内容。v1 文件里 [Contents.notes] 是空列表、[Contents.master] 是 null。 */
+    fun decodeContents(bytes: ByteArray): Contents {
         require(bytes.size <= MAX_BYTES) { "备份超过 10 MB 上限" }
         val text = Charsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT)
             .onUnmappableCharacter(CodingErrorAction.REPORT).decode(ByteBuffer.wrap(bytes)).toString().removePrefix("\uFEFF")
@@ -60,7 +64,7 @@ object Backup {
             trimmed.contains("<H1>Bookmarks</H1>", ignoreCase = true) ||
             trimmed.contains("<DT><A ", ignoreCase = true) ||
             trimmed.contains("<dt><a ", ignoreCase = true)) {
-            return decodeHtml(text)
+            return Contents(decodeHtml(text), emptyList(), null)
         }
 
         // Bound parser recursion before org.json sees untrusted data (including ignored fields).
@@ -81,11 +85,16 @@ object Backup {
         val root = tokener.nextValue() as? JSONObject ?: error("不是有效的链藏 JSON 备份")
         require(tokener.nextClean() == '\u0000') { "备份末尾含无效内容" }
         require(root.opt("format") == FORMAT) { "不是链藏备份格式" }
-        require(root.opt("version") is Int && root.getInt("version") == VERSION) { "不支持此备份版本" }
+        val version = root.opt("version")
+        require(version is Int && version in 1..VERSION) { "不支持此备份版本" }
+        // v1 文件里出现这两项只能是手工改的：读它会得到一份"看起来导入成功、其实少了内容"的结果。
+        if (version == 1) {
+            require(!root.has("notes") && !root.has("vault")) { "v1 备份里不应包含笔记或主密码" }
+        }
         val rows = root.opt("bookmarks") as? JSONArray ?: error("缺少收藏列表")
         require(rows.length() <= MAX_ITEMS) { "单次最多导入 10000 条收藏" }
 
-        return (0 until rows.length()).map { index ->
+        val bookmarks = (0 until rows.length()).map { index ->
             val row = rows.opt(index) as? JSONObject ?: error("第 ${index + 1} 条收藏格式错误")
             val url = required(row, "url", 16000).trim()
             val key = Links.canonical(url)
@@ -117,6 +126,49 @@ object Backup {
                 fetchedAt = timestamp(row, "fetchedAt") ?: 0L
             )
         }
+        val noteRows = root.opt("notes") as? JSONArray ?: JSONArray()
+        require(noteRows.length() <= MAX_ITEMS) { "单次最多导入 10000 条笔记" }
+        val notes = (0 until noteRows.length()).map { index ->
+            note(index + 1, noteRows.opt(index) as? JSONObject ?: error("第 ${index + 1} 条笔记格式错误"))
+        }
+        return Contents(bookmarks, notes, master(root))
+    }
+
+    /**
+     * 一条笔记。文件里的 `id` 一概不采信：导入永远是新增，不会盖掉本机已有那条。
+     *
+     * 私密笔记只带 `cipher`。这里**不校验密文能不能解开** —— 别人主密码封的内容本来就解不开，
+     * 要求可解等于把用户要的东西当垃圾扔掉；真正读不出时由笔记页如实显示"属于另一个主密码"。
+     */
+    private fun note(label: Int, row: JSONObject): Note {
+        val secret = flag(row, "secret")
+        val text = optional(row, "text", NoteCrypto.MAX_TEXT)
+        val cipher = optional(row, "cipher", NoteCrypto.MAX_CIPHER)
+        fun bad(reason: String): Nothing = error("第 $label 条笔记 $reason")
+        require(!secret || cipher.isNotEmpty()) { bad("缺少密文") }
+        require(secret || text.isNotEmpty()) { bad("正文是空的") }
+        require(!secret || text.isEmpty()) { bad("同时带明文正文，格式错误") }
+        require(secret || cipher.isEmpty()) { bad("不是私密笔记却有密文") }
+        if (cipher.isNotEmpty()) NoteCrypto.decode(cipher)
+        val updatedAt = timestamp(row, "updatedAt") ?: bad("时间格式错误")
+        return Note(
+            text = text,
+            cipher = cipher,
+            secret = secret,
+            createdAt = timestamp(row, "createdAt") ?: updatedAt,
+            updatedAt = updatedAt
+        )
+    }
+
+    /** `vault` 缺失就是"这份备份里没有主密码"，导入时保持本机现状。 */
+    private fun master(root: JSONObject): VaultMaster? {
+        val row = root.opt("vault") as? JSONObject ?: return null
+        val salt = required(row, "salt", 64)
+        val verifier = required(row, "verifier", NoteCrypto.MAX_CIPHER)
+        // 先确认这两串真是 Base64：错的话用户会在解锁时以为自己的密码坏了，而不是这份备份有问题。
+        require(NoteCrypto.decode(salt).size == NoteCrypto.SALT_BYTES) { "主密码 salt 格式错误" }
+        require(NoteCrypto.decode(verifier).isNotEmpty()) { "主密码校验数据格式错误" }
+        return VaultMaster(salt = salt, verifier = verifier, createdAt = timestamp(row, "createdAt") ?: System.currentTimeMillis())
     }
 
     /** 必需字段：缺失、类型不对或超长都拒绝整份文件，不静默截断。 */
@@ -148,8 +200,16 @@ object Backup {
         return (value as Number).toLong()
     }
 
-    fun encode(items: List<Bookmark>): ByteArray {
+    /**
+     * 写出一份备份。[notes] 与 [master] 只有 `.lvault` 加密通道会传。
+     *
+     * 私密笔记进明文文件由下面那道 require 挡住，而不是靠调用方记得过滤 ——
+     * 明文备份是要发给别的设备的，漏一次就是把口令交出去。
+     */
+    fun encode(items: List<Bookmark>, notes: List<Note> = emptyList(), master: VaultMaster? = null): ByteArray {
         require(items.size <= MAX_ITEMS) { "单个备份最多 10000 条收藏" }
+        require(notes.size <= MAX_ITEMS) { "单个备份最多 10000 条笔记" }
+        if (master == null) require(notes.none { it.secret }) { "私密笔记不能进明文备份" }
         val rows = JSONArray()
         items.forEach { item ->
             rows.put(
@@ -162,10 +222,26 @@ object Backup {
                     .put("fetchedAt", item.fetchedAt)
             )
         }
-        val bytes = JSONObject().put("format", FORMAT).put("version", VERSION).put("exportedAt", System.currentTimeMillis())
-            .put("bookmarks", rows).toString(2).toByteArray(Charsets.UTF_8)
+        val root = JSONObject().put("format", FORMAT).put("version", VERSION).put("exportedAt", System.currentTimeMillis())
+            .put("bookmarks", rows)
+        if (notes.isNotEmpty()) {
+            val noteRows = JSONArray()
+            notes.forEach { note ->
+                noteRows.put(
+                    JSONObject()
+                        .put("text", note.text).put("cipher", note.cipher).put("secret", note.secret)
+                        .put("createdAt", note.createdAt).put("updatedAt", note.updatedAt)
+                )
+            }
+            root.put("notes", noteRows)
+        }
+        // 没设过主密码就别往文件里写一个空的 vault 对象：导入端会把它当成"要替换主密码"。
+        master?.let {
+            root.put("vault", JSONObject().put("salt", it.salt).put("verifier", it.verifier).put("createdAt", it.createdAt))
+        }
+        val bytes = root.toString(2).toByteArray(Charsets.UTF_8)
         // A backup must always be valid for our own importer; never silently truncate.
-        decode(bytes)
+        decodeContents(bytes)
         return bytes
     }
 
@@ -622,15 +698,74 @@ object Backup {
     fun countNew(items: List<Bookmark>, existing: List<Bookmark>): Int =
         (items.map { it.canonical }.toSet() - existing.map { it.canonical }.toSet()).size
 
-    suspend fun merge(db: VaultDb, items: List<Bookmark>): MergeResult = db.withTransaction {
+    /**
+     * 一次事务写完收藏和笔记。
+     *
+     * 分成两个事务会留下"收藏进来了、笔记没进来"这种中间态，而界面那句"失败已整体回滚"
+     * 就成了假话 —— 导入是用户最不该自己去猜结果的操作。
+     */
+    suspend fun mergeAll(db: VaultDb, items: List<Bookmark>, notes: List<Note>, master: VaultMaster?): MergeOutcome =
+        db.withTransaction {
+            val bookmarks = mergeBookmarks(db, items)
+            val noteRows = mergeNoteRows(db, notes, master)
+            MergeOutcome(bookmarks, noteRows)
+        }
+
+    data class MergeOutcome(val bookmarks: MergeResult, val notes: NotesMergeResult)
+
+    suspend fun merge(db: VaultDb, items: List<Bookmark>): MergeResult = db.withTransaction { mergeBookmarks(db, items) }
+
+    private suspend fun mergeBookmarks(db: VaultDb, items: List<Bookmark>): MergeResult {
         var added = 0
         items.forEach { item ->
             val safe = item.copy(id = 0, canonical = Links.canonical(item.url))
             if (db.bookmarks().byKey(safe.canonical) == null) { db.bookmarks().insert(safe); added++ }
         }
-        MergeResult(added, items.size - added)
+        return MergeResult(added, items.size - added)
+    }
+
+    /**
+     * 导入笔记：永远是新增，绝不覆盖本机已有那条。
+     *
+     * 明文按正文原文去重；私密的比对密文 —— iv 每次不同，同一句口令两次导入会得到两段不同
+     * 密文，所以重复导入会多出几条。这比"猜哪条是重复"诚实，界面上报的条数也就是实际新增条数。
+     */
+    suspend fun mergeNotes(db: VaultDb, notes: List<Note>, master: VaultMaster?): NotesMergeResult =
+        db.withTransaction { mergeNoteRows(db, notes, master) }
+
+    private suspend fun mergeNoteRows(db: VaultDb, notes: List<Note>, master: VaultMaster?): NotesMergeResult {
+        val existing = db.notes().all()
+        val plain = existing.filter { !it.secret }.mapTo(HashSet()) { it.text }
+        val sealed = existing.filter { it.secret }.mapTo(HashSet()) { it.cipher }
+        var added = 0
+        notes.forEach { note ->
+            // add() 返回 true 表示"这句之前没见过"，也就是可以写进去。
+            val fresh = if (note.secret) sealed.add(note.cipher) else plain.add(note.text)
+            if (fresh) {
+                db.notes().insert(note.copy(id = 0))
+                added++
+            }
+        }
+        // 本机已经有主密码时保持本机那个：换掉它等于让现有全部私密笔记当场变"解不开"。
+        val adopted = master != null && db.vault().master() == null &&
+            db.vault().insert(master.copy(id = VaultMaster.ROW_ID)) > 0L
+        return NotesMergeResult(added, notes.size - added, adopted)
     }
 }
 
+/** 一份备份文件里的全部内容。 */
+data class Contents(val bookmarks: List<Bookmark>, val notes: List<Note>, val master: VaultMaster?)
+
 data class MergeResult(val added: Int, val skipped: Int)
-data class ImportPreview(val items: List<Bookmark>, val added: Int) { val skipped get() = items.size - added }
+data class NotesMergeResult(val added: Int, val skipped: Int, val masterAdopted: Boolean)
+data class ImportPreview(
+    val items: List<Bookmark>,
+    val added: Int,
+    val notes: List<Note> = emptyList(),
+    /** 这份备份自带的主密码记录；本机没有时导入时启用它。 */
+    val master: VaultMaster? = null
+) {
+    val skipped get() = items.size - added
+    /** 明文备份里永远不会有私密笔记，所以这个数只在加密导入时大于 0。 */
+    val secretNotes get() = notes.count { it.secret }
+}

@@ -54,6 +54,9 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
 
     // ------------------------------------------------------------ 界面状态
 
+    /** 笔记区（含主密码会话）。独立成类，见 [NotesController]。 */
+    val notes = NotesController(db, viewModelScope, saved, ::toast, ::fail)
+
     var theme by mutableStateOf(prefs.getString("theme", "system") ?: "system"); private set
     var tab by mutableStateOf(saved.get<Int>("tab") ?: 0); private set
     var detailId by mutableStateOf(saved.get<Long>("detail")); private set
@@ -262,7 +265,10 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
     var detected by mutableStateOf(saved.get<ArrayList<String>>("detected")?.toList() ?: emptyList()); private set
     var fetchingId by mutableStateOf<Long?>(null); private set
     var clipboardCandidate by mutableStateOf<String?>(null); private set
+    /** 剪贴板里没有链接时的纯文本候选。整段留着，界面只展示前 80 字。 */
+    var clipboardText by mutableStateOf<String?>(null); private set
     private var lastDismissedClipboard: String? = null
+    private var lastDismissedText: String? = null
 
     var draft by mutableStateOf(restoreDraft()); private set
 
@@ -546,7 +552,7 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
     fun cancel() { if (!busy) { edit(null); notice = null; detected = emptyList(); saved["detected"] = null } }
 
     fun checkClipboard(context: Context) {
-        if (draft != null || detailId != null || busy || trashOpen) return
+        if (draft != null || notes.draft != null || detailId != null || busy || trashOpen) return
         val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager ?: return
         if (!cm.hasPrimaryClip()) return
         val clip = cm.primaryClip ?: return
@@ -554,7 +560,13 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
         val text = clip.getItemAt(0)?.coerceToText(context)?.toString()?.trim().orEmpty()
         if (text.isBlank()) return
         val urls = Links.extract(text.take(4000))
-        if (urls.isEmpty()) return
+        if (urls.isEmpty()) {
+            // 纯文本候选：短于 4 个字的不弹（复制一个空格、一个引号都弹条太吵）。
+            val plain = text.take(NoteCrypto.MAX_TEXT)
+            if (plain.length < 4 || plain == lastDismissedText || notes.rows.any { it.text == plain }) return
+            clipboardText = plain
+            return
+        }
         val candidate = urls.first()
         if (candidate == lastDismissedClipboard) return
         val key = runCatching { Links.canonical(candidate) }.getOrNull() ?: return
@@ -563,9 +575,24 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
         clipboardCandidate = candidate
     }
 
+    /** 关掉提示条。同一段内容不再重复弹，用户明确忽略过一次就该安静。 */
     fun dismissClipboard() {
-        lastDismissedClipboard = clipboardCandidate
+        clipboardCandidate?.let { lastDismissedClipboard = it }
+        clipboardText?.let { lastDismissedText = it }
         clipboardCandidate = null
+        clipboardText = null
+    }
+
+    /**
+     * 提示条的「存为笔记」：按**明文**笔记落盘。
+     *
+     * 不默认加密是有意为之 —— 没有主密码时这条路必须能用；想加密进编辑页打开「私密」再保存，
+     * 界面上也会把"明文存在本机"这件事写清楚。
+     */
+    fun saveClipboardAsNote() {
+        val text = clipboardText ?: return
+        dismissClipboard()
+        notes.capture(text)
     }
 
     fun quickSaveClipboard() {
@@ -747,17 +774,18 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
         viewModelScope.launch {
             try {
                 val name = "${Backup.BACKUP_PREFIX}${Stamp.fileNameStamp()}.json"
-                val count = withContext(Dispatchers.IO) {
+                val summary = withContext(Dispatchers.IO) {
                     val resolver = getApplication<Application>().contentResolver
                     val rows = dao.all()
+                    val plainNotes = db.notes().all().filter { !it.secret }
                     val target = DocumentsContract.createDocument(resolver, Uri.parse(folder), "application/json", name)
                         ?: error("无法在所选文件夹中创建文件")
-                    resolver.openOutputStream(target, "wt")?.use { it.write(Backup.encode(rows)); it.flush() } ?: error("无法写入文件")
+                    resolver.openOutputStream(target, "wt")?.use { it.write(Backup.encode(rows, plainNotes)); it.flush() } ?: error("无法写入文件")
                     pruneBackups(folder)
-                    rows.size
+                    rows.size to plainNotes.size
                 }
                 markBackedUp()
-                toast("已备份 $count 条到所选文件夹")
+                toast("已备份 ${summary.first} 条收藏、${summary.second} 条普通笔记到所选文件夹")
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) { fail("备份到文件夹失败：${e.localizedMessage}。可改用「导出收藏」手动选择位置。") }
             finally { busy = false }
@@ -805,8 +833,13 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
         viewModelScope.launch {
             try {
                 preview = withContext(Dispatchers.IO) {
-                    val rows = previewFile.inputStream().use { Backup.decode(Backup.read(it)) }
-                    ImportPreview(rows, Backup.countNew(rows, dao.allIncludingDeleted()))
+                    val contents = previewFile.inputStream().use { Backup.decodeContents(Backup.read(it)) }
+                    ImportPreview(
+                        contents.bookmarks,
+                        Backup.countNew(contents.bookmarks, dao.allIncludingDeleted()),
+                        contents.notes,
+                        contents.master
+                    )
                 }
             } catch (e: CancellationException) { throw e }
             catch (_: Exception) {
@@ -827,10 +860,15 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
                     require(uri.scheme == "content") { "请选择系统文件选择器中的文件" }
                     val bytes = getApplication<Application>().contentResolver.openInputStream(uri)?.use { Backup.read(it) }
                         ?: error("无法读取文件")
-                    val rows = Backup.decode(bytes)
+                    val contents = Backup.decodeContents(bytes)
                     previewFile.writeBytes(bytes)
                     securePreviewFile.delete()
-                    ImportPreview(rows, Backup.countNew(rows, dao.allIncludingDeleted()))
+                    ImportPreview(
+                        contents.bookmarks,
+                        Backup.countNew(contents.bookmarks, dao.allIncludingDeleted()),
+                        contents.notes,
+                        contents.master
+                    )
                 }
                 saved["importPreview"] = true
                 preview = result
@@ -852,34 +890,50 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
         busy = true
         viewModelScope.launch {
             try {
-                val result = Backup.merge(db, data.items)
+                val result = Backup.mergeAll(db, data.items, data.notes, data.master)
+                notes.afterImport()
                 preview = null; saved["importPreview"] = false
                 withContext(Dispatchers.IO) {
                     previewFile.delete()
                     securePreviewFile.delete()
                 }
-                toast("导入完成：新增 ${result.added} 条，跳过 ${result.skipped} 条重复收藏。原有数据未被覆盖。")
+                toast(
+                    buildString {
+                        append("导入完成：新增 ${result.bookmarks.added} 条收藏，跳过 ${result.bookmarks.skipped} 条重复。原有数据未被覆盖。")
+                        if (data.notes.isNotEmpty()) append(" 笔记新增 ${result.notes.added} 条，跳过 ${result.notes.skipped} 条已有内容。")
+                        if (result.notes.masterAdopted) append(" 已启用这份备份里的主密码。")
+                    }
+                )
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) { fail("导入失败，事务已回滚，没有部分写入：${e.localizedMessage}") }
             finally { busy = false }
         }
     }
 
+    /**
+     * 加密导出。口令就是笔记主密码，不另起第二个：
+     * 界面上"备份密码"和"主密码"分开会让人以为可以随便填，结果恢复时对着解不开的笔记猜。
+     *
+     * 没设过主密码时，这一次输入就地生效 —— 此刻库里还没有任何私密笔记，设定它没有副作用。
+     */
     fun exportEncrypted(uri: Uri, password: CharArray) {
         if (busy) { password.fill('\u0000'); fail("有操作进行中，请稍后重新导出"); return }
         busy = true
         viewModelScope.launch {
             try {
-                val count = withContext(Dispatchers.IO) {
+                val summary = withContext(Dispatchers.IO) {
                     require(uri.scheme == "content") { "请选择系统文件选择器中的文件" }
                     val rows = dao.all()
-                    val bytes = SecureBackup.encrypt(rows, password)
+                    val noteRows = db.notes().all()
+                    val master = notes.masterForBackup(password)
+                    val bytes = SecureBackup.encrypt(rows, noteRows, master, password)
                     getApplication<Application>().contentResolver.openOutputStream(uri, "wt")?.use { it.write(bytes); it.flush() }
                         ?: error("无法写入文件")
-                    rows.size
+                    val secret = noteRows.count { it.secret }
+                    "$secret 条私密笔记" to rows.size
                 }
                 markBackedUp()
-                toast("已导出 $count 条加密备份")
+                toast("已导出 ${summary.second} 条收藏与 ${summary.first}（加密）")
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) { fail("加密导出失败：${e.localizedMessage}") }
             finally { password.fill('\u0000'); busy = false }
@@ -895,12 +949,20 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
                     require(uri.scheme == "content") { "请选择系统文件选择器中的文件" }
                     val bytes = getApplication<Application>().contentResolver.openInputStream(uri)?.use(SecureBackup::read)
                         ?: error("无法读取文件")
-                    val rows = SecureBackup.decrypt(bytes, password)
+                    val contents = SecureBackup.decrypt(bytes, password)
                     securePreviewFile.writeBytes(bytes)
-                    ImportPreview(rows, Backup.countNew(rows, dao.allIncludingDeleted()))
+                    ImportPreview(
+                        contents.bookmarks,
+                        Backup.countNew(contents.bookmarks, dao.allIncludingDeleted()),
+                        contents.notes,
+                        contents.master
+                    )
                 }
                 preview = result
-                toast("加密备份已解锁，请确认导入")
+                toast(
+                    if (result.notes.isEmpty()) "加密备份已解锁，请确认导入"
+                    else "加密备份已解锁：含 ${result.notes.size} 条笔记，其中 ${result.secretNotes} 条私密"
+                )
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) { fail("加密备份读取失败，没有导入任何数据：${e.localizedMessage}") }
             finally { password.fill('\u0000'); busy = false }
@@ -912,16 +974,18 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
         busy = true
         viewModelScope.launch {
             try {
-                val count = withContext(Dispatchers.IO) {
+                val summary = withContext(Dispatchers.IO) {
                     require(uri.scheme == "content") { "请选择系统文件选择器中的文件" }
                     val rows = dao.all()
-                    val bytes = Backup.encode(rows)
+                    // 只带非私密笔记：这个文件是未加密的，写进密码就等于把口令公开分享。
+                    val plainNotes = db.notes().all().filter { !it.secret }
+                    val bytes = Backup.encode(rows, plainNotes)
                     getApplication<Application>().contentResolver.openOutputStream(uri, "wt")?.use { it.write(bytes); it.flush() }
                         ?: error("无法写入文件")
-                    rows.size
+                    rows.size to plainNotes.size
                 }
                 markBackedUp()
-                toast("已导出 $count 条收藏。备份为未加密 JSON，请妥善保管。")
+                toast("已导出 ${summary.first} 条收藏和 ${summary.second} 条普通笔记。备份为未加密 JSON，请妥善保管。")
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) { fail("导出失败：${e.localizedMessage}。目标文件可能不完整，请重新导出。") }
             finally { busy = false }

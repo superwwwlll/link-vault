@@ -165,10 +165,10 @@ internal fun <T> UnderlineTabs(
                         unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         text = {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-                                Text(label(item), fontSize = 15.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
+                                Text(label(item), fontSize = 15.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal, maxLines = 1, softWrap = false)
                                 badge?.invoke(item)?.takeIf { it.isNotEmpty() }?.let {
                                     Spacer(Modifier.width(4.dp))
-                                    Text(it, fontSize = 11.sp)
+                                    Text(it, fontSize = 11.sp, maxLines = 1, softWrap = false)
                                 }
                             }
                         }

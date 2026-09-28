@@ -5,10 +5,13 @@ import android.graphics.Canvas
 import org.robolectric.shadows.ShadowDialog
 import android.net.Uri
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.lifecycle.ViewModelProvider
 import kotlinx.coroutines.runBlocking
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -24,6 +27,9 @@ import java.io.File
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class VisualTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
+
+    /** 截图要拍的是排版，不是 KDF 强度：设备上的 12 万次派生在这里只会把用例拖慢十几秒。 */
+    @Before fun fastKeyDerivation() { NoteCrypto.iterations = 2_000 }
 
     /**
      * 等短动画落地再截图。
@@ -214,6 +220,66 @@ class VisualTest {
             vm.aiEnabled(false); vm.aiEndpoint(Translate.DEFAULT_ENDPOINT)
             vm.aiModel(Translate.DEFAULT_MODEL); vm.aiKey("")
         }
+        // ------------------------------------------------------------ 笔记区（1.5.0 新增）
+        // 库是进程内单例，上面清过收藏；笔记也先清一次，这几张截图每次拍到同一份内容。
+        runBlocking { VaultDb.get(rule.activity).notes().clear() }
+        val masterPassword = "链藏口令 demo 2026"
+        rule.onNode(hasText("笔记") and hasClickAction()).performClick()
+        rule.onNodeWithText("还没有笔记").assertIsDisplayed()
+        // 没设过主密码时这一行只给「设主密码」：没有可解的东西，弹解锁框只是骗用户输一遍密码。
+        rule.onNode(hasText("设主密码") and hasClickAction()).assertIsDisplayed()
+        // 主密码弹窗和改密码页拍不出图：带输入框的 Compose 弹窗在这条 Robolectric 通道里
+        // 窗口停在 0x0，而且 Espresso 永远等不到 idle（60 秒 AppNotIdleException）。
+        // 所以这里直接走控制层，笔记页的三种状态（锁定/掩码/展开）仍然是真实渲染。
+        rule.runOnIdle { vm.notes.setupMaster(masterPassword, masterPassword) }
+        rule.waitUntil(20000) { rule.runOnIdle { vm.notes.hasMaster && vm.notes.unlocked && !vm.notes.busy } }
+        rule.runOnIdle { vm.clearMessage() }
+        // 私密笔记走一遍真实录入：开关拨开之后按钮要跟着变成「加密保存」，这一张图就是编辑页。
+        rule.onAllNodes(hasContentDescription("新建笔记")).onFirst().performClick()
+        rule.onNode(hasSetTextAction()).performTextInput("家里 WiFi：链藏-5G\n管理页口令 hello-vault-2026")
+        rule.onNode(SemanticsMatcher.expectValue(SemanticsProperties.ToggleableState, ToggleableState.Off)).performClick()
+        rule.onNodeWithText("正文加密后才落盘", substring = true).assertIsDisplayed()
+        capture("09-note-editor-light")
+        rule.onNodeWithText("加密保存").performClick()
+        rule.waitUntil(20000) { rule.runOnIdle { vm.notes.rows.size == 1 && vm.notes.draft == null } }
+        rule.onAllNodes(hasContentDescription("新建笔记")).onFirst().performClick()
+        rule.onNode(hasSetTextAction()).performTextInput("12306 账号 superwwwlll · 口令 Vaule-2026!")
+        rule.onNode(SemanticsMatcher.expectValue(SemanticsProperties.ToggleableState, ToggleableState.Off)).performClick()
+        rule.onNodeWithText("加密保存").performClick()
+        rule.waitUntil(20000) { rule.runOnIdle { vm.notes.rows.size == 2 } }
+        // 明文那条直接写库：这一张要的是排版，再走一遍录入没有额外信息。时间给得早一点，
+        // 让它排在两条私密之后，截图里三种状态（明文/掩码/展开）能同屏。
+        runBlocking {
+            VaultDb.get(rule.activity).notes().insert(
+                Note(text = "内网代理 10.20.30.40:8888\n只在公司网络能用，出差要先连 VPN。", createdAt = 1788777600000, updatedAt = 1788777600000)
+            )
+        }
+        rule.waitUntil(20000) { rule.runOnIdle { vm.notes.rows.size == 3 } }
+        rule.runOnIdle { vm.clearMessage() }
+        rule.onNode(hasText("锁定") and hasClickAction()).performClick()
+        rule.waitUntil(20000) { rule.runOnIdle { !vm.notes.unlocked && vm.notes.rows.count { it.locked } == 2 } }
+        capture("10-notes-locked-light")
+        // 「解锁」入口必须真的在屏上点得到；弹窗一旦弹出这条通道就废了，所以点完立刻改走代码。
+        rule.onAllNodes(hasText("解锁") and hasClickAction()).onFirst().assertIsDisplayed()
+        rule.runOnIdle { vm.notes.unlock(masterPassword) }
+        rule.waitUntil(20000) { rule.runOnIdle { vm.notes.unlocked && vm.notes.rows.none { it.locked } } }
+        rule.runOnIdle { vm.clearMessage() }
+        // 「显示」是逐条的：只展开最上面那条，下面那条仍是掩码，一张图同时看清两种状态。
+        rule.onAllNodesWithText("显示").onFirst().performClick()
+        capture("11-notes-unlocked-light")
+        // 改密码弹窗同样拍不出来，这里只验收入口在设置页里存在。
+        rule.onNodeWithText("设置").performClick()
+        rule.onNodeWithText("修改主密码").performScrollTo().assertIsDisplayed()
+        // 提示条的纯文本分支：链接那条 1.4.0 已经拍过，这里要的是「存为笔记」那颗按钮和它下面
+        // 那行「存下来是明文笔记」。口令样子的内容无所谓——它只存在于测试沙箱。
+        rule.onNodeWithText("收藏").performClick()
+        val clipboard = rule.activity.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("label", "工位机登录口令 Vault@2026 每季度换一次"))
+        rule.runOnIdle { vm.checkClipboard(rule.activity) }
+        rule.waitUntil(20000) { rule.runOnIdle { vm.clipboardText != null } }
+        capture("13-clipboard-text-light")
+        rule.runOnIdle { vm.dismissClipboard() }
+        rule.onNodeWithText("设置").performClick()
         rule.onNodeWithText("深色").performScrollTo().performClick()
         rule.onNodeWithText("收藏").performClick()
         capture("06-collection-dark")

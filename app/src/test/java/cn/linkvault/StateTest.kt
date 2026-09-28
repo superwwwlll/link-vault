@@ -71,6 +71,53 @@ class StateTest {
         } finally { Dispatchers.resetMain() }
     }
 
+    /** 纯文本进笔记：短内容不弹、忽略过一次不再弹、存下来是明文、重复文字不写第二条。 */
+    @Test fun clipboardTextGoesIntoANoteAndStaysQuietAfterDismiss() {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
+        try {
+            val app = ApplicationProvider.getApplicationContext<Application>()
+            // 这一类里的其他用例不碰笔记，但库是进程内单例，先清一次才不依赖执行顺序。
+            kotlinx.coroutines.runBlocking { VaultDb.get(app).notes().clear() }
+            val vm = VaultViewModel(app, SavedStateHandle())
+            val cm = app.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            fun awaitNote() = kotlinx.coroutines.runBlocking {
+                // busy 只是"写操作返回了"，列表要等 Room 的 Flow 再推一次才会更新。
+                kotlinx.coroutines.withTimeout(10_000) { while (vm.notes.rows.isEmpty()) kotlinx.coroutines.delay(10) }
+            }
+
+            cm.setPrimaryClip(android.content.ClipData.newPlainText("label", "   "))
+            vm.checkClipboard(app)
+            assertNull("空白剪贴板不该弹条", vm.clipboardText)
+
+            cm.setPrimaryClip(android.content.ClipData.newPlainText("label", "验证码"))
+            vm.checkClipboard(app)
+            assertNull("3 个字太短，弹一次打扰一次", vm.clipboardText)
+
+            cm.setPrimaryClip(android.content.ClipData.newPlainText("label", "内网代理 10.20.30.40:8888"))
+            vm.checkClipboard(app)
+            assertEquals("内网代理 10.20.30.40:8888", vm.clipboardText)
+            assertNull("纯文本不该被当成链接候选", vm.clipboardCandidate)
+
+            vm.saveClipboardAsNote()
+            awaitNote()
+            assertEquals(1, vm.notes.rows.size)
+            assertEquals("内网代理 10.20.30.40:8888", vm.notes.rows.single().text)
+            assertFalse("提示条存下来的默认是明文笔记", vm.notes.rows.single().secret)
+
+            vm.checkClipboard(app)
+            assertNull("已经是笔记了就不再弹", vm.clipboardText)
+
+            cm.setPrimaryClip(android.content.ClipData.newPlainText("label", "白板笔没水了，找行政要"))
+            vm.checkClipboard(app)
+            assertEquals("白板笔没水了，找行政要", vm.clipboardText)
+            vm.dismissClipboard()
+            assertNull(vm.clipboardText)
+            vm.checkClipboard(app)
+            assertNull("用户忽略过一次就该安静", vm.clipboardText)
+            assertEquals(1, vm.notes.rows.size)
+        } finally { Dispatchers.resetMain() }
+    }
+
     @Test fun randomReadPicksBookmark() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         try {
