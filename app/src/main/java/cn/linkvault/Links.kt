@@ -201,9 +201,11 @@ object Links {
         return prettify(candidate)
     }
 
-    /** 标题为空时依次退回：路径推导 → 站点名。永远不把整条 URL 当作标题显示。 */
+    /** 标题为空或只剩「首页」这类空壳时依次退回：路径推导 → 站点名。永远不把整条 URL 当作标题显示。 */
     fun displayTitle(url: String, title: String): String {
-        val given = title.trim()
+        // 显示时再清一遍：1.3.8 之前入库的标题里存着换行符和粘着的站点名，
+        // 不做一次性迁移（升级时不发请求），靠这里让老数据立刻看起来是对的。
+        val given = Titles.cleanse(url, title)
         if (given.isNotEmpty()) return given
         val derived = readable(url)
         if (derived.isNotEmpty()) return derived

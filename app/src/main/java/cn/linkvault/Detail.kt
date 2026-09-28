@@ -15,6 +15,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -278,12 +279,30 @@ internal fun DetailPage(
 
         // 离线正文快照 / 本地阅读模式
         val snapshot = vm.currentSnapshot
+        val translation = vm.currentTranslation
         val fetchingSnapshot = vm.fetchingSnapshot
         var expandedReader by remember { mutableStateOf(false) }
+        var showTranslated by rememberSaveable { mutableStateOf(false) }
 
         if (snapshot != null) {
+            // 译文没生成过时不摆切换：一个点不动的开关比没有开关更糟
+            val readerText = if (showTranslated && translation != null) translation else snapshot
+            if (translation != null) {
+                SegmentedPills(
+                    items = listOf("原文", "译文"),
+                    selectedItem = if (showTranslated) "译文" else "原文",
+                    onSelect = { showTranslated = it == "译文" },
+                    label = { it }
+                )
+            }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionLabel("离线正文快照", trailing = "已缓存 Markdown · ${snapshot.length} 字")
+                SectionLabel(
+                    if (showTranslated && translation != null) "正文译文" else "离线正文快照",
+                    trailing = when {
+                        showTranslated && translation != null -> "译文 ${translation.length} 字"
+                        else -> "已缓存 Markdown · ${snapshot.length} 字"
+                    }
+                )
                 Surface(
                     shape = RoundedCornerShape(14.dp),
                     color = MaterialTheme.colorScheme.surface,
@@ -293,9 +312,9 @@ internal fun DetailPage(
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         SelectionContainer {
                             SnapshotMarkdownViewer(
-                                markdown = snapshot,
+                                markdown = readerText,
                                 expanded = expandedReader,
-                                showImages = canFetch
+                                showImages = canFetch && !(showTranslated && translation != null)
                             )
                         }
                         Row(
@@ -323,6 +342,25 @@ internal fun DetailPage(
                                 Icon(Glyph.Markdown, null, Modifier.size(13.dp))
                                 Spacer(Modifier.width(4.dp))
                                 Text("复制 Markdown", fontSize = 12.sp)
+                            }
+                            // 只有没配好接口时灰掉。已经翻过的直接走缓存，不重复花钱。
+                            OutlinedButton(
+                                onClick = { if (translation == null) vm.translate(item) else showTranslated = true },
+                                enabled = !vm.busy && !vm.translating,
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                                modifier = Modifier.height(30.dp)
+                            ) {
+                                if (vm.translating) {
+                                    CircularProgressIndicator(Modifier.size(11.dp), strokeWidth = 1.6.dp)
+                                    Spacer(Modifier.width(4.dp))
+                                    val (done, total) = vm.translateStep
+                                    Text(if (total > 0) "翻译中 $done/$total 段" else "翻译中…", fontSize = 12.sp)
+                                } else {
+                                    Icon(Glyph.Translate, null, Modifier.size(12.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(if (translation == null) "译成中文" else "看译文", fontSize = 12.sp)
+                                }
                             }
                             if (canFetch) {
                                 OutlinedButton(
@@ -355,6 +393,13 @@ internal fun DetailPage(
                 if (fetchingSnapshot) "正文提取与重排中…" else "提取正文快照 · 离线可读",
                 busy = fetchingSnapshot
             ) { vm.captureSnapshot(item) }
+        } else if (vm.aiEnabled) {
+            // 翻译按钮长在正文卡片里：没快照就没卡片，密钥配好了也找不到入口，这里必须把原因说破。
+            Text(
+                "一键翻译读的是离线正文快照，这条还没有。到「设置 → 联网抓取」打开抓取，" +
+                    "这里就会出现提取正文的入口。",
+                fontSize = 12.sp, lineHeight = 17.sp, color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
 
         // 标签栏

@@ -48,6 +48,7 @@ object Glyph {
     val Shuffle = line("Shuffle", "M16 3H21V8 M4 20L21 3 M21 16V21H16 M15 15L21 21 M4 4L9 9")
     val Globe = line("Globe", "M12 2A10 10 0 1 0 12 22A10 10 0 1 0 12 2 M2 12H22 M12 2A15 15 0 0 1 12 22 M12 2A15 15 0 0 0 12 22")
     val Book = line("Book", "M4 19.5A2.5 2.5 0 0 1 6.5 17H20 M4 4.5A2.5 2.5 0 0 1 6.5 2H20V22H6.5A2.5 2.5 0 0 1 4 19.5V4.5Z")
+    val Translate = line("Translate", "M5 8L11 14 M4 14L10 8L12 5 M2 5H14 M8 2H1 M22 22L17 12L12 22 M14 18H20")
 }
 
 private val DayColors = lightColorScheme(

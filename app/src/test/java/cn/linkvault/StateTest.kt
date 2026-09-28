@@ -105,6 +105,83 @@ class StateTest {
         } finally { Dispatchers.resetMain() }
     }
 
+    @Test fun translationIsLoadedWithTheSnapshotAndDeletedTogether() {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
+        try {
+            val app = ApplicationProvider.getApplicationContext<Application>()
+            val vm = VaultViewModel(app, SavedStateHandle())
+            val id = 4242L
+            Snapshots.save(app, id, "英文正文")
+            Snapshots.saveTranslation(app, id, "中文译文")
+
+            vm.show(Bookmark(id = id, url = "https://example.com/t", canonical = "example.com/t"))
+            awaitUntil { vm.currentSnapshot != null && vm.currentTranslation != null }
+            assertEquals("中文译文", vm.currentTranslation)
+
+            // 译文离开原文没有意义：删快照必须连译文一起删掉
+            vm.removeSnapshot(id)
+            awaitUntil { vm.currentTranslation == null }
+            assertFalse(Snapshots.has(app, id))
+            assertNull(Snapshots.getTranslation(app, id))
+        } finally { Dispatchers.resetMain() }
+    }
+
+    @Test fun tidyTitlesRewritesOnlyEmptyTitlesAndNeverTouchesGoodOnes() {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
+        try {
+            val app = ApplicationProvider.getApplicationContext<Application>()
+            val dao = VaultDb.get(app).bookmarks()
+            val junkId = runBlocking {
+                dao.insert(Bookmark(url = "https://www.zhihu.com/question/1", canonical = "zhihu.com/question/1", title = "首页 - 知乎"))
+            }
+            val goodId = runBlocking {
+                dao.insert(Bookmark(url = "https://example.com/keep", canonical = "example.com/keep", title = "已经很好的标题"))
+            }
+            runBlocking { Snapshots.save(app, junkId, "# 知乎上关于协程的好问题\n\n正文从这里开始。") }
+            val vm = VaultViewModel(app, SavedStateHandle())
+            vm.tidyTitles()
+            awaitUntil { !vm.busy }
+            assertEquals("知乎上关于协程的好问题", runBlocking { dao.byId(junkId) }!!.title)
+            assertEquals("已经很好的标题", runBlocking { dao.byId(goodId) }!!.title)
+            assertTrue(vm.message!!.contains("1 条"))
+        } finally { Dispatchers.resetMain() }
+    }
+
+    @Test fun translateGoesThroughTheSeamOnceAndCachesTheResult() {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
+        val realTransport = Translate.transport
+        try {
+            val app = ApplicationProvider.getApplicationContext<Application>()
+            val id = 5150L
+            runBlocking { Snapshots.save(app, id, "第一段。\n\n第二段。") }
+            var calls = 0
+            Translate.transport = { _, _, _ -> calls++; """{"choices":[{"message":{"content":"译文段落"}}]}""" }
+            val vm = VaultViewModel(app, SavedStateHandle())
+            val item = Bookmark(id = id, url = "https://example.com/x", canonical = "example.com/x")
+
+            // 开关没开、没有快照时都不该发请求
+            vm.translate(item); assertNotNull(vm.error); vm.clearError()
+            vm.show(item)
+            awaitUntil { vm.currentSnapshot != null }
+            vm.aiEnabled(true); vm.aiKey("sk-demo")
+            vm.translate(item)
+            awaitUntil { !vm.translating }
+            assertNull(vm.error)
+            assertEquals("译文段落", vm.currentTranslation)
+            assertEquals(1, calls)
+            assertEquals("译文段落", Snapshots.getTranslation(app, id))
+
+            // 译文已经落盘：重进页面直接读到，不再花一次钱
+            vm.closeDetail()
+            vm.show(item)
+            awaitUntil { vm.currentTranslation != null }
+            assertEquals(1, calls)
+        } finally {
+            Translate.transport = realTransport
+            Dispatchers.resetMain()
+        }
+    }
+
     private fun awaitUntil(condition: () -> Boolean) = runBlocking {
         withTimeout(10_000) { while (!condition()) delay(10) }
     }

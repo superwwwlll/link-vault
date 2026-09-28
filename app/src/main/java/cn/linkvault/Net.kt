@@ -12,6 +12,7 @@ import java.nio.charset.CodingErrorAction
 import java.util.Locale
 import java.util.zip.GZIPInputStream
 import java.util.zip.InflaterInputStream
+import org.json.JSONObject
 
 /**
  * 可选的联网抓取。
@@ -21,12 +22,16 @@ import java.util.zip.InflaterInputStream
  * - 只请求 https，明文 http 直接拒绝；
  * - 页面只读开头一段（标题 96KB、正文 384KB），图片单张封顶 4MB 且只进内存缓存、不落盘；
  * - 不发送 Cookie、不带凭据、不发 Referer、不执行脚本、不跟随跨站重定向链（最多 3 跳，且必须仍是 https）；
- * - 解析出的内容只存在本机数据库里。
+ * - [post] 是唯一的例外出口：翻译走用户自己填的接口，密钥只在 Authorization 头里，
+ *   必须同时在设置里开启「AI 翻译」并由用户点按钮才发，正文会原样发给那个地址；
+ * - 其余抓取与解析结果只存在本机数据库里。
  */
 object Net {
     const val MAX_BYTES = 96 * 1024
     const val MAX_ARTICLE_BYTES = 384 * 1024
     const val MAX_IMAGE_BYTES = 4 * 1024 * 1024
+    /** 一次翻译请求的响应：译文比原文短，512KB 足够，同时挡住失控的返回。 */
+    const val MAX_REPLY_BYTES = 512 * 1024
     const val TIMEOUT_MS = 12_000
     const val MAX_REDIRECTS = 3
 
@@ -92,9 +97,11 @@ object Net {
                 ?.takeIf { it.isNotEmpty() }
         }.orEmpty()
         return Head(
-            title = (Html.metaContent(html, listOf("og:title", "twitter:title")) ?: Html.titleTag(html)).orEmpty().take(200),
-            description = Html.metaContent(html, listOf("og:description", "description", "twitter:description")).orEmpty().take(300),
-            siteName = Html.metaContent(html, listOf("og:site_name", "application-name")).orEmpty().take(60),
+            // 一定要 collapse：og:title 里带换行是常态（网页作者为了排版在 meta 里换行写），
+            // 原样入库会让卡片在句子中间断成两截。
+            title = Html.collapse((Html.metaContent(html, listOf("og:title", "twitter:title")) ?: Html.titleTag(html)).orEmpty()).take(200),
+            description = Html.collapse(Html.metaContent(html, listOf("og:description", "description", "twitter:description")).orEmpty()).take(300),
+            siteName = Html.collapse(Html.metaContent(html, listOf("og:site_name", "application-name")).orEmpty()).take(60),
             image = image.take(500)
         )
     }
@@ -199,14 +206,80 @@ object Net {
     }
 
     /**
+     * 向用户自配的接口发一个 JSON 请求（目前只有翻译在用）。
+     *
+     * 密钥只进 Authorization 头，绝不写进 URL 或日志。错误响应体也要读出来，
+     * 否则「401 / 模型名写错 / 余额不足」在界面上只会变成一句没用的「请求失败」。
+     */
+    fun post(endpoint: String, apiKey: String, body: String): String {
+        require(endpoint.startsWith("https://", true)) { "翻译接口必须走 https" }
+        require(Links.valid(endpoint)) { "翻译接口地址不合法" }
+        require(apiKey.isNotBlank()) { "还没有填写接口密钥" }
+        val originHost = hostOf(endpoint)
+        var target = endpoint
+        var hops = 0
+        while (true) {
+            val connection = (URL(target).openConnection() as HttpURLConnection).apply {
+                connectTimeout = TIMEOUT_MS
+                readTimeout = 60_000
+                instanceFollowRedirects = false
+                requestMethod = "POST"
+                doOutput = true
+                setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                setRequestProperty("Accept", "application/json")
+                setRequestProperty("Authorization", "Bearer $apiKey")
+                setRequestProperty("User-Agent", "LinkVault/1.4 (local bookmark manager)")
+                setRequestProperty("Connection", "close")
+            }
+            try {
+                connection.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
+                val code = connection.responseCode
+                if (code in 300..399) {
+                    val location = connection.getHeaderField("Location")
+                    require(!location.isNullOrBlank()) { "接口返回了空的重定向地址" }
+                    require(hops++ < MAX_REDIRECTS) { "接口重定向次数过多，已停止" }
+                    val next = runCatching { URI(target).resolve(location) }.getOrNull()
+                        ?: error("接口返回的重定向地址无法解析")
+                    target = next.toString()
+                    require(target.startsWith("https://", true) && Links.valid(target)) {
+                        "接口重定向到了不安全或无效的地址，已停止"
+                    }
+                    // 密钥只发给用户自己填的那个主机：跨域跳转一律停，否则一次配置笔误就把 key 送到别人域名上。
+                    val host = hostOf(target)
+                    require(host == originHost) { "接口跳转到了另一个域名（$host），为避免密钥外泄已停止" }
+                    continue
+                }
+                // 非 2xx 时正文在 errorStream 里，那里才有能看懂的原因
+                val raw = if (code in 200..299) connection.inputStream else connection.errorStream ?: connection.inputStream
+                val bytes = openStream(raw, connection.contentEncoding?.lowercase(Locale.ROOT).orEmpty()).use { readBounded(it, MAX_REPLY_BYTES) }
+                val text = String(bytes, Charsets.UTF_8)
+                require(code in 200..299) {
+                    val reason = runCatching { JSONObject(text).optJSONObject("error")?.optString("message")?.trim() }
+                        .getOrNull().orEmpty()
+                    "接口返回 HTTP $code" + if (reason.isBlank()) "" else "：${reason.take(200)}"
+                }
+                return text
+            } catch (e: java.io.IOException) {
+                throw java.io.IOException(e.message ?: "网络请求失败", e)
+            } finally {
+                connection.disconnect()
+            }
+        }
+    }
+
+    private fun hostOf(url: String): String =
+        runCatching { URI(url).host.orEmpty().lowercase(Locale.ROOT) }.getOrDefault("")
+
+    /**
      * 自动处理网络响应流：
      * 1. 识别 Content-Encoding: gzip 或通过 0x1f 0x8b 魔数嗅探，包裹 GZIPInputStream；
      * 2. 识别 deflate 编码，包裹 InflaterInputStream；
      * 3. 避免压缩二进制数据当作文本直接解码导致的严重乱码。
      */
-    internal fun openStream(connection: HttpURLConnection): InputStream {
-        val raw = connection.inputStream
-        val encoding = connection.contentEncoding?.lowercase(Locale.ROOT).orEmpty()
+    internal fun openStream(connection: HttpURLConnection): InputStream =
+        openStream(connection.inputStream, connection.contentEncoding?.lowercase(Locale.ROOT).orEmpty())
+
+    internal fun openStream(raw: InputStream, encoding: String = ""): InputStream {
         val buffered = BufferedInputStream(raw)
         buffered.mark(4)
         val magic = ByteArray(2)

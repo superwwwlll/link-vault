@@ -71,7 +71,7 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
     fun scope(value: Int) { if (value in 0..3) { scope = value; saved["scope"] = value; clearMessage() } }
     fun setSort(value: Int) { if (value in 0..3) { sortOrder = value; saved["sort"] = value; prefs.edit().putInt("sort", value).apply() } }
     fun show(item: Bookmark) { detailId = item.id; saved["detail"] = item.id; loadSnapshot(item.id); clearMessage() }
-    fun closeDetail() { detailId = null; saved["detail"] = null; currentSnapshot = null; clearMessage() }
+    fun closeDetail() { detailId = null; saved["detail"] = null; currentSnapshot = null; currentTranslation = null; clearMessage() }
     fun tag(value: String) { scope(0); filter(value); search(""); closeDetail(); tab(0) }
 
     // ------------------------------------------------------------ 离线正文快照
@@ -79,11 +79,24 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
     var currentSnapshot by mutableStateOf<String?>(null); private set
     var fetchingSnapshot by mutableStateOf(false); private set
 
+    /**
+     * 详情页的译文与进行状态。刻意与 [currentSnapshot] 同级声明：
+     * init 里就会读它们，放在后面会拿到尚未初始化的委托属性。
+     */
+    var currentTranslation by mutableStateOf<String?>(null); private set
+    var translating by mutableStateOf(false); private set
+    var translateStep by mutableStateOf(0 to 0); private set
+
     private fun loadSnapshot(id: Long) {
+        currentTranslation = null
+        translating = false
         viewModelScope.launch {
-            val text = withContext(Dispatchers.IO) { Snapshots.get(app, id) }
+            val text = withContext(Dispatchers.IO) { Snapshots.get(app, id) to Snapshots.getTranslation(app, id) }
             // 只认当前这条详情：快速连点两条时，先读完的那条不该把正文塞给后打开的那条。
-            if (detailId == id) currentSnapshot = text
+            if (detailId == id) {
+                currentSnapshot = text.first
+                currentTranslation = text.second
+            }
         }
     }
 
@@ -106,14 +119,21 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
             fetchingId = item.id
             val head = runCatching { withContext(Dispatchers.IO) { Net.fetchHead(item.url) } }.getOrNull()
             fetchingId = null
+            var applied = ""
             if (head != null && !head.isEmpty) {
-                dao.applyFetch(item.id, head.description.take(8000), head.siteName.take(200),
-                    item.title.ifBlank { head.title.take(200) }, head.image.ifBlank { item.image }, System.currentTimeMillis())
+                applied = Titles.resolve(item.url, item.title, head.title, head.siteName)
+                dao.applyFetch(item.id, head.description.take(8000), head.siteName.take(200), applied,
+                    head.image.ifBlank { item.image }, System.currentTimeMillis())
             }
             fetchingSnapshot = true
             val text = runCatching { fetchAndSaveSnapshot(item) }.getOrNull()
             fetchingSnapshot = false
             if (text != null && detailId == item.id) currentSnapshot = text
+            // 页面标题本身就是「首页」这类空壳时，退到正文里取名字。只读刚落盘的快照，不再联网。
+            if (text != null && Titles.meaningless(item.url, applied.ifBlank { item.title })) {
+                val derived = Titles.fromArticle(text)
+                if (derived.isNotEmpty()) dao.setTitle(item.id, derived.take(Titles.LIMIT))
+            }
         }
     }
 
@@ -145,8 +165,78 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
     fun removeSnapshot(id: Long) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) { Snapshots.delete(app, id) }
-            if (detailId == id) currentSnapshot = null
+            if (detailId == id) { currentSnapshot = null; currentTranslation = null }
             toast("已删除正文快照")
+        }
+    }
+
+    // ------------------------------------------------------------ 标题整理（完全离线）
+
+    /**
+     * 用本机已有的信息把标题重取一遍：剥掉换行与尾部站点名，空壳标题改用正文快照里的
+     * `# 一级标题` 或第一句话。不发任何请求 —— 升级安装时顺手联网是不可接受的。
+     */
+    fun tidyTitles() {
+        if (busy) return
+        busy = true
+        viewModelScope.launch {
+            try {
+                val rows = dao.all()
+                val plans = withContext(Dispatchers.IO) {
+                    rows.mapNotNull { item ->
+                        val next = Titles.resolve(item.url, item.title, "", item.siteName, Snapshots.get(app, item.id))
+                        if (next.isEmpty() || next == item.title) null else item.id to next
+                    }
+                }
+                if (plans.isEmpty()) { toast("没有需要整理的标题"); return@launch }
+                db.withTransaction { plans.forEach { (id, title) -> check(dao.setTitle(id, title) == 1) { "收藏已不存在" } } }
+                toast("已按内容整理 ${plans.size} 条标题，原文与笔记未改动")
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) { fail("整理标题失败，改动已整体回滚：${e.localizedMessage}") }
+            finally { busy = false }
+        }
+    }
+
+    // ------------------------------------------------------------ AI 翻译（用户自备接口）
+
+    var aiEnabled by mutableStateOf(settings.getBoolean("aiOn", false)); private set
+    var aiEndpoint by mutableStateOf(settings.getString("aiEndpoint", Translate.DEFAULT_ENDPOINT).orEmpty()); private set
+    var aiModel by mutableStateOf(settings.getString("aiModel", Translate.DEFAULT_MODEL).orEmpty()); private set
+
+    /**
+     * 密钥。存在应用私有目录的 SharedPreferences 里，是明文：
+     * 这台设备没有 Android Keystore 之外的更轻方案能既不引依赖又不落明文，
+     * 所以边界写成「不 root 就拿不到」，并在设置页如实告诉用户。
+     */
+    var aiKey by mutableStateOf(settings.getString("aiKey", "").orEmpty()); private set
+
+    val canTranslate: Boolean get() = aiEnabled && Translate.Config(aiEndpoint, aiKey, aiModel).ready
+
+    fun aiEnabled(value: Boolean) { aiEnabled = value; settings.edit().putBoolean("aiOn", value).apply() }
+    fun aiEndpoint(value: String) { aiEndpoint = value.trim(); settings.edit().putString("aiEndpoint", aiEndpoint).apply() }
+    fun aiModel(value: String) { aiModel = value.trim().take(100); settings.edit().putString("aiModel", aiModel).apply() }
+    fun aiKey(value: String) { aiKey = value.trim(); settings.edit().putString("aiKey", aiKey).apply() }
+    fun clearAiKey() { aiKey = ""; settings.edit().remove("aiKey").apply(); toast("已清除接口密钥") }
+
+    /** 翻译当前详情页的正文快照。结果落盘一份，重进页面不再重复花钱。 */
+    fun translate(item: Bookmark) {
+        if (translating || busy) return
+        val source = currentSnapshot
+        if (source.isNullOrBlank()) { fail("这条还没有正文快照，先提取正文再翻译"); return }
+        if (!aiEnabled) { fail("先在「设置 → AI 翻译」打开开关"); return }
+        val config = Translate.Config(aiEndpoint, aiKey, aiModel)
+        if (!config.ready) { fail("接口地址必须是 https，并且要填密钥"); return }
+        translating = true
+        translateStep = 0 to 0
+        viewModelScope.launch {
+            try {
+                val text = Translate.translate(config, source) { done, total -> translateStep = done to total }
+                if (detailId == item.id) currentTranslation = text
+                withContext(Dispatchers.IO) { Snapshots.saveTranslation(app, item.id, text) }
+                toast("已译成简体中文 · ${text.length} 字")
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) { fail("翻译失败：${e.localizedMessage ?: "未知错误"}") }
+            finally { translating = false }
         }
     }
 
@@ -498,7 +588,7 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
                 if (fetchEnabled && url.startsWith("https://", true)) {
                     val head = runCatching { withContext(Dispatchers.IO) { Net.fetchHead(url) } }.getOrNull()
                     if (head != null && !head.isEmpty) {
-                        val title = if (head.title.isNotBlank()) head.title.take(200) else readableTitle
+                        val title = Titles.cleanse(url, head.title, head.siteName).ifBlank { readableTitle }
                         dao.applyFetch(id, head.description.take(8000), head.siteName.take(200), title, head.image, System.currentTimeMillis())
                     }
                     runCatching { fetchAndSaveSnapshot(item.copy(id = id)) }
@@ -551,10 +641,12 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
                 } else {
                     val now = System.currentTimeMillis()
                     val tags = parseTags(d.tags).joinToString(",")
+                    // 手打的标题也折叠空白：正文粘贴进来常带换行，卡片会在句子中间断成两截。
+                    val title = Titles.collapse(d.title).take(Titles.LIMIT)
                     val item = existing?.copy(
-                        url = url, canonical = key, title = d.title.trim(), notes = d.notes.trim(), tags = tags, updatedAt = now
+                        url = url, canonical = key, title = title, notes = d.notes.trim(), tags = tags, updatedAt = now
                     ) ?: Bookmark(
-                        url = url, canonical = key, title = d.title.trim(), notes = d.notes.trim(), tags = tags,
+                        url = url, canonical = key, title = title, notes = d.notes.trim(), tags = tags,
                         createdAt = now, updatedAt = now
                     )
                     val id = if (d.id == 0L) dao.insert(item) else { check(dao.update(item) == 1) { "原收藏已不存在" }; d.id }
@@ -611,7 +703,7 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
         viewModelScope.launch {
             try {
                 val head = withContext(Dispatchers.IO) { Net.fetchHead(item.url) }
-                val title = if (item.title.isBlank()) head.title.take(200) else item.title
+                val title = Titles.resolve(item.url, item.title, head.title, head.siteName)
                 check(dao.applyFetch(item.id, head.description.take(8000), head.siteName.take(200), title, head.image.ifBlank { item.image }, System.currentTimeMillis()) == 1) { "收藏已不存在" }
                 toast(if (head.isEmpty) "页面里没有找到标题或描述" else "已抓取页面标题与描述")
             } catch (e: CancellationException) { throw e }

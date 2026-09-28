@@ -108,6 +108,10 @@ class VisualTest {
         // 空态收纳后这三行是详情页的主要入口，必须单独拍一张。
         rule.runOnIdle { vm.fetchEnabled(true) }
         capture("02b-detail-empty-light")
+        // 密钥配好了、但这条没快照：翻译按钮所在的正文卡片根本不存在，详情页得自己把原因说清楚。
+        rule.runOnIdle { vm.fetchEnabled(false); vm.aiEnabled(true); vm.aiKey("sk-demo-key") }
+        capture("02f-detail-needs-snapshot-light")
+        rule.runOnIdle { vm.aiEnabled(false); vm.aiKey(""); vm.fetchEnabled(true) }
         // 上面两张是「什么都没抓到」的样子。抓到封面图和带图正文之后长什么样，得再拍两张。
         val coverUrl = "https://pbs.twimg.com/media/cover.png"
         val inlineUrl = "https://example.com/diagram.png"
@@ -149,6 +153,31 @@ class VisualTest {
         rule.waitUntil(20_000) { Images.cached(inlineUrl) != null }
         rule.onNode(hasContentDescription("一张流程图"), useUnmergedTree = true).performScrollTo()
         capture("02d-detail-snapshot-image-light")
+        // 译文视图：正文之上多一个「原文/译文」切换，切到译文时图片不摆出来。
+        // 这里直接写译文文件，不走 Translate.transport：截图要拍的是排版，不是网络。
+        val translated = """
+            # 带图片的正文
+
+            这段文字要足够长，才能看清译文和原文用的是同一套排版，也才点得到下面的展开按钮。
+            第二段说明：切换开关只有一段译文存在时才出现，没有译文时不摆一个点不动的开关。
+            第三段收尾：译文里不加载图片，图裂的样子不该出现在阅读模式里。
+
+            > 一句引用：留白让内容呼吸。
+
+            - 列表第一项
+            - 列表第二项
+        """.trimIndent()
+        runBlocking { Snapshots.saveTranslation(rule.activity, before.id, translated) }
+        rule.onNodeWithContentDescription("返回").performClick()
+        rule.onNodeWithText("值得慢慢看的宇宙").performClick()
+        rule.waitUntil(20_000) { rule.runOnIdle { vm.currentTranslation != null } }
+        rule.onNodeWithText("译文").performScrollTo().performClick()
+        rule.runOnIdle { check(vm.currentTranslation == translated) }
+        // 只滚到卡片标题，正文还在屏幕外；拍到译文中间才算真看清了排版。
+        rule.onNode(hasText("切换开关只有一段译文存在时才出现", substring = true), useUnmergedTree = true).performScrollTo()
+        capture("02e-detail-translated-light")
+        rule.onNodeWithText("原文").performClick()
+        rule.onNodeWithText("离线正文快照").performScrollTo().assertExists()
         // 造出来的封面图和快照只为了拍这两张图，必须还原：后面的列表与深色截图不能带上测试文案。
         runBlocking {
             val dao = VaultDb.get(rule.activity).bookmarks()
@@ -156,7 +185,7 @@ class VisualTest {
             Snapshots.delete(rule.activity, before.id)
         }
         Images.clear()
-        rule.onNodeWithText("收起阅读模式").performScrollTo().performClick()
+        // 重新进过一次详情页，阅读模式回到折叠态，编辑按钮本来就在可视区内，直接点。
         rule.runOnIdle { vm.fetchEnabled(false) }
         Images.fetcher = { Net.fetchImage(it) }
         rule.onNodeWithContentDescription("编辑收藏").performClick()
@@ -174,7 +203,18 @@ class VisualTest {
         rule.onNodeWithText("设置").performClick()
         rule.onNodeWithText("导出收藏").assertExists()
         capture("05-settings-light")
-        rule.onNodeWithText("深色").performClick()
+        // AI 翻译默认收起，展开后的配置表单是这一版新增的主要入口，单独拍一张。
+        rule.runOnIdle {
+            vm.aiEnabled(true); vm.aiEndpoint("https://api.example.com/v1/chat/completions")
+            vm.aiModel("gpt-4o-mini"); vm.aiKey("sk-demo-key-0123456789")
+        }
+        rule.onNodeWithText("接口密钥").performScrollTo()
+        capture("05b-settings-ai-light")
+        rule.runOnIdle {
+            vm.aiEnabled(false); vm.aiEndpoint(Translate.DEFAULT_ENDPOINT)
+            vm.aiModel(Translate.DEFAULT_MODEL); vm.aiKey("")
+        }
+        rule.onNodeWithText("深色").performScrollTo().performClick()
         rule.onNodeWithText("收藏").performClick()
         capture("06-collection-dark")
         val uri = Uri.parse("content://cn.linkvault.test/backup.json")

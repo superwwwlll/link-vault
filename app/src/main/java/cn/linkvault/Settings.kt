@@ -138,6 +138,78 @@ internal fun SettingsPage(
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                SectionLabel("标题整理")
+                Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(0.7.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)), shadowElevation = 0.5.dp) {
+                    Column {
+                        SettingRow(Glyph.Sort, "按内容整理标题", "离线：去掉换行与尾部站点名，空壳标题改用正文里的标题或首句", !vm.busy, vm::tidyTitles)
+                    }
+                }
+                Text("只读本机已有的正文快照，不发任何请求；改坏的标题可以在编辑页改回去。",
+                    fontSize = 11.5.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                SectionLabel("AI 翻译", trailing = when {
+                    !vm.aiEnabled -> "默认关闭"
+                    vm.canTranslate -> "已配置"
+                    else -> "还缺密钥"
+                })
+                Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(0.7.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)), shadowElevation = 0.5.dp) {
+                    Column {
+                        SwitchRow(Glyph.Translate, "启用翻译", "详情页把离线正文快照译成简体中文；快照要「联网抓取」才会产生", vm.aiEnabled, !vm.busy) { vm.aiEnabled(it) }
+                        if (vm.aiEnabled) {
+                            Column(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedTextField(
+                                    value = vm.aiEndpoint,
+                                    onValueChange = { vm.aiEndpoint(it.take(300)) },
+                                    label = { Text("接口地址（OpenAI 兼容）") },
+                                    singleLine = true,
+                                    placeholder = { Text(Translate.DEFAULT_ENDPOINT) },
+                                    textStyle = LocalTextStyle.current.copy(fontSize = 13.sp),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                OutlinedTextField(
+                                    value = vm.aiModel,
+                                    onValueChange = { vm.aiModel(it.take(100)) },
+                                    label = { Text("模型名") },
+                                    singleLine = true,
+                                    placeholder = { Text(Translate.DEFAULT_MODEL) },
+                                    textStyle = LocalTextStyle.current.copy(fontSize = 13.sp),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                OutlinedTextField(
+                                    value = vm.aiKey,
+                                    onValueChange = { vm.aiKey(it.take(400)) },
+                                    label = { Text("接口密钥") },
+                                    singleLine = true,
+                                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                                    textStyle = LocalTextStyle.current.copy(fontSize = 13.sp),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    OutlinedButton(
+                                        onClick = { vm.clearAiKey() },
+                                        shape = RoundedCornerShape(11.dp),
+                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                        modifier = Modifier.height(32.dp)
+                                    ) { Text("清除密钥", fontSize = 12.sp) }
+                                    if (!vm.canTranslate) Text("地址必须是 https，密钥必填", fontSize = 11.5.sp, color = MaterialTheme.colorScheme.error)
+                                }
+                            }
+                        }
+                    }
+                }
+                // 这是本应用唯一的第三方数据出口，必须说清楚，不能只写「启用翻译」四个字
+                Text(
+                    "翻译会把整段正文原样发给你填的那个地址，费用记在你的账号上：一篇最多 24,000 字，" +
+                        "按段发送，最多 20 段，每段等 60 秒，长文可能要等几分钟。密钥存在本机应用私有目录（明文，" +
+                        "未 root 的设备上其他应用读不到），不导入备份、不同步、不参与更新检查；" +
+                        "接口地址跨域跳转时一律停止，避免密钥被送到别的域名。不用时请关掉开关。",
+                    fontSize = 11.5.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 SectionLabel("本地备份")
                 Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(0.7.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)), shadowElevation = 0.5.dp) {
                     Column {

@@ -77,6 +77,8 @@ interface BookmarkDao {
     @Query("UPDATE bookmarks SET archived = :value WHERE id = :id") suspend fun archive(id: Long, value: Boolean): Int
     @Query("UPDATE bookmarks SET read = :value WHERE id = :id") suspend fun markRead(id: Long, value: Boolean): Int
     @Query("UPDATE bookmarks SET tags = :tags WHERE id = :id") suspend fun setTags(id: Long, tags: String): Int
+    /** 整理标题走这里：和 setTags 同理，内容清洗不该把条目顶到列表最前面。 */
+    @Query("UPDATE bookmarks SET title = :title WHERE id = :id") suspend fun setTitle(id: Long, title: String): Int
     @Query("UPDATE bookmarks SET summary = :summary, siteName = :siteName, title = :title, image = :image, fetchedAt = :now WHERE id = :id")
     suspend fun applyFetch(id: Long, summary: String, siteName: String, title: String, image: String, now: Long): Int
 }
