@@ -15,6 +15,8 @@ android {
         versionName = "1.5.0"
     }
     buildFeatures { compose = true }
+    // 迁移测试直接读取已版本化的历史 schema，避免遗漏或维护两份副本。
+    sourceSets.getByName("test").resources.srcDir("schemas")
     // 发布包沿用与调试包同一把签名钥匙，这样已装在手机上的版本能直接覆盖升级
     // （换钥匙会让老用户只能卸载重装、连带丢光收藏）。
     // 钥匙由 Docker 卷 link-vault-debug-signing 挂在 /root/.android 下提供；
@@ -42,7 +44,10 @@ android {
     kotlinOptions { jvmTarget = "17" }
     testOptions {
         unitTests.isIncludeAndroidResources = true
-        unitTests.all { it.systemProperty("vault.screenshots", "${rootProject.projectDir}/deliverables/screenshots") }
+        unitTests.all {
+            it.systemProperty("vault.screenshots", providers.gradleProperty("vaultScreenshots")
+                .getOrElse("${rootProject.projectDir}/deliverables/screenshots"))
+        }
     }
     lint { abortOnError = true }
 }

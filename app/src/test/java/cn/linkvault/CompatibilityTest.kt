@@ -16,13 +16,14 @@ import org.robolectric.annotation.Config
 class CompatibilityTest {
     private fun openV1(name: String): SQLiteDatabase = openFixture("room-v1-schema.json", name)
 
-    private fun openV4(name: String): SQLiteDatabase = openFixture("room-v4-schema.json", name)
+    private fun openV4(name: String): SQLiteDatabase = openFixture("cn.linkvault.VaultDb/4.json", name)
 
     /** 按某个历史版本的 schema 手工建库，用来真实走一遍升级路径。 */
     private fun openFixture(resource: String, name: String): SQLiteDatabase {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val file = context.getDatabasePath(name); file.parentFile!!.mkdirs()
-        val schema = JSONObject(javaClass.classLoader!!.getResourceAsStream(resource)!!.bufferedReader().use { it.readText() }).getJSONObject("database")
+        val stream = requireNotNull(javaClass.classLoader!!.getResourceAsStream(resource)) { "缺少历史 schema 测试资源：$resource" }
+        val schema = JSONObject(stream.bufferedReader().use { it.readText() }).getJSONObject("database")
         val old = SQLiteDatabase.openOrCreateDatabase(file, null)
         val entities = schema.getJSONArray("entities")
         for (i in 0 until entities.length()) {

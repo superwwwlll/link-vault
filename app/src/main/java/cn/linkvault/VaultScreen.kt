@@ -94,7 +94,7 @@ fun VaultScreen(vm: VaultViewModel) {
                 .setColorScheme(if (isDark) CustomTabsIntent.COLOR_SCHEME_DARK else CustomTabsIntent.COLOR_SCHEME_LIGHT)
                 .setDefaultColorSchemeParams(
                     CustomTabColorSchemeParams.Builder()
-                        .setToolbarColor(if (isDark) 0xFF18181B.toInt() else 0xFFFAF8F5.toInt())
+                        .setToolbarColor(if (isDark) 0xFF232322.toInt() else 0xFFF8F7F4.toInt())
                         .build()
                 )
                 .build()
@@ -158,8 +158,8 @@ fun VaultScreen(vm: VaultViewModel) {
                         HorizontalDivider(thickness = 0.6.dp, color = MaterialTheme.colorScheme.outlineVariant)
                         NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
                             listOf("收藏" to Glyph.Bookmark, "笔记" to Glyph.Note, "标签" to Glyph.Tag, "设置" to Glyph.Settings).forEachIndexed { index, (label, icon) ->
-                                NavigationBarItem(selected = vm.tab == index, onClick = { vm.tab(index) }, icon = { Icon(icon, label, Modifier.size(22.dp)) }, label = { Text(label, fontSize = 12.sp) },
-                                    colors = NavigationBarItemDefaults.colors(indicatorColor = MaterialTheme.colorScheme.primaryContainer, selectedIconColor = MaterialTheme.colorScheme.primary, selectedTextColor = MaterialTheme.colorScheme.primary, unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant, unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant))
+                                NavigationBarItem(selected = vm.tab == index, onClick = { vm.tab(index) }, icon = { Icon(icon, label, Modifier.size(20.dp)) }, label = { Text(label, fontSize = 11.sp, fontWeight = if (vm.tab == index) FontWeight.SemiBold else FontWeight.Normal) },
+                                    colors = NavigationBarItemDefaults.colors(indicatorColor = MaterialTheme.colorScheme.surfaceVariant, selectedIconColor = MaterialTheme.colorScheme.onSurface, selectedTextColor = MaterialTheme.colorScheme.onSurface, unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant, unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant))
                             }
                         }
                     }
@@ -178,11 +178,11 @@ fun VaultScreen(vm: VaultViewModel) {
                         // 笔记页的 + 建笔记，收藏页的 + 建收藏：同一个位置，两种意图。
                         if (vm.tab == 1) vm.notes.create() else vm.edit(Draft())
                     },
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(50),
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
-                    elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 2.dp, pressedElevation = 0.dp),
-                    modifier = Modifier.size(52.dp)
+                    elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 1.dp, pressedElevation = 0.dp),
+                    modifier = Modifier.size(56.dp)
                 ) {
                     Icon(Glyph.Add, contentDescription = if (vm.tab == 1) "新建笔记" else "收藏链接", modifier = Modifier.size(22.dp))
                 }

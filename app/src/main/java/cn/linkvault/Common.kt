@@ -1,15 +1,14 @@
 package cn.linkvault
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
@@ -18,11 +17,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -34,11 +34,10 @@ import java.util.Locale
 
 @Composable
 internal fun RootHeading(title: String, subtitle: String = "") {
-    Column(Modifier.padding(top = 14.dp, bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(Modifier.padding(top = 20.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(title, fontSize = 24.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.5).sp, color = MaterialTheme.colorScheme.onBackground)
-            Spacer(Modifier.weight(1f))
-            Text("LINK VAULT", fontSize = 10.5.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 2.0.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
+            Text(title, Modifier.weight(1f), fontSize = 26.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.5).sp, color = MaterialTheme.colorScheme.onBackground)
+            Text("LINK VAULT", fontSize = 10.sp, fontWeight = FontWeight.Medium, letterSpacing = 1.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (subtitle.isNotEmpty()) Text(subtitle, fontSize = 13.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
@@ -63,11 +62,11 @@ internal fun SearchBox(value: String, onChange: (String) -> Unit, placeholder: S
         },
         leadingIcon = { Icon(Glyph.Search, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant) },
         trailingIcon = { if (value.isNotEmpty()) IconButton(onClick = { onChange("") }) { Icon(Glyph.Close, "清空搜索", Modifier.size(16.dp)) } },
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = OutlinedTextFieldDefaults.colors(
-            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f),
-            focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
-            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
+            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
             focusedContainerColor = MaterialTheme.colorScheme.surface
         ),
         modifier = modifier.fillMaxWidth()
@@ -77,7 +76,7 @@ internal fun SearchBox(value: String, onChange: (String) -> Unit, placeholder: S
 @Composable
 internal fun TagPill(text: String, trailing: String = "", onClick: (() -> Unit)? = null) {
     Surface(
-        shape = RoundedCornerShape(7.dp),
+        shape = RoundedCornerShape(8.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
         border = BorderStroke(0.6.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
@@ -93,7 +92,7 @@ internal fun TagPill(text: String, trailing: String = "", onClick: (() -> Unit)?
 }
 
 /**
- * 手记便签卡片：ChunUI panel 沉降质感。
+ * 手记使用浅中性底，与正文区分而不争夺标题的视觉优先级。
  */
 @Composable
 internal fun NoteSnippetCard(
@@ -137,10 +136,10 @@ internal fun NoteSnippetCard(
 }
 
 /**
- * ChunUI CCSegmentedControl 风格凹槽分段控制。
+ * 等宽分段筛选：浅底承托选中胶囊，窄屏优先保留标签文字。
  */
 @Composable
-internal fun <T> UnderlineTabs(
+internal fun <T> ScopeTabs(
     items: List<T>,
     selectedItem: T,
     onSelect: (T) -> Unit,
@@ -148,48 +147,28 @@ internal fun <T> UnderlineTabs(
     modifier: Modifier = Modifier,
     badge: ((T) -> String?)? = null
 ) {
-    val count = items.size.coerceAtLeast(1)
-    val selectedIndex = items.indexOf(selectedItem).coerceAtLeast(0)
-    val progress by animateFloatAsState(selectedIndex.toFloat(), tween(220), label = "tabIndicator")
-    val indicatorColor = MaterialTheme.colorScheme.primary
-    Column(modifier) {
-        Box {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
-                items.forEach { item ->
-                    val isSelected = item == selectedItem
-                    Tab(
-                        selected = isSelected,
-                        onClick = { onSelect(item) },
-                        modifier = Modifier.weight(1f),
-                        selectedContentColor = MaterialTheme.colorScheme.primary,
-                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        text = {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-                                Text(label(item), fontSize = 15.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal, maxLines = 1, softWrap = false)
-                                badge?.invoke(item)?.takeIf { it.isNotEmpty() }?.let {
-                                    Spacer(Modifier.width(4.dp))
-                                    Text(it, fontSize = 11.sp, maxLines = 1, softWrap = false)
-                                }
-                            }
+    Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surfaceVariant, modifier = modifier) {
+        Row(Modifier.fillMaxWidth().selectableGroup().padding(4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+            items.forEach { item ->
+                val isSelected = item == selectedItem
+                val background by animateColorAsState(if (isSelected) MaterialTheme.colorScheme.surface else Color.Transparent, tween(160), label = "scopePill")
+                Surface(
+                    onClick = { onSelect(item) },
+                    modifier = Modifier.weight(1f).semantics { selected = isSelected; role = Role.Tab },
+                    shape = RoundedCornerShape(10.dp),
+                    color = background,
+                    contentColor = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                ) {
+                    Row(Modifier.heightIn(min = 48.dp).padding(horizontal = 4.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                        Text(label(item), Modifier.weight(1f, fill = false), fontSize = 13.sp, fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        badge?.invoke(item)?.takeIf { it.isNotEmpty() }?.let {
+                            Spacer(Modifier.width(4.dp))
+                            Text(it, fontSize = 10.sp, maxLines = 1, softWrap = false)
                         }
-                    )
+                    }
                 }
             }
-            // 指示条按页签等宽插值滑动；以前只有一条整宽分隔线，选中项只靠加粗区分，扫一眼看不出可点
-            Canvas(Modifier.matchParentSize()) {
-                val cell = size.width / count
-                val barWidth = cell * 0.52f
-                val left = cell * (progress + 0.5f) - barWidth / 2f
-                val height = 2.dp.toPx()
-                drawRoundRect(
-                    color = indicatorColor,
-                    topLeft = Offset(left, size.height - height),
-                    size = Size(barWidth, height),
-                    cornerRadius = CornerRadius(height / 2f)
-                )
-            }
         }
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f), thickness = 1.dp)
     }
 }
 
@@ -202,7 +181,6 @@ internal fun <T> SegmentedPills(
     modifier: Modifier = Modifier,
     badge: ((T) -> String?)? = null
 ) {
-    val isDark = LocalVaultDark.current
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f),
@@ -217,7 +195,7 @@ internal fun <T> SegmentedPills(
                 val shape = RoundedCornerShape(12.dp)
                 val pillColor by animateColorAsState(
                     if (selected) {
-                        if (isDark) Color(0xFF27272A) else MaterialTheme.colorScheme.surface
+                        MaterialTheme.colorScheme.surface
                     } else Color.Transparent,
                     animationSpec = tween(160),
                     label = "segmentedPill"
@@ -265,10 +243,10 @@ internal fun EmptyState(icon: ImageVector, title: String, subtitle: String = "")
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Box(
-            Modifier.size(76.dp).background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(24.dp)),
+             Modifier.size(64.dp).border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.surface, RoundedCornerShape(20.dp)),
             contentAlignment = Alignment.Center
         ) {
-            Icon(icon, null, Modifier.size(32.dp), tint = MaterialTheme.colorScheme.primary)
+            Icon(icon, null, Modifier.size(26.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Text(title, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
         if (subtitle.isNotBlank()) {
@@ -347,4 +325,3 @@ internal fun Banner(text: String, tone: BannerTone, modifier: Modifier = Modifie
 }
 
 internal enum class BannerTone { Info, Warn }
-

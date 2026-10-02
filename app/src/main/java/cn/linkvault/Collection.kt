@@ -91,7 +91,7 @@ internal fun CollectionPage(
                 RootHeading("我的收藏")
                 androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
                     val tabContent: @Composable (Modifier) -> Unit = { tabModifier ->
-                        UnderlineTabs(
+                        ScopeTabs(
                             items = listOf(0, 1, 2, 3),
                             selectedItem = vm.scope,
                             onSelect = { index -> vm.scope(index) },
@@ -122,10 +122,10 @@ internal fun CollectionPage(
                     ) {
                         tagNames.forEach { tag ->
                             val selected = vm.filter == tag
-                            val shape = RoundedCornerShape(8.dp)
+                            val shape = RoundedCornerShape(50)
                             Surface(
                                 shape = shape,
-                                color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+                                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
                                 border = if (selected) null else BorderStroke(0.6.dp, MaterialTheme.colorScheme.outlineVariant),
                                 modifier = Modifier
                                     .clip(shape)
@@ -135,7 +135,7 @@ internal fun CollectionPage(
                                     tag,
                                     fontSize = 11.5.sp,
                                     fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
                                     maxLines = 1
                                 )
@@ -191,7 +191,8 @@ internal fun CollectionPage(
                         vm.scope == 2 -> "暂无已读收藏"
                         vm.scope == 1 -> "已全部读完"
                         else -> "未找到匹配收藏"
-                    }
+                    },
+                    if (vm.items.isEmpty()) "从分享菜单或右下角 +，为值得回看的链接留个位置。" else "试试其他筛选，或换个关键词。"
                 )
             }
         } else {
@@ -278,7 +279,7 @@ private fun SortMenuButton(sortOrder: Int, onSelectSort: (Int) -> Unit) {
     }
 }
 
-private val CardShape = RoundedCornerShape(18.dp)
+private val CardShape = RoundedCornerShape(16.dp)
 
 @Composable
 private fun SwipeableBookmarkCard(
@@ -322,8 +323,7 @@ private fun SwipeableBookmarkCard(
                 val direction = dismissState.dismissDirection
                 val isReadAction = direction == SwipeToDismissBoxValue.StartToEnd
                 val (bgColor, tintColor) = if (isReadAction) {
-                    if (isDark) Color(0xFF1E3A8A) to Color(0xFF60A5FA)
-                    else Color(0xFFEFF6FF) to Color(0xFF007AFF)
+                    MaterialTheme.colorScheme.primaryContainer to MaterialTheme.colorScheme.onPrimaryContainer
                 } else {
                     if (isDark) Color(0xFF27272A) to Color(0xFFD4D4D8)
                     else Color(0xFFF4F4F5) to Color(0xFF52525B)
@@ -408,7 +408,7 @@ private fun BookmarkCard(
             shape = CardShape,
             color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
             border = BorderStroke(0.6.dp, if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant),
-            shadowElevation = 0.5.dp,
+            shadowElevation = 0.dp,
             modifier = Modifier.fillMaxWidth().clip(CardShape).combinedClickable(
                 onClick = if (selectionMode) onToggleSelection else onClick,
                 onLongClick = {
@@ -419,7 +419,7 @@ private fun BookmarkCard(
         ) {
             // 标题是卡片的第一视觉：来源色块从顶部横排挪到底部元信息行，
             // 正文因此占满宽度，两行标题不再被色块挤成三行。
-            Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     displayTitle,
                     fontSize = 16.sp,

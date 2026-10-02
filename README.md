@@ -213,6 +213,21 @@ APK 发布在 <https://github.com/superwwwlll/link-vault/releases>。
 
 ## 构建
 
+### Apple Silicon 本地 UI 预览（新增）
+
+```bash
+bash setup-macos.sh
+bash preview-ui-macos.sh
+```
+
+工具安装在 `~/.local/share/link-vault-android/`，不修改系统 Java 配置：JDK 17（ARM64）、Gradle 8.9、Android 35 SDK、build-tools 34.0.0。
+脚本校验 JDK、Gradle 与 SDK 命令行工具下载包，并接受 Android SDK 许可证。
+本地预览执行单元测试、lint 和 debug 打包；截图写到 `deliverables/screenshots-manus/`，不覆盖原截图。
+缓存、Android 用户目录及 JVM 用户目录隔离在上述工具目录中，不使用正式签名密钥，不执行发布。
+生成的 `app/build/outputs/apk/debug/app-debug.apk` 仅作本地预览，不可当作已安装正式版的覆盖升级包。
+
+### Docker 发布构建
+
 ```bash
 bash docker-build.sh
 ```
