@@ -45,7 +45,7 @@ internal fun TagsPage(vm: VaultViewModel) {
                 color = MaterialTheme.colorScheme.surface,
                 shape = shape,
                 border = BorderStroke(0.6.dp, MaterialTheme.colorScheme.outlineVariant),
-                shadowElevation = 0.5.dp
+                shadowElevation = 0.dp
             ) {
                 Column(Modifier.padding(start = 16.dp, end = 10.dp, top = 14.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {

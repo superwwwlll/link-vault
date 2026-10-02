@@ -91,8 +91,11 @@ class VisualTest {
         rule.onNodeWithText("我的收藏").assertIsDisplayed()
         // 真实点击验收：页签必须可点，搜索框必须能输入并筛选，而不是只看截图。
         rule.onNode(hasText("未读") and hasClickAction()).performClick()
+        rule.onNode(hasText("未读") and hasClickAction()).assertIsSelected()
+        rule.onNode(hasText("全部") and hasClickAction()).assertIsNotSelected()
         rule.runOnIdle { check(vm.scope == 1) { "scope after unread click=${vm.scope}" } }
         rule.onNode(hasText("全部") and hasClickAction()).performClick()
+        rule.onNode(hasText("全部") and hasClickAction()).assertIsSelected()
         rule.runOnIdle { check(vm.scope == 0) }
         rule.onNode(hasSetTextAction()).performTextInput("Compose")
         rule.onNodeWithText("用 Compose 构建更好的 Android 界面").assertIsDisplayed()

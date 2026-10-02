@@ -127,15 +127,15 @@ private fun NoteCard(row: NoteRow, onClick: () -> Unit, onCopy: () -> Unit, modi
     // key 带上 unlocked —— 切后台自动锁定再解锁后回到掩码，不继承上一次"我展开过"。
     var revealed by rememberSaveable(row.id, row.locked) { mutableStateOf(false) }
     val masked = row.secret && !row.locked && !row.unreadable && !revealed
-    val shape = RoundedCornerShape(14.dp)
+    val shape = RoundedCornerShape(16.dp)
     Surface(
         shape = shape,
         color = MaterialTheme.colorScheme.surface,
         border = BorderStroke(0.7.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)),
-        shadowElevation = 0.5.dp,
+        shadowElevation = 0.dp,
         modifier = modifier.fillMaxWidth().clickable(onClick = onClick)
     ) {
-        Row(Modifier.padding(horizontal = 14.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Icon(
                 if (row.secret) Glyph.Shield else Glyph.Note,
                 contentDescription = if (row.secret) "私密笔记" else null,
@@ -144,7 +144,7 @@ private fun NoteCard(row: NoteRow, onClick: () -> Unit, onCopy: () -> Unit, modi
             )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 if (!masked && row.heading.isNotEmpty()) Text(
-                    row.heading, fontSize = 14.5.sp, fontWeight = FontWeight.Medium,
+                    row.heading, fontSize = 15.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold,
                     maxLines = 2, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurface
                 )
                 val preview = when {

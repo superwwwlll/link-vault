@@ -1,5 +1,28 @@
 # 界面参考与实现说明
 
+## Manus 设计语言优化（当前源码，未发布）
+
+参考 https://manus.im/ 的中性色、简洁工作空间和圆角操作控件；已读取公开页面及浏览器计算样式。不使用其品牌标识、素材或字体文件。
+
+- 暖白背景 `#F8F7F4`、纯白卡片、炭黑主操作 `#292824`，深色采用暖灰而非蓝色强调。
+- 收藏、笔记、标签使用轻描边、无卡片阴影；卡片正文留白统一，标题优先。
+- 收藏范围改为等宽胶囊分段，保留数量、选中语义、搜索与原有交互；来源辨识色仍保留。
+- 搜索使用白色输入面板，底部导航降低视觉权重，新增按钮改为黑白圆形按钮。
+- 手记改为浅中性底；冷启动背景和浏览器工具栏同步新主题。
+- 新增 `ThemeTest` 对比度契约，并在 `VisualTest` 中补充筛选选中态断言。
+
+静态验证：以 Python 读取当前源码色值，校验主操作、正文及次要文字的六组配色，浅色最低对比度 4.74:1、深色最低 6.36:1（均 ≥ 4.5:1）；冷启动 XML 背景与 Compose 一致。按 `PaletteTest` 的颜色公式复核来源文字对比度、与卡片底的分离度、深浅档距离及平均色差，均满足既有阈值。该检查不替代 Kotlin 测试或 Android 渲染。
+
+构建环境已补齐：Apple Silicon 原生 JDK 17.0.19、Gradle 8.9、Android 35 SDK、build-tools 34.0.0，工具安装在 `~/.local/share/link-vault-android/`。复现命令为 `bash setup-macos.sh` 和 `bash preview-ui-macos.sh`；不修改系统 Java 配置，也不使用正式签名。
+
+首轮实际结果：应用及测试代码编译成功，194 项测试中 193 项通过。`VisualTest` 通过并生成 17 张真实 Compose/View 树的 Robolectric 原生 Skia 渲染截图（不是网页样稿或真机截图），保存在 `deliverables/screenshots-manus/`。已目视核对收藏浅/深色、笔记、设置、标签及详情页。
+
+唯一失败项是原有 v4→v5 迁移测试读取不存在的 `room-v4-schema.json`。已改为从版本化的 `app/schemas/cn.linkvault.VaultDb/4.json` 直接读取，并将 schema 目录仅加入测试资源；没有改动数据库或迁移逻辑。
+
+最终重跑结果：`testDebugUnitTest lintDebug assembleDebug` **BUILD SUCCESSFUL**，194 项测试全部通过，0 failures / 0 errors / 0 skipped；lint 0 errors / 10 warnings（另有 8 条 information）。17 张本轮截图已重新生成，预览 APK 位于 `app/build/outputs/apk/debug/app-debug.apk`（9,504,502 字节）。APK 为隔离环境的 debug 签名，不能用于覆盖正式版安装；本轮未执行正式发布。
+
+旧 `deliverables/screenshots/` 及正式 APK 均未覆盖；本轮 UI 截图不覆盖主密码弹窗和真机专属行为。
+
 ## 官方来源
 
 - Cubox 官网：https://cubox.cc/

@@ -57,7 +57,7 @@ internal fun SettingsPage(
                     }
                     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Text("数据留在你的设备", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                        Text("无需账号 · 无云同步 · 不采集任何数据", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.primary)
+                        Text("无需账号 · 无云同步 · 不采集任何数据", fontSize = 12.sp, fontWeight = FontWeight.Normal, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }

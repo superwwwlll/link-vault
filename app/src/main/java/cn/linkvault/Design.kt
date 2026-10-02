@@ -10,7 +10,11 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathParser
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 object Glyph {
     private fun line(name: String, path: String) = ImageVector.Builder(name, 24.dp, 24.dp, 24f, 24f).addPath(
@@ -51,21 +55,46 @@ object Glyph {
     val Translate = line("Translate", "M5 8L11 14 M4 14L10 8L12 5 M2 5H14 M8 2H1 M22 22L17 12L12 22 M14 18H20")
 }
 
-private val DayColors = lightColorScheme(
-    primary = Color(0xFF2F4DA8), onPrimary = Color.White,
-    primaryContainer = Color(0x182F4DA8), onPrimaryContainer = Color(0xFF29438F),
-    background = Color(0xFFE9E8E3), onBackground = Color(0xFF182033),
-    surface = Color(0xFFF8F8F5), onSurface = Color(0xFF182033),
-    surfaceVariant = Color(0xFFF0EFEA), onSurfaceVariant = Color(0xFF667085),
-    outline = Color(0xFFD8D7D0), outlineVariant = Color(0xFFE1E0D9)
+// 暖白工作空间 + 中性操作色。来源色仍承担辨识功能，不参与主操作配色。
+internal val DayColors = lightColorScheme(
+    primary = Color(0xFF292824), onPrimary = Color.White,
+    primaryContainer = Color(0xFFECEAE5), onPrimaryContainer = Color(0xFF292824),
+    secondary = Color(0xFF65635D), onSecondary = Color.White,
+    secondaryContainer = Color(0xFFF0EFEB), onSecondaryContainer = Color(0xFF292824),
+    tertiary = Color(0xFF65635D), onTertiary = Color.White,
+    tertiaryContainer = Color(0xFFF0EFEB), onTertiaryContainer = Color(0xFF292824),
+    background = Color(0xFFF8F7F4), onBackground = Color(0xFF292824),
+    surface = Color(0xFFFFFFFF), onSurface = Color(0xFF292824),
+    surfaceVariant = Color(0xFFF1F0EC), onSurfaceVariant = Color(0xFF6C6A64),
+    surfaceTint = Color(0xFF292824), inverseSurface = Color(0xFF292824), inverseOnSurface = Color(0xFFF8F7F4),
+    outline = Color(0xFFAAA79F), outlineVariant = Color(0xFFE5E3DD)
 )
-private val NightColors = darkColorScheme(
-    primary = Color(0xFF0A84FF), onPrimary = Color.White,
-    primaryContainer = Color(0x280A84FF), onPrimaryContainer = Color(0xFF70B8FF),
-    background = Color(0xFF09090B), onBackground = Color(0xFFFAFAFA),
-    surface = Color(0xFF18181B), onSurface = Color(0xFFFAFAFA),
-    surfaceVariant = Color(0xFF27272A), onSurfaceVariant = Color(0xFFA1A1AA),
-    outline = Color(0xFF3F3F46), outlineVariant = Color(0xFF27272A)
+internal val NightColors = darkColorScheme(
+    primary = Color(0xFFF0EFEB), onPrimary = Color(0xFF242320),
+    primaryContainer = Color(0xFF35342F), onPrimaryContainer = Color(0xFFF0EFEB),
+    secondary = Color(0xFFB9B6AD), onSecondary = Color(0xFF242320),
+    secondaryContainer = Color(0xFF302F2B), onSecondaryContainer = Color(0xFFF0EFEB),
+    tertiary = Color(0xFFB9B6AD), onTertiary = Color(0xFF242320),
+    tertiaryContainer = Color(0xFF302F2B), onTertiaryContainer = Color(0xFFF0EFEB),
+    background = Color(0xFF191918), onBackground = Color(0xFFF0EFEB),
+    surface = Color(0xFF232322), onSurface = Color(0xFFF0EFEB),
+    surfaceVariant = Color(0xFF2D2D2A), onSurfaceVariant = Color(0xFFB2B0A8),
+    surfaceTint = Color(0xFFF0EFEB), inverseSurface = Color(0xFFF0EFEB), inverseOnSurface = Color(0xFF242320),
+    outline = Color(0xFF77756D), outlineVariant = Color(0xFF3C3B36)
+)
+
+private val VaultTypography = Typography(
+    titleLarge = TextStyle(fontSize = 24.sp, lineHeight = 32.sp, fontWeight = FontWeight.SemiBold),
+    titleMedium = TextStyle(fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.SemiBold),
+    bodyLarge = TextStyle(fontSize = 15.sp, lineHeight = 24.sp),
+    bodyMedium = TextStyle(fontSize = 14.sp, lineHeight = 22.sp),
+    bodySmall = TextStyle(fontSize = 12.sp, lineHeight = 18.sp),
+    labelLarge = TextStyle(fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium)
+)
+
+private val VaultShapes = Shapes(
+    small = RoundedCornerShape(10.dp), medium = RoundedCornerShape(14.dp),
+    large = RoundedCornerShape(18.dp), extraLarge = RoundedCornerShape(24.dp)
 )
 
 data class NoteThemeColors(
@@ -76,17 +105,17 @@ data class NoteThemeColors(
 )
 
 private val DayNoteColors = NoteThemeColors(
-    container = Color(0xFFEDE6DA),
+    container = Color(0xFFF5F4F0),
     onContainer = Color(0xFF292524),
-    border = Color(0xFFDDD4C5),
-    icon = Color(0xFF857A6C)
+    border = Color(0xFFE5E3DD),
+    icon = Color(0xFF6C6A64)
 )
 
 private val NightNoteColors = NoteThemeColors(
-    container = Color(0xFF1F1F23),
-    onContainer = Color(0xFFFAFAFA),
-    border = Color(0xFF2E2E33),
-    icon = Color(0xFFA1A1AA)
+    container = Color(0xFF2D2D2A),
+    onContainer = Color(0xFFF0EFEB),
+    border = Color(0xFF3C3B36),
+    icon = Color(0xFFB2B0A8)
 )
 
 val LocalNoteColors = staticCompositionLocalOf { DayNoteColors }
@@ -115,8 +144,8 @@ internal val sourceHues = floatArrayOf(
 )
 
 /** 卡片实际底色，色块要在这块底上看得出来。 */
-val DaySourceBase = Color(0xFFF8F8F5)
-val NightSourceBase = Color(0xFF18181B)
+val DaySourceBase = DayColors.surface
+val NightSourceBase = NightColors.surface
 
 private fun spread(key: String): Int {
     var h = key.hashCode()
@@ -161,6 +190,6 @@ fun VaultTheme(dark: Boolean, content: @Composable () -> Unit) {
         LocalVaultDark provides dark,
         LocalNoteColors provides if (dark) NightNoteColors else DayNoteColors
     ) {
-        MaterialTheme(colorScheme = if (dark) NightColors else DayColors, content = content)
+        MaterialTheme(colorScheme = if (dark) NightColors else DayColors, typography = VaultTypography, shapes = VaultShapes, content = content)
     }
 }
