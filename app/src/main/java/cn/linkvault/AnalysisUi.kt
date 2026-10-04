@@ -1,7 +1,6 @@
 @file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 package cn.linkvault
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -127,8 +126,6 @@ internal fun AnalysisPanel(vm: VaultViewModel, key: String) {
     val record = ai.records[key]
     val state = ai.states[key]
     val error = ai.errors[key]
-    var question by rememberSaveable(key) { mutableStateOf("") }
-    var showHistory by rememberSaveable(key) { mutableStateOf(false) }
     var confirmReplace by remember { mutableStateOf(false) }
     var confirmClear by remember { mutableStateOf(false) }
     var confirmApply by remember { mutableStateOf(false) }
@@ -150,25 +147,11 @@ internal fun AnalysisPanel(vm: VaultViewModel, key: String) {
                     }
                 }
             }
-            if (record.messages.size > 1) {
-                TextButton(onClick = { showHistory = !showHistory }) { Text(if (showHistory) "收起对话" else "展开对话（${(record.messages.size - 1) / 2}轮）") }
-                if (showHistory) record.messages.drop(1).forEach { message ->
-                    Surface(shape = RoundedCornerShape(12.dp), color = if (message.role == "user") MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
-                        border = BorderStroke(0.6.dp, MaterialTheme.colorScheme.outlineVariant), modifier = Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text(if (message.role == "user") "我" else "AI", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                            SelectionContainer { SnapshotMarkdownViewer(message.text, expanded = true, showImages = false) }
-                        }
-                    }
-                }
+            OutlinedButton(onClick = { vm.openAnalysisConversation(key) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                Text("继续对话")
+                if (record.messages.size > 1) Text(" · ${(record.messages.size - 1) / 2}轮")
             }
-            OutlinedTextField(question, { question = it.take(Analysis.MAX_QUESTION) }, label = { Text("围绕这篇内容继续追问") }, modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 6, enabled = state == null)
-            Text("每次追问会重新发送原文、总结及最近最多6轮对话（历史预算12,000字）；更早记录仍留在本机。", fontSize = 11.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Button(onClick = { ai.run(key, question.trim()); showHistory = true }, enabled = state == null && question.isNotBlank() && vm.aiVerified) { Text("发送追问") }
-            // 请求成功才清空输入；失败时问题原样保留，便于重试。
-            LaunchedEffect(record.updatedAt) {
-                if (record.messages.size > 1 && record.messages[record.messages.size - 2].text == question.trim()) question = ""
-            }
+            Text("围绕这篇内容继续追问，在独立聊天页查看全部历史。", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (state != null) {
             LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -187,7 +170,7 @@ internal fun AnalysisPanel(vm: VaultViewModel, key: String) {
     if (confirmReplace) AlertDialog(onDismissRequest = { confirmReplace = false }, title = { Text("重新分析？") }, text = { Text("使用当前关注方向与模板，会再次计费。成功后替换原总结并清空旧对话；失败则保留旧记录。") },
         confirmButton = { TextButton(onClick = { confirmReplace = false; ai.run(key) }) { Text("重新分析") } }, dismissButton = { TextButton(onClick = { confirmReplace = false }) { Text("取消") } })
     if (confirmClear) AlertDialog(onDismissRequest = { confirmClear = false }, title = { Text("清除总结与对话？") }, text = { Text("只清除本机 AI 记录，不修改原文，也无法撤回已发给服务商的内容。") },
-        confirmButton = { TextButton(onClick = { confirmClear = false; ai.clear(key) }) { Text("清除") } }, dismissButton = { TextButton(onClick = { confirmClear = false }) { Text("取消") } })
+        confirmButton = { TextButton(onClick = { confirmClear = false; ai.clear(key); vm.clearConversationDraft(key) }) { Text("清除") } }, dismissButton = { TextButton(onClick = { confirmClear = false }) { Text("取消") } })
     if (confirmApply && record != null) AlertDialog(onDismissRequest = { confirmApply = false }, title = { Text("应用 AI 建议？") },
         text = { Text("将收藏标题替换为「${record.suggestedTitle}」，并追加标签：${record.suggestedTags.joinToString("、")}。已有标签、原文和备注保留。") },
         confirmButton = { TextButton(onClick = { confirmApply = false; ai.applySuggestions(key) }) { Text("确认应用") } },

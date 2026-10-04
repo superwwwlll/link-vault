@@ -59,7 +59,7 @@ class CollectionCompactUiTest {
         rule.onNodeWithText("关闭").performClick()
         rule.onNodeWithTag("collection-list").performTouchInput { swipeUp() }
         rule.waitForIdle()
-        rule.onNodeWithText("我的收藏").assertIsNotDisplayed()
+        rule.onNodeWithText("我的收藏").assertIsDisplayed()
         rule.onAllNodesWithContentDescription("收藏链接").assertCountEquals(0)
         rule.onNodeWithTag("collection-list").performScrollToIndex(0)
         rule.waitForIdle()

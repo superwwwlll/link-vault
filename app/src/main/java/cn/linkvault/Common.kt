@@ -42,11 +42,8 @@ import java.util.Locale
 
 @Composable
 internal fun RootHeading(title: String, subtitle: String = "") {
-    Column(Modifier.padding(top = 20.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(title, Modifier.weight(1f), fontSize = 26.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.5).sp, color = MaterialTheme.colorScheme.onBackground)
-            Text("LINK VAULT", fontSize = 10.sp, fontWeight = FontWeight.Medium, letterSpacing = 1.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
+    Column(Modifier.padding(top = 10.dp, bottom = 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(title, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp, color = MaterialTheme.colorScheme.onBackground)
         if (subtitle.isNotEmpty()) Text(subtitle, fontSize = 13.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

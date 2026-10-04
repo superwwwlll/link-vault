@@ -29,14 +29,14 @@ class SettingsNavigationTest {
 
     @Test fun homeHasOnlyEntriesAndSystemBackReturnsBeforeLeavingSettings() {
         val vm = openSettings()
-        rule.onNodeWithText("收藏与笔记存于本机").assertIsDisplayed()
+        rule.onNodeWithText("收藏与笔记仅存本机", substring = true).performScrollTo().assertIsDisplayed()
         rule.onNodeWithText("你的 API Key").assertDoesNotExist()
         rule.onNodeWithText("导出收藏").assertDoesNotExist()
         rule.onNodeWithText("抓取").performScrollTo().performClick()
         rule.onNodeWithText("页面信息抓取").assertIsDisplayed()
         back()
         rule.runOnIdle { assertEquals(3, vm.tab) }
-        rule.onNodeWithText("收藏与笔记存于本机").assertIsDisplayed()
+        rule.onNodeWithText("收藏与笔记仅存本机", substring = true).performScrollTo().assertIsDisplayed()
         back()
         rule.runOnIdle { assertEquals(0, vm.tab) }
     }
@@ -88,7 +88,7 @@ class SettingsNavigationTest {
         back()
         rule.onNodeWithText("启用翻译").assertIsDisplayed()
         rule.onNodeWithText("返回").performClick()
-        rule.onNodeWithText("收藏与笔记存于本机").assertIsDisplayed()
+        rule.onNodeWithText("收藏与笔记仅存本机", substring = true).performScrollTo().assertIsDisplayed()
     }
 
     @Test fun encryptedBackupPasswordDialogRemainsInBackupSubpage() {
@@ -103,6 +103,6 @@ class SettingsNavigationTest {
         rule.onNodeWithText("选择备份文件").assertIsNotEnabled()
         rule.onNodeWithText("取消").performClick()
         back()
-        rule.onNodeWithText("收藏与笔记存于本机").assertIsDisplayed()
+        rule.onNodeWithText("收藏与笔记仅存本机", substring = true).performScrollTo().assertIsDisplayed()
     }
 }

@@ -26,7 +26,7 @@ class CollectionCompactTest {
             suggestedTitle = "建议标题")
         assertEquals("AI · 未分析", collectionAiStatus(item, null, null, null))
         assertEquals("AI · 正在分析…", collectionAiStatus(item, record, "正在分析…", "失败"))
-        assertEquals("AI · 需处理，打开详情查看", collectionAiStatus(item, record, null, "失败"))
+        assertEquals("AI · 失败，打开详情重试", collectionAiStatus(item, record, null, "失败"))
         assertEquals("AI · 标题 / 标签建议待确认", collectionAiStatus(item, record, null, null))
         assertEquals("AI · 已总结", collectionAiStatus(item.copy(title = "建议标题"), record, null, null))
         assertEquals("原始标题", item.title)

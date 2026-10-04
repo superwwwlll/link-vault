@@ -55,31 +55,32 @@ object Glyph {
     val Translate = line("Translate", "M5 8L11 14 M4 14L10 8L12 5 M2 5H14 M8 2H1 M22 22L17 12L12 22 M14 18H20")
 }
 
-// 暖白工作空间 + 中性操作色。来源色仍承担辨识功能，不参与主操作配色。
+// 克制的蓝色操作色，借鉴即时通讯界面的清晰层级，不使用品牌标识。
+// 笔记仍使用独立中性色，来源色仍承担辨识功能。
 internal val DayColors = lightColorScheme(
-    primary = Color(0xFF292824), onPrimary = Color.White,
-    primaryContainer = Color(0xFFECEAE5), onPrimaryContainer = Color(0xFF292824),
+    primary = Color(0xFF236A9F), onPrimary = Color.White,
+    primaryContainer = Color(0xFFE2EFF9), onPrimaryContainer = Color(0xFF163F60),
     secondary = Color(0xFF65635D), onSecondary = Color.White,
-    secondaryContainer = Color(0xFFF0EFEB), onSecondaryContainer = Color(0xFF292824),
+    secondaryContainer = Color(0xFFE2EFF9), onSecondaryContainer = Color(0xFF163F60),
     tertiary = Color(0xFF65635D), onTertiary = Color.White,
     tertiaryContainer = Color(0xFFF0EFEB), onTertiaryContainer = Color(0xFF292824),
     background = Color(0xFFF8F7F4), onBackground = Color(0xFF292824),
     surface = Color(0xFFFFFFFF), onSurface = Color(0xFF292824),
     surfaceVariant = Color(0xFFF1F0EC), onSurfaceVariant = Color(0xFF6C6A64),
-    surfaceTint = Color(0xFF292824), inverseSurface = Color(0xFF292824), inverseOnSurface = Color(0xFFF8F7F4),
+    surfaceTint = Color(0xFF236A9F), inverseSurface = Color(0xFF292824), inverseOnSurface = Color(0xFFF8F7F4),
     outline = Color(0xFFAAA79F), outlineVariant = Color(0xFFE5E3DD)
 )
 internal val NightColors = darkColorScheme(
-    primary = Color(0xFFF0EFEB), onPrimary = Color(0xFF242320),
-    primaryContainer = Color(0xFF35342F), onPrimaryContainer = Color(0xFFF0EFEB),
+    primary = Color(0xFF8CC9F4), onPrimary = Color(0xFF102F45),
+    primaryContainer = Color(0xFF203F56), onPrimaryContainer = Color(0xFFD3EBFF),
     secondary = Color(0xFFB9B6AD), onSecondary = Color(0xFF242320),
-    secondaryContainer = Color(0xFF302F2B), onSecondaryContainer = Color(0xFFF0EFEB),
+    secondaryContainer = Color(0xFF203F56), onSecondaryContainer = Color(0xFFD3EBFF),
     tertiary = Color(0xFFB9B6AD), onTertiary = Color(0xFF242320),
     tertiaryContainer = Color(0xFF302F2B), onTertiaryContainer = Color(0xFFF0EFEB),
     background = Color(0xFF191918), onBackground = Color(0xFFF0EFEB),
     surface = Color(0xFF232322), onSurface = Color(0xFFF0EFEB),
     surfaceVariant = Color(0xFF2D2D2A), onSurfaceVariant = Color(0xFFB2B0A8),
-    surfaceTint = Color(0xFFF0EFEB), inverseSurface = Color(0xFFF0EFEB), inverseOnSurface = Color(0xFF242320),
+    surfaceTint = Color(0xFF8CC9F4), inverseSurface = Color(0xFFF0EFEB), inverseOnSurface = Color(0xFF242320),
     outline = Color(0xFF77756D), outlineVariant = Color(0xFF3C3B36)
 )
 

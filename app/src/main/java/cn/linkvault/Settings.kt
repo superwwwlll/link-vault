@@ -5,12 +5,12 @@
 package cn.linkvault
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -22,7 +22,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -48,7 +50,7 @@ internal fun SettingsPage(
 
     Column(Modifier.fillMaxSize()) {
         if (page.isEmpty()) {
-            Box(Modifier.padding(horizontal = 24.dp)) { RootHeading("设置") }
+            Box(Modifier.padding(horizontal = 20.dp)) { RootHeading("设置") }
         } else {
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                 TextButton(onClick = goBack, modifier = Modifier.heightIn(min = 48.dp)) { Text("返回") }
@@ -56,56 +58,56 @@ internal fun SettingsPage(
             }
         }
         key(page) {
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
 
             if (page.isEmpty()) {
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
-                border = BorderStroke(0.6.dp, MaterialTheme.colorScheme.outlineVariant)
-            ) {
-                Row(Modifier.padding(18.dp), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        Modifier.size(38.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), RoundedCornerShape(11.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Glyph.Shield, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.primary)
-                    }
-                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text("收藏与笔记存于本机", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                        Text("无云同步；使用 AI 会发送内容给服务商，可能计费。请勿发送敏感内容。", fontSize = 12.sp, fontWeight = FontWeight.Normal, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-            }
-            Surface(shape = RoundedCornerShape(16.dp), border = BorderStroke(0.7.dp, MaterialTheme.colorScheme.outlineVariant)) {
+            val provider = AiProviders.presets.firstOrNull { it.id == vm.aiProvider } ?: AiProviders.presets.last()
+            SettingsGroup {
                 Column {
-                    SettingRow(Glyph.Check, "外观", "主题与显示", true) { page = "外观" }
-                    SettingRow(Glyph.Cloud, "抓取", "页面信息与离线标题整理", true) { page = "抓取" }
-                    SettingRow(Glyph.LinkChain, "AI 接口", "服务商、模型、密钥与连接测试", true) { page = "AI 接口" }
-                    SettingRow(Glyph.Note, "阅读助手", "关注方向、模板与自动分析", true) { page = "阅读助手" }
-                    SettingRow(Glyph.Translate, "翻译", "共用 AI 接口，按需翻译正文", true) { page = "翻译" }
-                    SettingRow(Glyph.Archive, "备份与更新", "导入导出、私密笔记与应用更新", true) { page = "备份与更新" }
+                    SettingsValueRow(Glyph.Moon, "外观", settingsThemeLabel(vm.theme)) { page = "外观" }
+                    SettingsDivider()
+                    SettingsValueRow(Glyph.Cloud, "抓取", if (vm.fetchEnabled) "已开启" else "未开启") { page = "抓取" }
+                    SettingsDivider()
+                    SettingsValueRow(Glyph.LinkChain, "AI 接口", "${provider.name} · ${settingsAiStatus(vm.aiTesting, vm.aiVerified, vm.aiKey.isNotBlank())}") { page = "AI 接口" }
+                    SettingsDivider()
+                    SettingsValueRow(Glyph.Note, "阅读助手", if (vm.analysis.auto) "自动分析已开启" else "自动分析未开启") { page = "阅读助手" }
+                    SettingsDivider()
+                    SettingsValueRow(Glyph.Translate, "翻译", settingsTranslationStatus(vm.aiEnabled, vm.canTranslate)) { page = "翻译" }
+                    SettingsDivider()
+                    SettingsValueRow(Glyph.Archive, "备份与更新", "当前 ${vm.installedVersionName}") { page = "备份与更新" }
                 }
             }
+            Text("收藏与笔记仅存本机，无云同步。AI 会发送内容给服务商，可能计费；请勿发送敏感内容。", Modifier.padding(horizontal = 4.dp), fontSize = 12.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
             if (page == "外观") {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 SectionLabel("外观")
                 val themeOptions = listOf("system" to "跟随系统", "light" to "浅色", "dark" to "深色")
-                SegmentedPills(
-                    items = themeOptions,
-                    selectedItem = themeOptions.firstOrNull { it.first == vm.theme } ?: themeOptions[0],
-                    onSelect = { vm.theme(it.first) },
-                    label = { it.second }
-                )
+                val selectedTheme = (themeOptions.firstOrNull { it.first == vm.theme } ?: themeOptions[0]).first
+                SettingsGroup {
+                    Column(Modifier.selectableGroup()) {
+                        themeOptions.forEachIndexed { index, (value, label) ->
+                            if (index > 0) SettingsDivider()
+                            SettingsOptionRow(label, selectedTheme == value, { vm.theme(value) })
+                        }
+                    }
+                }
+                SectionLabel("收藏视图")
+                SettingsGroup {
+                    Column(Modifier.selectableGroup()) {
+                        SettingsOptionRow("紧凑", vm.compactCollection, { vm.compactCollection(true) })
+                        SettingsDivider()
+                        SettingsOptionRow("舒适", !vm.compactCollection, { vm.compactCollection(false) })
+                    }
+                }
             }
             }
 
             if (page == "备份与更新") {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 SectionLabel("应用更新", trailing = if (vm.updateChecking) "检查中…" else "")
-                Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(0.7.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)), shadowElevation = 0.5.dp) {
+                SettingsGroup {
                     Column {
                         SettingRow(Glyph.Cloud, "检查更新", "当前 ${vm.installedVersionName}（build ${vm.installedVersionCode}）", !vm.busy && !vm.updateChecking, { vm.checkUpdate(true) })
                         HorizontalDivider(Modifier.padding(start = 58.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
@@ -164,14 +166,14 @@ internal fun SettingsPage(
             if (page == "抓取") {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 SectionLabel("联网抓取", trailing = if (vm.fetchEnabled) "已开启" else "未开启")
-                Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(0.7.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)), shadowElevation = 0.5.dp) {
+                SettingsGroup {
                     SwitchRow(Glyph.Cloud, "页面信息抓取", "保存链接后自动补齐标题、封面与正文，详情页可手动重抓", vm.fetchEnabled, !vm.busy) { vm.fetchEnabled(it) }
                 }
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 SectionLabel("标题整理")
-                Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(0.7.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)), shadowElevation = 0.5.dp) {
+                SettingsGroup {
                     Column {
                         SettingRow(Glyph.Sort, "按内容整理标题", "离线：去掉换行与尾部站点名，空壳标题改用正文里的标题或首句", !vm.busy, vm::tidyTitles)
                     }
@@ -186,12 +188,8 @@ internal fun SettingsPage(
 
             if (page == "翻译") {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                SectionLabel("AI 翻译", trailing = when {
-                    !vm.aiEnabled -> "未开启"
-                    vm.canTranslate -> "已配置"
-                    else -> "还缺密钥"
-                })
-                Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(0.7.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)), shadowElevation = 0.5.dp) {
+                SectionLabel("AI 翻译", trailing = settingsTranslationStatus(vm.aiEnabled, vm.canTranslate))
+                SettingsGroup {
                     Column {
                         SwitchRow(Glyph.Translate, "启用翻译", "详情页把离线正文快照译成简体中文；快照要「联网抓取」才会产生", vm.aiEnabled, !vm.busy) { vm.aiEnabled(it) }
                     }
@@ -214,7 +212,7 @@ internal fun SettingsPage(
             if (page == "备份与更新") {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 SectionLabel("私密笔记", trailing = if (vm.notes.hasMaster) "" else "未设主密码")
-                Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(0.7.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)), shadowElevation = 0.5.dp) {
+                SettingsGroup {
                     Column {
                         SettingRow(
                             Glyph.Shield,
@@ -238,7 +236,7 @@ internal fun SettingsPage(
 
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 SectionLabel("本地备份")
-                Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(0.7.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)), shadowElevation = 0.5.dp) {
+                SettingsGroup {
                     Column {
                         SettingRow(Glyph.Export, "导出收藏", "将 ${vm.items.size} 条收藏保存为 JSON", !vm.busy && !vm.readFailed && !vm.loading, onExport)
                         HorizontalDivider(Modifier.padding(start = 58.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
@@ -310,6 +308,63 @@ internal fun SettingsPage(
     }
 }
 
+internal fun settingsThemeLabel(theme: String): String = when (theme) {
+    "light" -> "浅色"
+    "dark" -> "深色"
+    else -> "跟随系统"
+}
+
+internal fun settingsAiStatus(testing: Boolean, verified: Boolean, hasKey: Boolean): String = when {
+    testing -> "验证中…"
+    verified -> "已验证"
+    !hasKey -> "未设密钥"
+    else -> "待验证"
+}
+
+internal fun settingsTranslationStatus(enabled: Boolean, configured: Boolean): String = when {
+    !enabled -> "未开启"
+    configured -> "已开启"
+    else -> "已开启 · 待配置"
+}
+
+@Composable
+private fun SettingsGroup(content: @Composable () -> Unit) {
+    Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth()) {
+        content()
+    }
+}
+
+@Composable
+private fun SettingsDivider() {
+    HorizontalDivider(Modifier.padding(start = 44.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+}
+
+/** 当前值可以换行，窄屏和大字号下也不截掉验证状态。 */
+@Composable
+internal fun SettingsValueRow(icon: ImageVector, title: String, value: String, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Icon(icon, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+        Text(title, Modifier.weight(0.43f), fontSize = 15.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+        Text(value, Modifier.weight(0.57f), fontSize = 12.5.sp, textAlign = TextAlign.End, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(Glyph.Next, null, Modifier.size(15.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun SettingsOptionRow(title: String, selected: Boolean, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 48.dp).selectable(selected = selected, role = Role.RadioButton, onClick = onClick).padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(title, Modifier.weight(1f), fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurface)
+        if (selected) Icon(Glyph.Check, "已选择", Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+    }
+}
+
 private fun size(bytes: Long): String = when {
     bytes >= 1048576L -> "%.1f MB".format(bytes / 1048576.0)
     bytes >= 1024L -> "%.0f KB".format(bytes / 1024.0)
@@ -333,20 +388,11 @@ private fun SettingRow(icon: ImageVector, title: String, subtitle: String, enabl
             .fillMaxWidth()
             .heightIn(min = 48.dp)
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Box(
-            Modifier.size(32.dp).background(
-                if (enabled) MaterialTheme.colorScheme.primaryContainer
-                else MaterialTheme.colorScheme.surfaceVariant,
-                RoundedCornerShape(8.dp)
-            ),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(icon, null, Modifier.size(16.dp), tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
-        }
+        Icon(icon, null, Modifier.size(20.dp), tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(title, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
             Text(subtitle, fontSize = 12.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -361,20 +407,11 @@ private fun SwitchRow(icon: ImageVector, title: String, subtitle: String, checke
         Modifier
             .fillMaxWidth()
             .heightIn(min = 48.dp)
-            .padding(start = 16.dp, end = 12.dp, top = 10.dp, bottom = 10.dp),
+            .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Box(
-            Modifier.size(32.dp).background(
-                if (checked) MaterialTheme.colorScheme.primaryContainer
-                else MaterialTheme.colorScheme.surfaceVariant,
-                RoundedCornerShape(8.dp)
-            ),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(icon, null, Modifier.size(16.dp), tint = if (checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
-        }
+        Icon(icon, null, Modifier.size(20.dp), tint = if (checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(title, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
             Text(subtitle, fontSize = 12.5.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)

@@ -56,10 +56,24 @@ fun VaultScreen(vm: VaultViewModel) {
     var securePassword by rememberSaveable { mutableStateOf("") }
     val d = vm.draft
     val nd = vm.notes.draft
+    val conversationKey = vm.analysisConversationKey
     val editing = d != null || nd != null
     val detail = vm.items.firstOrNull { it.id == vm.detailId }
     val collectionListState = rememberLazyListState()
     val fabShown = rememberFabShown(collectionListState)
+    var collectionSelection by remember { mutableStateOf(false) }
+    val snackbarHost = remember { SnackbarHostState() }
+    val undo = vm.deletionUndo
+    LaunchedEffect(undo?.token) {
+        if (undo != null) {
+            val result = snackbarHost.showSnackbar("已移入回收站", actionLabel = "撤销", withDismissAction = true, duration = SnackbarDuration.Short)
+            if (result == SnackbarResult.ActionPerformed) vm.undoDeletion(undo)
+            else vm.dismissDeletionUndo(undo)
+        }
+    }
+    LaunchedEffect(vm.tab, vm.detailId, editing, conversationKey) {
+        if (vm.tab != 0 || vm.detailId != null || editing || conversationKey != null) collectionSelection = false
+    }
 
     val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri -> uri?.let(vm::export) }
     val exportHtml = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/html")) { uri -> uri?.let(vm::exportHtml) }
@@ -124,8 +138,9 @@ fun VaultScreen(vm: VaultViewModel) {
         vm.toast("已复制 Markdown 链接")
     }
 
-    BackHandler(enabled = editing || vm.detailId != null || vm.trashOpen || vm.tab != 0) {
-        if (!vm.busy) {
+    BackHandler(enabled = conversationKey != null || editing || vm.detailId != null || vm.trashOpen || vm.tab != 0) {
+        if (conversationKey != null) vm.closeAnalysisConversation()
+        else if (!vm.busy) {
             if (nd != null) noteCancelConfirm = true
             else if (d != null) cancelConfirm = true
             else if (vm.detailId != null) vm.closeDetail()
@@ -136,8 +151,11 @@ fun VaultScreen(vm: VaultViewModel) {
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        snackbarHost = { SnackbarHost(snackbarHost) },
         bottomBar = {
-            if (nd != null) {
+            if (conversationKey != null) {
+                // 独立对话页自己提供随输入法抬升的输入栏。
+            } else if (nd != null) {
                 Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
                     Button(onClick = vm.notes::save, enabled = !vm.notes.busy, shape = RoundedCornerShape(14.dp), modifier = Modifier
                         .navigationBarsPadding().imePadding().padding(horizontal = 24.dp, vertical = 12.dp).fillMaxWidth().height(50.dp)) {
@@ -153,18 +171,19 @@ fun VaultScreen(vm: VaultViewModel) {
                     }
                 }
             } else if (vm.detailId == null && !vm.trashOpen) {
-                Surface(color = MaterialTheme.colorScheme.surface) {
-                    Column {
-                        HorizontalDivider(thickness = 0.6.dp, color = MaterialTheme.colorScheme.outlineVariant)
-                        ScopeTabs(items = listOf(0, 1, 2, 3), selectedItem = vm.tab,
-                            onSelect = vm::tab, label = { listOf("收藏", "笔记", "标签", "设置")[it] },
-                            modifier = Modifier.navigationBarsPadding())
+                NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
+                    val labels = listOf("收藏", "笔记", "标签", "设置")
+                    val icons = listOf(Glyph.Bookmark, Glyph.Note, Glyph.Tag, Glyph.Settings)
+                    labels.forEachIndexed { index, label ->
+                        NavigationBarItem(selected = vm.tab == index, onClick = { vm.tab(index) },
+                            icon = { Icon(icons[index], null, Modifier.size(22.dp)) },
+                            label = { Text(label, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) })
                     }
                 }
             }
         },
         floatingActionButton = {
-            if (!editing && vm.detailId == null && !vm.trashOpen && (vm.tab == 0 || vm.tab == 1)) AnimatedVisibility(
+            if (conversationKey == null && !collectionSelection && !editing && vm.detailId == null && !vm.trashOpen && (vm.tab == 0 || vm.tab == 1)) AnimatedVisibility(
                 visible = fabShown,
                 enter = fadeIn(tween(180)) + scaleIn(tween(180), initialScale = 0.86f),
                 exit = fadeOut(tween(130)) + scaleOut(tween(130), targetScale = 0.86f)
@@ -186,10 +205,10 @@ fun VaultScreen(vm: VaultViewModel) {
             }
         }
     ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding)) {
+        Column(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
             if (vm.busy || vm.notes.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (vm.pending != null) Surface(color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.fillMaxWidth()) {
-                TextButton(onClick = vm::importPending, enabled = d == null && !vm.busy && vm.preview == null) { Text(if (d == null) "有一条待收分享 · 点击处理" else "新分享已暂存，当前草稿不受影响") }
+                TextButton(onClick = vm::importPending, enabled = !editing && conversationKey == null && !vm.busy && vm.preview == null) { Text(if (!editing && conversationKey == null) "有一条待收分享 · 点击处理" else "新分享已暂存，当前内容不受影响") }
             }
             vm.message?.let { text ->
                 Banner(text, BannerTone.Info, action = { IconButton(onClick = vm::clearMessage, modifier = Modifier.size(32.dp)) { Icon(Glyph.Close, "关闭提示", Modifier.size(15.dp)) } })
@@ -228,6 +247,7 @@ fun VaultScreen(vm: VaultViewModel) {
                 )
             }
             when {
+                conversationKey != null -> AnalysisConversationPage(vm, conversationKey, vm::closeAnalysisConversation)
                 nd != null && vm.notes.draftLocked -> LockedDraftPage(vm, onBack = { noteCancelConfirm = true })
                 nd != null -> NotesEditorPage(vm, nd, onBack = { noteCancelConfirm = true })
                 d != null -> EditorPage(vm, d, onBack = { cancelConfirm = true })
@@ -239,7 +259,8 @@ fun VaultScreen(vm: VaultViewModel) {
                 vm.tab == 1 -> NotesPage(vm)
                 vm.tab == 2 -> TagsPage(vm)
                 vm.tab == 3 -> SettingsPage(vm, ::launchExport, ::launchExportHtml, ::launchExportPortalHtml, ::launchExportMarkdown, ::launchImport, ::launchFolder, ::launchSecureExport, ::launchSecureImport)
-                else -> CollectionPage(vm, onShare = ::share, onDelete = { deleteId = it.id }, onCopy = ::copyLink, onCopyMarkdown = ::copyMarkdown, onOpen = ::openLink, listState = collectionListState)
+                else -> CollectionPage(vm, onShare = ::share, onDelete = { deleteId = it.id }, onCopy = ::copyLink, onCopyMarkdown = ::copyMarkdown, onOpen = ::openLink, listState = collectionListState,
+                    onSelectionChange = { collectionSelection = it })
             }
         }
     }

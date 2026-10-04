@@ -29,6 +29,9 @@ import kotlinx.coroutines.sync.withPermit
 
 data class Draft(val id: Long = 0, val url: String = "", val title: String = "", val notes: String = "", val tags: String = "")
 
+internal data class DeletionUndo(val ids: Set<Long>, val deletedAt: Long, val token: String = java.util.UUID.randomUUID().toString())
+internal data class ConversationDraft(val question: String = "", val pendingQuestion: String? = null, val baselineSize: Int = 0)
+
 class VaultViewModel(private val app: Application, private val saved: SavedStateHandle) : AndroidViewModel(app) {
     private val db = VaultDb.get(app)
     private val dao = db.bookmarks()
@@ -56,13 +59,35 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
 
     // ------------------------------------------------------------ 界面状态
 
+    var analysisConversationKey by mutableStateOf<String?>(null); private set
+    private val conversationDrafts = androidx.compose.runtime.mutableStateMapOf<String, ConversationDraft>()
+
     /** 笔记区（含主密码会话）。独立成类，见 [NotesController]。 */
     internal val analysis = AnalysisController(app, db, viewModelScope,
-        { Translate.Config(aiEndpoint, aiKey, aiModel) }, { aiVerified }, { fetchEnabled })
+        { Translate.Config(aiEndpoint, aiKey, aiModel) }, { aiVerified }, { fetchEnabled },
+        onClear = { key -> clearConversationDraft(key); if (analysisConversationKey == key) closeAnalysisConversation() })
     val notes = NotesController(db, viewModelScope, saved, ::toast, ::fail,
         { analysis.afterNoteSave(it) }, { analysis.clear("n-$it") })
 
     var theme by mutableStateOf(prefs.getString("theme", "system") ?: "system"); private set
+    var compactCollection by mutableStateOf(prefs.getBoolean("compactCollection", true)); private set
+    fun compactCollection(value: Boolean) { compactCollection = value; prefs.edit().putBoolean("compactCollection", value).apply() }
+    fun openAnalysisConversation(key: String) {
+        if (Regex("[bn]-[1-9][0-9]*").matches(key) && key.substringAfter('-').toLongOrNull() != null) { analysisConversationKey = key; analysis.load(key) }
+    }
+    fun closeAnalysisConversation() { analysisConversationKey = null }
+    internal fun conversationDraft(key: String): ConversationDraft = conversationDrafts[key] ?: ConversationDraft()
+    internal fun conversationQuestion(key: String, value: String) { conversationDrafts[key] = conversationDraft(key).copy(question = value.take(Analysis.MAX_QUESTION)) }
+    internal fun beginConversationQuestion(key: String, sent: String, baseline: Int) {
+        conversationDrafts[key] = conversationDraft(key).copy(pendingQuestion = sent, baselineSize = baseline)
+    }
+    internal fun finishConversationQuestion(key: String, succeeded: Boolean) {
+        val draft = conversationDraft(key)
+        conversationDrafts[key] = draft.copy(question = if (succeeded && draft.question.trim() == draft.pendingQuestion) "" else draft.question, pendingQuestion = null)
+    }
+    internal fun clearConversationDraft(key: String) { conversationDrafts.remove(key) }
+    internal var deletionUndo by mutableStateOf<DeletionUndo?>(null); private set
+    private var undoInFlightToken: String? = null
     var tab by mutableStateOf(saved.get<Int>("tab") ?: 0); private set
     var detailId by mutableStateOf(saved.get<Long>("detail")); private set
     var preview by mutableStateOf<ImportPreview?>(null); private set
@@ -75,10 +100,10 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
     var sortOrder by mutableStateOf(saved.get<Int>("sort") ?: prefs.getInt("sort", 0)); private set
 
     fun theme(value: String) { if (value in listOf("system", "light", "dark")) { theme = value; prefs.edit().putString("theme", value).apply() } }
-    fun tab(value: Int) { tab = value; saved["tab"] = value; clearMessage() }
+    fun tab(value: Int) { closeAnalysisConversation(); tab = value; saved["tab"] = value; clearMessage() }
     fun scope(value: Int) { if (value in 0..3) { scope = value; saved["scope"] = value; clearMessage() } }
     fun setSort(value: Int) { if (value in 0..3) { sortOrder = value; saved["sort"] = value; prefs.edit().putInt("sort", value).apply() } }
-    fun show(item: Bookmark) { detailId = item.id; saved["detail"] = item.id; loadSnapshot(item.id); clearMessage() }
+    fun show(item: Bookmark) { closeAnalysisConversation(); detailId = item.id; saved["detail"] = item.id; loadSnapshot(item.id); clearMessage() }
     fun closeDetail() { detailId = null; saved["detail"] = null; currentSnapshot = null; currentTranslation = null; clearMessage() }
     fun tag(value: String) { scope(0); filter(value); search(""); closeDetail(); tab(0) }
 
@@ -318,6 +343,7 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
     var filter by mutableStateOf(saved.get<String>("filter") ?: ""); private set
     var pending by mutableStateOf(saved.get<String>("pending")); private set
     var pendingTitle by mutableStateOf(saved.get<String>("pendingTitle")); private set
+    var pendingHtml by mutableStateOf(saved.get<String>("pendingHtml")); private set
     /** 最近一次粘贴/分享里检测到的全部链接，用于「全部收藏」。 */
     var detected by mutableStateOf(saved.get<ArrayList<String>>("detected")?.toList() ?: emptyList()); private set
     var fetchingId by mutableStateOf<Long?>(null); private set
@@ -440,8 +466,10 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
         busy = true
         viewModelScope.launch {
             try {
-                check(dao.softDelete(id, System.currentTimeMillis()) == 1) { "收藏已不存在" }
+                val at = System.currentTimeMillis()
+                check(dao.softDelete(id, at) == 1) { "收藏已不存在" }
                 if (detailId == id) closeDetail()
+                deletionUndo = DeletionUndo(setOf(id), at)
                 toast("已移入回收站，可在 30 天内恢复")
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) { fail("删除失败：${e.localizedMessage}") }
@@ -455,7 +483,9 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
         viewModelScope.launch {
             try {
                 val now = System.currentTimeMillis()
-                db.withTransaction { ids.forEach { dao.softDelete(it, now) } }
+                val deleted = db.withTransaction { ids.filter { dao.softDelete(it, now) == 1 }.toSet() }
+                check(deleted.isNotEmpty()) { "收藏已不存在" }
+                deletionUndo = DeletionUndo(deleted, now)
                 toast("已移入回收站，可在 30 天内恢复")
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) { fail("批量删除失败：${e.localizedMessage}") }
@@ -465,6 +495,34 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
 
     fun restoreTrash(item: Bookmark) = act("已恢复收藏") {
         check(dao.restore(item.id) == 1) { "这条收藏已不存在" }
+    }
+
+    internal fun dismissDeletionUndo(expected: DeletionUndo) {
+        if (deletionUndo?.token == expected.token) deletionUndo = null
+    }
+
+    internal fun undoDeletion(expected: DeletionUndo) {
+        if (deletionUndo?.token != expected.token || undoInFlightToken != null) return
+        undoInFlightToken = expected.token
+        viewModelScope.launch {
+            var acquired = false
+            try {
+                // Snackbar 已接受操作时不能因另一项保存/导入忙碌而静默丢弃撤销。
+                while (busy) kotlinx.coroutines.delay(25)
+                if (deletionUndo?.token != expected.token) { toast("删除批次已变化，可到回收站恢复"); return@launch }
+                busy = true; acquired = true
+                val restored = db.withTransaction {
+                    expected.ids.count { id ->
+                        val current = dao.byId(id)
+                        current != null && current.deletedAt == expected.deletedAt && dao.restore(id) == 1
+                    }
+                }
+                dismissDeletionUndo(expected)
+                toast(if (restored > 0) "已撤销删除，恢复 $restored 条收藏" else "收藏已恢复或不再可撤销")
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) { fail("撤销失败：${e.localizedMessage}") }
+            finally { if (acquired) busy = false; undoInFlightToken = null }
+        }
     }
 
     fun deleteForever(item: Bookmark) = act("已永久删除") {
@@ -588,9 +646,17 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
 
     fun receive(shared: Shared) {
         if (shared.text.isBlank() && shared.html.isBlank()) { fail("分享中没有可识别的链接文字"); return }
+        if (analysisConversationKey != null) {
+            pending = shared.text.take(16000); saved["pending"] = pending
+            pendingTitle = shared.title.take(200); saved["pendingTitle"] = pendingTitle
+            pendingHtml = shared.html.take(64000); saved["pendingHtml"] = pendingHtml
+            toast("新分享已暂存，退出对话后可处理；多次分享只保留最新一条")
+            return
+        }
         if (draft != null || busy || preview != null) {
             pending = shared.text.take(16000); saved["pending"] = pending
             pendingTitle = shared.title.take(200); saved["pendingTitle"] = pendingTitle
+            pendingHtml = shared.html.take(64000); saved["pendingHtml"] = pendingHtml
             fail("收到新分享，当前草稿未覆盖。完成或取消编辑后，可点击“处理待收分享”。多次分享只保留最新一条待收内容。")
         } else {
             edit(Draft())
@@ -599,12 +665,14 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
     }
 
     fun importPending() {
-        if (draft != null || busy) return
+        if (draft != null || notes.draft != null || analysisConversationKey != null || busy) return
         val text = pending ?: return
         val title = pendingTitle.orEmpty()
+        val html = pendingHtml.orEmpty()
         pending = null; saved["pending"] = null
         pendingTitle = null; saved["pendingTitle"] = null
-        receive(Shared(text, title))
+        pendingHtml = null; saved["pendingHtml"] = null
+        receive(Shared(text, title, html))
     }
 
     fun cancel() { if (!busy) { edit(null); notice = null; detected = emptyList(); saved["detected"] = null } }

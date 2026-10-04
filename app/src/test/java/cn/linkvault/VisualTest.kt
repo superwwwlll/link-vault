@@ -106,12 +106,20 @@ class VisualTest {
         // 添加按钮压在列表右下角，必须给卡片让位：向下滚收起、回到顶部再出现。
         // 截图看不到这件事，所以这里按语义节点断言，而不是靠肉眼看图。
         rule.onAllNodes(hasContentDescription("收藏链接")).assertCountEquals(1)
+        // 紧凑模式下三条短收藏可能完整放下；补足真实可滚动列表再验收滚动反馈。
+        val scrollSamples = runBlocking {
+            val dao = VaultDb.get(rule.activity).bookmarks()
+            (1..10).map { index -> dao.insert(Bookmark(url = "https://example.com/scroll/$index", canonical = "https://example.com/scroll/$index", title = "滚动验收条目 $index", createdAt = 0L)) }
+        }
+        rule.waitUntil(20_000) { rule.runOnIdle { vm.items.size == 13 } }
         rule.onNodeWithTag("collection-list").performTouchInput { swipeUp() }
         rule.waitForIdle()
         rule.onAllNodes(hasContentDescription("收藏链接")).assertCountEquals(0)
-        rule.onNodeWithTag("collection-list").performTouchInput { swipeDown() }
+        rule.onNodeWithTag("collection-list").performScrollToIndex(0)
         rule.waitForIdle()
         rule.onAllNodes(hasContentDescription("收藏链接")).assertCountEquals(1)
+        runBlocking { scrollSamples.forEach { VaultDb.get(rule.activity).bookmarks().delete(it) } }
+        rule.waitUntil(20_000) { rule.runOnIdle { vm.items.size == 3 } }
         rule.onNodeWithText("值得慢慢看的宇宙").performClick()
         rule.onNodeWithText("收藏详情").assertIsDisplayed()
         capture("02-detail-light")

@@ -76,12 +76,14 @@ class AnalysisVisualTest {
         rule.waitUntil(10_000) { rule.runOnIdle { vm.analysis.records["n-$id"] != null } }
         rule.onNodeWithText("用结构化笔记把信息变成可行动的知识。").performScrollTo().assertIsDisplayed()
         capture("analysis-03-summary")
-        rule.onNodeWithText("围绕这篇内容继续追问").performScrollTo()
+        rule.onNodeWithText("继续对话").performScrollTo().performClick()
+        rule.onNode(hasSetTextAction() and hasText("围绕这篇内容继续追问")).assertIsDisplayed()
         rule.onNode(hasSetTextAction() and hasText("围绕这篇内容继续追问")).performTextInput("给我一个具体行动")
-        rule.onNodeWithText("发送追问").performScrollTo().performClick()
+        rule.onNodeWithText("发送追问").performClick()
         rule.waitUntil(10_000) { rule.runOnIdle { vm.analysis.records["n-$id"]?.messages?.size == 3 } }
         rule.onNodeWithText("选一篇本周工作相关的文章，列出一个可以验证的行动。").performScrollTo().assertIsDisplayed()
         capture("analysis-04-conversation")
+        rule.onNodeWithText("返回").performClick()
         rule.runOnIdle { check(calls.get() == 3); vm.notes.edit(null) }
         runBlocking { db.notes().delete(id) }
         rule.runOnIdle { vm.analysis.clear("n-$id") }

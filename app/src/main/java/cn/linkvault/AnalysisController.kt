@@ -26,6 +26,7 @@ internal class AnalysisController(
     private val config: () -> Translate.Config,
     private val verified: () -> Boolean,
     private val fetchEnabled: () -> Boolean,
+    private val onClear: (String) -> Unit = {},
     private val readRecord: (Context, String) -> AnalysisRecord? = AnalysisStore::read
 ) {
     private val prefs = context.getSharedPreferences("settings", 0)
@@ -110,6 +111,7 @@ internal class AnalysisController(
         if (restoreRecord && key !in records) { loaded.remove(key); load(key) }
     }
     fun clear(key: String) {
+        onClear(key)
         cancelRequest(key, restoreRecord = false); records.remove(key); loaded.remove(key); errors.remove(key)
         // 小文件删除同步完成，避免立即重新分析与异步删除互相覆盖。
         AnalysisStore.delete(context, key)
