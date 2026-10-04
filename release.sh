@@ -201,7 +201,7 @@ cat > "$PUBLISH_DIR/index.html" <<EOF
   <div class="meta">versionCode $VERSION_CODE · $SIZE_MB MB · 构建于 $STAMP</div>
   <a class="btn" href="lian-cang-debug.apk">下载 APK</a>
   <div class="warn"><b>直接覆盖安装，不要卸载。</b>卸载或清除数据会永久丢失全部收藏。
-    升级前建议先在应用内「设置 → 导出收藏」备份一次。</div>
+    升级前建议先在应用内「设置 → 备份与更新 → 导出收藏」备份一次。</div>
   <div class="note" style="margin-top:16px">
     签名证书指纹<br><code>$WANT</code><br><br>
     SHA-256<br><code>$SHA</code>

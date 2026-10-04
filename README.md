@@ -1,4 +1,4 @@
-# 链藏 1.6.0 · 本地链接收藏夹
+# 链藏 1.6.1 · 本地链接收藏夹
 
 Kotlin · Jetpack Compose · Room ｜ Android 8.0（API 26）及以上
 
@@ -6,7 +6,7 @@ Kotlin · Jetpack Compose · Room ｜ Android 8.0（API 26）及以上
 
 ## 安装 / 从旧版升级
 
-新版：`deliverables/lian-cang-1.6.0.apk`（正式签名包，已关闭调试开关、代码与资源已收缩）。
+新版：`deliverables/lian-cang-1.6.1.apk`（正式签名包，已关闭调试开关、代码与资源已收缩）。
 
 **更新只需在应用内点一下**：打开链藏时若发现新版本，收藏页顶部会出现提示条，点「更新」即下载并安装，
 收藏一条不丢。详见 [AUTO-UPDATE.md](AUTO-UPDATE.md)。
@@ -19,8 +19,9 @@ APK 发布在 <https://github.com/superwwwlll/link-vault/releases>。
 
 1. 将 APK 传到手机，点击安装；按系统提示给文件管理器临时允许“安装未知应用”。
 2. **已有旧版本时直接覆盖安装，不要卸载，不要清除数据。** 全版本包名、签名和数据库迁移链均兼容，
-    versionCode 依次为 1 → 2 → … → 18 → 19 → 20 → 21 → 22 → 23 → 24。
-3. 装好后到「设置 → 导出收藏」立即做一份 JSON 备份。设置页会显示上次备份时间，超过 30 天会以警示色提醒。
+    versionCode 依次为 1 → 2 → … → 18 → 19 → 20 → 21 → 22 → 23 → 24 → 25。
+3. 装好后到设置的备份子页导出一份 JSON 备份。设置页会显示上次备份时间，超过 30 天会以警示色提醒。
+
 4. 从 1.3.6 起发布出去的是**正式签名包**（`debuggable` 已关闭、代码经 R8 收缩），不再是调试包；
    GitHub 上的 v1.3.5 及更早仍是调试包。签名钥匙从 1.0.0 起没换过，所以都能互相覆盖升级。
    但它仍属个人自用分发，不是应用商店版本，请只安装可信来源的 APK。
@@ -29,6 +30,10 @@ APK 发布在 <https://github.com/superwwwlll/link-vault/releases>。
 原包 `lian-cang-1.0.0-debug.apk`、`lian-cang-1.1.0-debug.apk` 与原源码压缩包均保留。各版本的最终验证报告
 （`VERIFICATION-1.2.0.md` / `VERIFICATION-1.1.0.md` / `VERIFICATION.md`）与按版本的校验记录
 （`apk-verification-<版本>.txt`、`SHA256SUMS-<版本>.txt`）分别保留。
+
+## 1.6.1 页面优化
+
+收藏顶部与标签卡片更紧凑，设置改为分类子页，AI 接口验证、关注方向和模板操作更清晰。保留字号和数据，不擅自覆盖收藏标题。详见 [优化任务与验收](docs/UI-OPTIMIZATION-1.6.1.md)。
 
 ## 1.2.0 主要变化
 

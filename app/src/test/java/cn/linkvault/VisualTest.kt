@@ -92,10 +92,10 @@ class VisualTest {
         // 真实点击验收：页签必须可点，搜索框必须能输入并筛选，而不是只看截图。
         rule.onNode(hasText("未读") and hasClickAction()).performClick()
         rule.onNode(hasText("未读") and hasClickAction()).assertIsSelected()
-        rule.onNode(hasText("全部") and hasClickAction()).assertIsNotSelected()
+        rule.onNode(hasText("未归档") and hasClickAction()).assertIsNotSelected()
         rule.runOnIdle { check(vm.scope == 1) { "scope after unread click=${vm.scope}" } }
-        rule.onNode(hasText("全部") and hasClickAction()).performClick()
-        rule.onNode(hasText("全部") and hasClickAction()).assertIsSelected()
+        rule.onNode(hasText("未归档") and hasClickAction()).performClick()
+        rule.onNode(hasText("未归档") and hasClickAction()).assertIsSelected()
         rule.runOnIdle { check(vm.scope == 0) }
         rule.onNodeWithContentDescription("展开搜索").performClick()
         rule.onNode(hasSetTextAction()).performTextInput("Compose")
@@ -209,18 +209,22 @@ class VisualTest {
         rule.onNodeWithText("放弃编辑").performClick()
         rule.onNodeWithContentDescription("返回").performClick()
         rule.onNodeWithText("标签").performClick()
-        rule.onAllNodesWithText("2 条收藏").onFirst().assertExists()
+        rule.onAllNodesWithText("2 条").onFirst().assertExists()
         capture("04-tags-light")
         rule.onNodeWithText("设置").performClick()
-        rule.onNodeWithText("导出收藏").assertExists()
         capture("05-settings-light")
         // AI 翻译默认收起，展开后的配置表单是这一版新增的主要入口，单独拍一张。
         rule.runOnIdle {
             vm.aiEnabled(true); vm.aiEndpoint("https://api.example.com/v1/chat/completions")
             vm.aiModel("gpt-4o-mini"); vm.aiKey("sk-demo-key-0123456789")
         }
+        rule.onNodeWithText("AI 接口").performScrollTo().performClick()
         rule.onNodeWithText("你的 API Key").performScrollTo()
         capture("05b-settings-ai-light")
+        rule.onNodeWithText("返回").performClick()
+        rule.onNodeWithText("备份与更新").performScrollTo().performClick()
+        rule.onNodeWithText("导出收藏").performScrollTo().assertExists()
+        rule.onNodeWithText("返回").performClick()
         rule.runOnIdle {
             vm.aiEnabled(false); vm.aiEndpoint(Translate.DEFAULT_ENDPOINT)
             vm.aiModel(Translate.DEFAULT_MODEL); vm.aiKey("")
@@ -274,7 +278,9 @@ class VisualTest {
         capture("11-notes-unlocked-light")
         // 改密码弹窗同样拍不出来，这里只验收入口在设置页里存在。
         rule.onNodeWithText("设置").performClick()
+        rule.onNodeWithText("备份与更新").performScrollTo().performClick()
         rule.onNodeWithText("修改主密码").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("返回").performClick()
         // 提示条的纯文本分支：链接那条 1.4.0 已经拍过，这里要的是「存为笔记」那颗按钮和它下面
         // 那行「存下来是明文笔记」。口令样子的内容无所谓——它只存在于测试沙箱。
         rule.onNodeWithText("收藏").performClick()
@@ -285,6 +291,7 @@ class VisualTest {
         capture("13-clipboard-text-light")
         rule.runOnIdle { vm.dismissClipboard() }
         rule.onNodeWithText("设置").performClick()
+        rule.onNodeWithText("外观").performScrollTo().performClick()
         rule.onNodeWithText("深色").performScrollTo().performClick()
         rule.onNodeWithText("收藏").performClick()
         capture("06-collection-dark")

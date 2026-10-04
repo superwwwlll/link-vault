@@ -54,6 +54,121 @@ class AnalysisTest {
         n.copy(id = db.notes().insert(n)).also { ai.clear("n-${it.id}") }
     }
 
+    @Test fun lateDiskLoadCannotReplaceANewerSuccessfulSummary() {
+        val n = note(); val key = "n-${n.id}"
+        val old = AnalysisRecord(Analysis.hash(n.text), "旧框架", "旧模板", n.text.length, listOf(AnalysisMessage("assistant", "旧总结")))
+        AnalysisStore.save(app, key, old)
+        val entered = CountDownLatch(1); val release = CountDownLatch(1)
+        val reads = java.util.concurrent.atomic.AtomicInteger()
+        ai = AnalysisController(app, db, scope, { config }, { true }, { false }) { context, recordKey ->
+            val value = AnalysisStore.read(context, recordKey)
+            if (reads.incrementAndGet() == 1) { entered.countDown(); check(release.await(10, TimeUnit.SECONDS)) }
+            value
+        }
+        try {
+            ai.load(key); assertTrue(entered.await(5, TimeUnit.SECONDS))
+            Analysis.transport = { _, _, _ -> response("新总结") }
+            ai.run(key)
+            waitUntil { ai.records[key]?.messages?.first()?.text == "新总结" && ai.states[key] == null }
+        } finally { release.countDown() }
+        runBlocking { withTimeout(10_000) { scope.coroutineContext[Job]!!.children.toList().joinAll() } }
+        assertEquals("新总结", ai.records[key]!!.messages.first().text)
+        assertEquals(ai.records[key], AnalysisStore.read(app, key))
+    }
+
+    private fun sameGenerationLateLoad(lateFailure: Boolean) {
+        val n = note(); val key = "n-${n.id}"
+        val old = AnalysisRecord(Analysis.hash(n.text), "框架", "模板", n.text.length, listOf(AnalysisMessage("assistant", "旧总结")))
+        AnalysisStore.save(app, key, old)
+        val runRead = CountDownLatch(1); val loadRead = CountDownLatch(1)
+        val releaseRun = CountDownLatch(1); val releaseLoad = CountDownLatch(1)
+        val reads = java.util.concurrent.atomic.AtomicInteger()
+        ai = AnalysisController(app, db, scope, { config }, { true }, { false }) { context, recordKey ->
+            val value = AnalysisStore.read(context, recordKey)
+            when (reads.incrementAndGet()) {
+                1 -> { runRead.countDown(); check(releaseRun.await(10, TimeUnit.SECONDS)) }
+                2 -> { loadRead.countDown(); check(releaseLoad.await(10, TimeUnit.SECONDS)); if (lateFailure) error("迟到的读盘异常") }
+            }
+            value
+        }
+        try {
+            Analysis.transport = { _, _, _ -> response("本轮新总结") }
+            ai.run(key); assertTrue(runRead.await(5, TimeUnit.SECONDS))
+            ai.load(key); assertTrue(loadRead.await(5, TimeUnit.SECONDS))
+            releaseRun.countDown()
+            waitUntil { ai.records[key]?.messages?.first()?.text == "本轮新总结" && ai.states[key] == null }
+        } finally { releaseRun.countDown(); releaseLoad.countDown() }
+        runBlocking { withTimeout(10_000) { scope.coroutineContext[Job]!!.children.toList().joinAll() } }
+        assertEquals("本轮新总结", ai.records[key]!!.messages.first().text)
+        assertNull(ai.errors[key])
+    }
+    @Test fun sameGenerationLateReadCannotOverwriteSuccessfulAnalysis() = sameGenerationLateLoad(false)
+    @Test fun sameGenerationLateReadErrorCannotPolluteSuccessfulAnalysis() = sameGenerationLateLoad(true)
+
+    @Test fun clearWhileDiskReadIsBlockedCannotRevivePrivateRecord() {
+        val n = note(); val key = "n-${n.id}"
+        AnalysisStore.save(app, key, AnalysisRecord("hash", "框架", "模板", n.text.length, listOf(AnalysisMessage("assistant", "旧总结"))))
+        val entered = CountDownLatch(1); val release = CountDownLatch(1)
+        val reads = java.util.concurrent.atomic.AtomicInteger()
+        ai = AnalysisController(app, db, scope, { config }, { true }, { false }) { context, recordKey ->
+            reads.incrementAndGet()
+            val value = AnalysisStore.read(context, recordKey)
+            entered.countDown(); check(release.await(10, TimeUnit.SECONDS)); value
+        }
+        try {
+            ai.load(key); assertTrue(entered.await(5, TimeUnit.SECONDS))
+            ai.afterNoteSave(n.copy(secret = true))
+            assertNull(AnalysisStore.read(app, key))
+        } finally { release.countDown() }
+        runBlocking { withTimeout(10_000) { scope.coroutineContext[Job]!!.children.toList().joinAll() } }
+        assertNull(ai.records[key]); assertNull(ai.errors[key]); assertEquals(1, reads.get())
+    }
+
+    @Test fun concurrentDiskLoadAndFailedAnalysisKeepThePreviousSummary() {
+        val n = note(); val key = "n-${n.id}"
+        val old = AnalysisRecord(Analysis.hash(n.text), "旧框架", "旧模板", n.text.length, listOf(AnalysisMessage("assistant", "保留的旧总结")))
+        AnalysisStore.save(app, key, old)
+        val entered = CountDownLatch(1); val release = CountDownLatch(1)
+        val reads = java.util.concurrent.atomic.AtomicInteger()
+        ai = AnalysisController(app, db, scope, { config }, { true }, { false }) { context, recordKey ->
+            val value = AnalysisStore.read(context, recordKey)
+            if (reads.incrementAndGet() == 1) { entered.countDown(); check(release.await(10, TimeUnit.SECONDS)) }
+            value
+        }
+        try {
+            ai.load(key); assertTrue(entered.await(5, TimeUnit.SECONDS))
+            Analysis.transport = { _, _, _ -> error("模拟请求失败") }
+            ai.run(key)
+            waitUntil { ai.errors[key] != null && ai.states[key] == null }
+            assertEquals(old, ai.records[key])
+        } finally { release.countDown() }
+        runBlocking { withTimeout(10_000) { scope.coroutineContext[Job]!!.children.toList().joinAll() } }
+        assertEquals(old, ai.records[key])
+    }
+
+    @Test fun cancellingDuringDiskLoadAllowsPreviousRecordToReload() {
+        val n = note(); val key = "n-${n.id}"
+        val old = AnalysisRecord(Analysis.hash(n.text), "框架", "模板", n.text.length, listOf(AnalysisMessage("assistant", "原总结")))
+        AnalysisStore.save(app, key, old)
+        val entered = CountDownLatch(1); val release = CountDownLatch(1)
+        val reads = java.util.concurrent.atomic.AtomicInteger()
+        ai = AnalysisController(app, db, scope, { config }, { true }, { false }) { context, recordKey ->
+            val value = AnalysisStore.read(context, recordKey)
+            if (reads.incrementAndGet() == 1) { entered.countDown(); check(release.await(10, TimeUnit.SECONDS)) }
+            value
+        }
+        try {
+            ai.load(key); assertTrue(entered.await(5, TimeUnit.SECONDS))
+            ai.cancel(key)
+            waitUntil { ai.records[key] != null }
+            assertEquals(old, ai.records[key])
+        } finally { release.countDown() }
+        runBlocking { withTimeout(10_000) { scope.coroutineContext[Job]!!.children.toList().joinAll() } }
+        assertEquals(old, ai.records[key])
+        ai.clear(key)
+        assertNull(ai.records[key]); assertNull(AnalysisStore.read(app, key))
+    }
+
     @Test fun sourceIsBoundedAndHistoryKeepsOnlyCompleteRecentPairs() {
         val messages = listOf(AnalysisMessage("assistant", "总结")) + (1..10).flatMap { listOf(AnalysisMessage("user", "问$it"), AnalysisMessage("assistant", "答$it")) }
         val record = AnalysisRecord("hash", "旧框架", "模板", 30_000, messages)

@@ -4,6 +4,7 @@
 )
 package cn.linkvault
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -13,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -38,11 +40,25 @@ internal fun SettingsPage(
 ) {
     var secureAction by rememberSaveable { mutableStateOf<String?>(null) }
     var securePassword by rememberSaveable { mutableStateOf("") }
+    var page by rememberSaveable { mutableStateOf("") }
+    var returnPage by rememberSaveable { mutableStateOf("") }
+    var changeMaster by rememberSaveable { mutableStateOf(false) }
+    val goBack: () -> Unit = { page = returnPage; returnPage = "" }
+    BackHandler(enabled = page.isNotEmpty() && secureAction == null && !changeMaster) { goBack() }
 
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        Box(Modifier.padding(horizontal = 24.dp)) { RootHeading("设置") }
-        Column(Modifier.padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
+    Column(Modifier.fillMaxSize()) {
+        if (page.isEmpty()) {
+            Box(Modifier.padding(horizontal = 24.dp)) { RootHeading("设置") }
+        } else {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = goBack, modifier = Modifier.heightIn(min = 48.dp)) { Text("返回") }
+                Text(page, Modifier.weight(1f).padding(8.dp), fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+            }
+        }
+        key(page) {
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
 
+            if (page.isEmpty()) {
             Surface(
                 shape = RoundedCornerShape(16.dp),
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
@@ -56,12 +72,24 @@ internal fun SettingsPage(
                         Icon(Glyph.Shield, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.primary)
                     }
                     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text("收藏与笔记存于本机", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                        Text("无云同步；使用 AI 时内容会发给你配置的服务商", fontSize = 12.sp, fontWeight = FontWeight.Normal, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("收藏与笔记存于本机", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                        Text("无云同步；使用 AI 会发送内容给服务商，可能计费。请勿发送敏感内容。", fontSize = 12.sp, fontWeight = FontWeight.Normal, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
+            Surface(shape = RoundedCornerShape(16.dp), border = BorderStroke(0.7.dp, MaterialTheme.colorScheme.outlineVariant)) {
+                Column {
+                    SettingRow(Glyph.Check, "外观", "主题与显示", true) { page = "外观" }
+                    SettingRow(Glyph.Cloud, "抓取", "页面信息与离线标题整理", true) { page = "抓取" }
+                    SettingRow(Glyph.LinkChain, "AI 接口", "服务商、模型、密钥与连接测试", true) { page = "AI 接口" }
+                    SettingRow(Glyph.Note, "阅读助手", "关注方向、模板与自动分析", true) { page = "阅读助手" }
+                    SettingRow(Glyph.Translate, "翻译", "共用 AI 接口，按需翻译正文", true) { page = "翻译" }
+                    SettingRow(Glyph.Archive, "备份与更新", "导入导出、私密笔记与应用更新", true) { page = "备份与更新" }
+                }
+            }
+            }
 
+            if (page == "外观") {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 SectionLabel("外观")
                 val themeOptions = listOf("system" to "跟随系统", "light" to "浅色", "dark" to "深色")
@@ -72,7 +100,9 @@ internal fun SettingsPage(
                     label = { it.second }
                 )
             }
+            }
 
+            if (page == "备份与更新") {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 SectionLabel("应用更新", trailing = if (vm.updateChecking) "检查中…" else "")
                 Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(0.7.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)), shadowElevation = 0.5.dp) {
@@ -91,7 +121,7 @@ internal fun SettingsPage(
                         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             Text("新版本已下载并通过校验", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                             Text("${info?.versionName ?: ""} · ${size(ready.length())}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Button(onClick = { vm.installDownloaded() }, shape = RoundedCornerShape(13.dp)) { Text("立即安装") }
                                 OutlinedButton(onClick = { vm.openDownloadInBrowser() }, shape = RoundedCornerShape(13.dp)) { Text("用浏览器安装", fontSize = 12.sp) }
                             }
@@ -108,7 +138,7 @@ internal fun SettingsPage(
                                 LinearProgressIndicator(progress = { vm.updateProgress }, modifier = Modifier.fillMaxWidth())
                                 Text(downloadLabel(vm), fontSize = 11.sp, color = MaterialTheme.colorScheme.onPrimaryContainer)
                             } else {
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Button(onClick = { vm.downloadUpdate() }, shape = RoundedCornerShape(13.dp)) { Text("下载并安装") }
                                     OutlinedButton(onClick = { vm.openDownloadInBrowser() }, shape = RoundedCornerShape(13.dp)) { Text("用浏览器", fontSize = 12.sp) }
                                 }
@@ -129,9 +159,11 @@ internal fun SettingsPage(
                     }
                 }
             }
+            }
 
+            if (page == "抓取") {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                SectionLabel("联网抓取", trailing = if (vm.fetchEnabled) "已开启" else "默认关闭")
+                SectionLabel("联网抓取", trailing = if (vm.fetchEnabled) "已开启" else "未开启")
                 Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(0.7.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)), shadowElevation = 0.5.dp) {
                     SwitchRow(Glyph.Cloud, "页面信息抓取", "保存链接后自动补齐标题、封面与正文，详情页可手动重抓", vm.fetchEnabled, !vm.busy) { vm.fetchEnabled(it) }
                 }
@@ -147,13 +179,15 @@ internal fun SettingsPage(
                 Text("只读本机已有的正文快照，不发任何请求；改坏的标题可以在编辑页改回去。",
                     fontSize = 11.5.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            }
 
-            AiConnectionSettings(vm)
-            AnalysisSettings(vm)
+            if (page == "AI 接口") AiConnectionSettings(vm)
+            if (page == "阅读助手") AnalysisSettings(vm)
 
+            if (page == "翻译") {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 SectionLabel("AI 翻译", trailing = when {
-                    !vm.aiEnabled -> "默认关闭"
+                    !vm.aiEnabled -> "未开启"
                     vm.canTranslate -> "已配置"
                     else -> "还缺密钥"
                 })
@@ -162,8 +196,12 @@ internal fun SettingsPage(
                         SwitchRow(Glyph.Translate, "启用翻译", "详情页把离线正文快照译成简体中文；快照要「联网抓取」才会产生", vm.aiEnabled, !vm.busy) { vm.aiEnabled(it) }
                     }
                 }
+                Text("与阅读助手共用「AI 接口」。翻译会发送正文到你配置的服务商，可能计费；敏感内容请勿翻译。", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                TextButton(onClick = { returnPage = "翻译"; page = "AI 接口" }, modifier = Modifier.heightIn(min = 48.dp)) { Text("配置 AI 接口") }
+                var details by rememberSaveable { mutableStateOf(false) }
+                TextButton(onClick = { details = !details }, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (details) "收起翻译说明" else "详细隐私与用量说明") }
                 // 翻译与阅读助手共用用户配置的第三方接口。
-                Text(
+                if (details) Text(
                     "翻译会把整段正文原样发给你填的那个地址，费用记在你的账号上：一篇最多 24,000 字，" +
                         "按段发送，最多 20 段，每段等 60 秒，长文可能要等几分钟。密钥存在本机应用私有目录（明文，" +
                         "未 root 的设备上其他应用读不到），不导入备份、不同步、不参与更新检查；" +
@@ -171,8 +209,9 @@ internal fun SettingsPage(
                     fontSize = 11.5.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+            }
 
-            var changeMaster by rememberSaveable { mutableStateOf(false) }
+            if (page == "备份与更新") {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 SectionLabel("私密笔记", trailing = if (vm.notes.hasMaster) "" else "未设主密码")
                 Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(0.7.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)), shadowElevation = 0.5.dp) {
@@ -233,7 +272,9 @@ internal fun SettingsPage(
                 SectionLabel("关于链藏")
                 Text(vm.versionLabel, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
             }
+            }
             Spacer(Modifier.height(24.dp))
+        }
         }
     }
 
@@ -290,6 +331,7 @@ private fun SettingRow(icon: ImageVector, title: String, subtitle: String, enabl
     Row(
         Modifier
             .fillMaxWidth()
+            .heightIn(min = 48.dp)
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -318,6 +360,7 @@ private fun SwitchRow(icon: ImageVector, title: String, subtitle: String, checke
     Row(
         Modifier
             .fillMaxWidth()
+            .heightIn(min = 48.dp)
             .padding(start = 16.dp, end = 12.dp, top = 10.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)

@@ -25,7 +25,8 @@ internal class AnalysisController(
     private val scope: CoroutineScope,
     private val config: () -> Translate.Config,
     private val verified: () -> Boolean,
-    private val fetchEnabled: () -> Boolean
+    private val fetchEnabled: () -> Boolean,
+    private val readRecord: (Context, String) -> AnalysisRecord? = AnalysisStore::read
 ) {
     private val prefs = context.getSharedPreferences("settings", 0)
     var auto by mutableStateOf(prefs.getBoolean("analysisAuto", false)); private set
@@ -39,6 +40,7 @@ internal class AnalysisController(
     private val jobs = mutableMapOf<String, Job>()
     private val automatic = mutableSetOf<String>()
     private val loaded = mutableSetOf<String>()
+    private val loading = mutableMapOf<String, Job>()
     private val versions = mutableMapOf<String, Long>()
     private val queue = Semaphore(1)
 
@@ -71,17 +73,24 @@ internal class AnalysisController(
     }
 
     fun load(key: String) {
-        if (!loaded.add(key)) return
+        if (key in loaded || key in loading || key in records) return
         val version = versions[key] ?: 0L
-        scope.launch {
+        val job = scope.launch(start = CoroutineStart.LAZY) {
             try {
-                val record = withContext(Dispatchers.IO) { AnalysisStore.read(context, key) }
-                if (record != null && jobs[key] == null && key in loaded && (versions[key] ?: 0L) == version) records[key] = record
+                val record = withContext(Dispatchers.IO) { readRecord(context, key) }
+                // 请求可以先发布新记录；迟到的读盘永远不能覆盖它。
+                if ((versions[key] ?: 0L) == version && key !in records) {
+                    if (record != null) records[key] = record
+                    loaded.add(key)
+                }
             } catch (e: CancellationException) { throw e }
             catch (_: Exception) {
-                if ((versions[key] ?: 0L) == version) errors[key] = "本机 AI 记录读取失败，可重新分析；原文未改动"
+                if ((versions[key] ?: 0L) == version && key !in records) errors[key] = "本机 AI 记录读取失败，可重新分析；原文未改动"
             }
+            finally { if (loading[key] === coroutineContext[Job]) loading.remove(key) }
         }
+        loading[key] = job
+        job.start()
     }
 
     fun afterBookmarkSave(id: Long) { if (auto) reschedule("b-$id") }
@@ -93,12 +102,15 @@ internal class AnalysisController(
         if (jobs.containsKey(key)) cancel(key)
         run(key, automaticRequest = true)
     }
-    fun cancel(key: String) {
+    fun cancel(key: String) = cancelRequest(key, restoreRecord = true)
+    private fun cancelRequest(key: String, restoreRecord: Boolean) {
         versions[key] = (versions[key] ?: 0L) + 1
         jobs.remove(key)?.cancel(); automatic.remove(key); states.remove(key)
+        loading.remove(key)?.cancel()
+        if (restoreRecord && key !in records) { loaded.remove(key); load(key) }
     }
     fun clear(key: String) {
-        cancel(key); records.remove(key); loaded.remove(key); errors.remove(key)
+        cancelRequest(key, restoreRecord = false); records.remove(key); loaded.remove(key); errors.remove(key)
         // 小文件删除同步完成，避免立即重新分析与异步删除互相覆盖。
         AnalysisStore.delete(context, key)
     }
@@ -180,9 +192,11 @@ internal class AnalysisController(
                     require(connection.ready && connection.model.isNotBlank()) { "请先在设置里填好 AI 的 https 接口、模型和密钥" }
                     require(selectedTemplate.prompt.isNotBlank()) { "提示词框架不能为空" }
                     val old = records[key] ?: withContext(Dispatchers.IO) {
-                        if (question == null) runCatching { AnalysisStore.read(context, key) }.getOrNull()
-                        else AnalysisStore.read(context, key)
+                        if (question == null) runCatching { readRecord(context, key) }.getOrNull()
+                        else readRecord(context, key)
                     }
+                    // 先恢复落盘的旧总结；新请求失败或取消也不会使旧记录消失。
+                    if (old != null) { records[key] = old; loaded.add(key) }
                     val text = source(key, allowFetch = true)
                     val hash = Analysis.hash(text)
                     if (automaticRequest && old?.hash == hash) { records[key] = old; return@withPermit }
@@ -199,14 +213,21 @@ internal class AnalysisController(
                     else old!!.copy(messages = old.messages + AnalysisMessage("user", question) + AnalysisMessage("assistant", answer), updatedAt = System.currentTimeMillis())
                     // 小 JSON 在主线程原子落盘，取消/转私密不会与 IO 写入交错使明文记录复活。
                     AnalysisStore.save(context, key, record)
-                    records[key] = record; loaded.add(key)
+                    records[key] = record; loaded.add(key); errors.remove(key)
                 }
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
                 if (versions[key] == version) errors[key] = (e.localizedMessage ?: "AI 分析失败，请重试")
                     .replace(connection.apiKey.takeIf { it.isNotBlank() } ?: "\u0000", "[密钥]")
             }
-            finally { if (versions[key] == version) { states.remove(key); jobs.remove(key); automatic.remove(key) } }
+            finally {
+                if (versions[key] == version) {
+                    states.remove(key); jobs.remove(key); automatic.remove(key)
+                    if (key !in records) {
+                        loading.remove(key)?.cancel(); loaded.remove(key); load(key)
+                    }
+                }
+            }
         }
         jobs[key] = job
         job.start()

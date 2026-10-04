@@ -21,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.draw.clip
@@ -51,12 +52,12 @@ internal fun RootHeading(title: String, subtitle: String = "") {
 }
 
 @Composable
-internal fun SearchBox(value: String, onChange: (String) -> Unit, placeholder: String, modifier: Modifier = Modifier) {
-    var expanded by rememberSaveable { mutableStateOf(value.isNotEmpty()) }
+internal fun SearchBox(value: String, onChange: (String) -> Unit, placeholder: String, modifier: Modifier = Modifier, onExpandedChange: (Boolean) -> Unit = {}, initiallyExpanded: Boolean = value.isNotEmpty()) {
+    var expanded by rememberSaveable { mutableStateOf(initiallyExpanded) }
     val focus = remember { FocusRequester() }
     if (!expanded && value.isEmpty()) {
         Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            IconButton(onClick = { expanded = true }) { Icon(Glyph.Search, "展开搜索", Modifier.size(20.dp)) }
+            IconButton(onClick = { expanded = true; onExpandedChange(true) }) { Icon(Glyph.Search, "展开搜索", Modifier.size(20.dp)) }
         }
         return
     }
@@ -80,7 +81,7 @@ internal fun SearchBox(value: String, onChange: (String) -> Unit, placeholder: S
         trailingIcon = {
             Row {
                 if (value.isNotEmpty()) IconButton(onClick = { onChange("") }) { Icon(Glyph.Close, "清空搜索", Modifier.size(16.dp)) }
-                IconButton(onClick = { onChange(""); expanded = false }) { Icon(Glyph.Back, "关闭搜索", Modifier.size(16.dp)) }
+                IconButton(onClick = { onChange(""); expanded = false; onExpandedChange(false) }) { Icon(Glyph.Back, "关闭搜索", Modifier.size(16.dp)) }
             }
         },
         shape = RoundedCornerShape(16.dp),
@@ -193,6 +194,7 @@ internal fun <T> ScopeTabs(
 }
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 internal fun <T> SegmentedPills(
     items: List<T>,
     selectedItem: T,
@@ -201,7 +203,24 @@ internal fun <T> SegmentedPills(
     modifier: Modifier = Modifier,
     badge: ((T) -> String?)? = null
 ) {
-    ScopeTabs(items, selectedItem, onSelect, label, modifier, badge)
+    FlowRow(modifier.fillMaxWidth().selectableGroup(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        items.forEach { item ->
+            val chosen = item == selectedItem
+            Surface(
+                onClick = { onSelect(item) },
+                modifier = Modifier.semantics { selected = chosen; role = Role.Tab },
+                shape = RoundedCornerShape(12.dp),
+                color = if (chosen) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface,
+                contentColor = if (chosen) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                border = BorderStroke(1.dp, if (chosen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)
+            ) {
+                Row(Modifier.heightIn(min = 48.dp).padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(label(item), fontSize = 13.sp, fontWeight = if (chosen) FontWeight.SemiBold else FontWeight.Normal)
+                    badge?.invoke(item)?.takeIf { it.isNotEmpty() }?.let { Text(" $it", fontSize = 11.sp) }
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -227,7 +246,7 @@ internal fun EmptyState(icon: ImageVector, title: String, subtitle: String = "")
 @Composable
 internal fun PageToolbar(title: String, onBack: () -> Unit, action: (@Composable () -> Unit)? = null) {
     Row(
-        Modifier.fillMaxWidth().height(60.dp).padding(horizontal = 10.dp),
+        Modifier.fillMaxWidth().heightIn(min = 60.dp).padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         IconButton(onClick = onBack) { Icon(Glyph.Back, "返回", tint = MaterialTheme.colorScheme.onSurface) }
@@ -264,7 +283,7 @@ internal fun SourceMark(url: String, size: MarkSize = MarkSize.Small, muted: Boo
         else sourcePalette(key, dark)
     Box(
         Modifier
-            .size(size.box)
+            .size(size.box * LocalDensity.current.fontScale.coerceAtLeast(1f))
             .background(background, size.shape)
             .border(0.7.dp, if (muted) MaterialTheme.colorScheme.outlineVariant else sourceBorder(key, dark), size.shape),
         contentAlignment = Alignment.Center
@@ -274,6 +293,8 @@ internal fun SourceMark(url: String, size: MarkSize = MarkSize.Small, muted: Boo
             if (label.isEmpty()) "•" else label,
             color = foreground,
             fontSize = size.text,
+            lineHeight = size.text * 1.2f,
+            maxLines = 1,
             fontWeight = FontWeight.Bold
         )
     }

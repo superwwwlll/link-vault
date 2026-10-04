@@ -5,6 +5,7 @@
 )
 package cn.linkvault
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -17,21 +18,32 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val scopeLabels = listOf("全部", "未读", "已读", "归档")
+private val scopeLabels = listOf("未归档", "未读", "已读", "归档")
 
 /**
  * 收藏列表。
@@ -66,7 +78,16 @@ internal fun CollectionPage(
     var selectedIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
     val selectionMode = selectedIds.isNotEmpty()
     var confirmBulkDelete by remember { mutableStateOf(false) }
+    var searchExpanded by rememberSaveable { mutableStateOf(false) }
+    var filtersExpanded by rememberSaveable { mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
+    BackHandler(enabled = selectionMode || searchExpanded || vm.search.isNotEmpty() || filtersExpanded) {
+        when {
+            selectionMode -> selectedIds = emptySet()
+            searchExpanded || vm.search.isNotEmpty() -> { vm.search(""); searchExpanded = false }
+            else -> filtersExpanded = false
+        }
+    }
     LaunchedEffect(visible) { selectedIds = selectedIds.intersect(visible.map { it.id }.toSet()) }
 
     LazyColumn(
@@ -77,47 +98,40 @@ internal fun CollectionPage(
     ) {
         if (selectionMode) item(contentType = "selection") {
             Surface(color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.fillMaxWidth()) {
-                Row(Modifier.padding(start = 18.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("已选择 ${selectedIds.size} 条", Modifier.weight(1f), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                    TextButton(onClick = { vm.bulkMarkRead(selectedIds); selectedIds = emptySet() }, enabled = !vm.busy) { Text("标已读") }
-                    TextButton(onClick = { vm.bulkArchive(selectedIds); selectedIds = emptySet() }, enabled = !vm.busy) { Text("归档") }
-                    TextButton(onClick = { confirmBulkDelete = true }, enabled = !vm.busy) { Text("删除", color = MaterialTheme.colorScheme.error) }
-                    IconButton(onClick = { selectedIds = emptySet() }, modifier = Modifier.size(32.dp)) { Icon(Glyph.Close, "取消多选", Modifier.size(16.dp)) }
+                FlowRow(Modifier.padding(start = 18.dp, end = 8.dp), verticalArrangement = Arrangement.Center) {
+                    Text("已选择 ${selectedIds.size} 条", Modifier.align(Alignment.CenterVertically), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    TextButton(onClick = { vm.bulkMarkRead(selectedIds); selectedIds = emptySet() }, enabled = !vm.busy, modifier = Modifier.heightIn(min = 48.dp)) { Text("标已读") }
+                    TextButton(onClick = { vm.bulkArchive(selectedIds); selectedIds = emptySet() }, enabled = !vm.busy, modifier = Modifier.heightIn(min = 48.dp)) { Text("归档") }
+                    TextButton(onClick = { confirmBulkDelete = true }, enabled = !vm.busy, modifier = Modifier.heightIn(min = 48.dp)) { Text("删除", color = MaterialTheme.colorScheme.error) }
+                    IconButton(onClick = { selectedIds = emptySet() }, modifier = Modifier.size(48.dp)) { Icon(Glyph.Close, "取消多选", Modifier.size(16.dp)) }
                 }
             }
         }
         item {
             Column(Modifier.padding(horizontal = 24.dp)) {
-                RootHeading("我的收藏")
-                androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
-                    val tabContent: @Composable (Modifier) -> Unit = { tabModifier ->
-                        ScopeTabs(
-                            items = listOf(0, 1, 2, 3),
-                            selectedItem = vm.scope,
-                            onSelect = { index -> vm.scope(index) },
-                            label = { index -> scopeLabels[index] },
-                            badge = { index -> if (counts[index] > 0 && index != 0) counts[index].toString() else null },
-                            modifier = tabModifier
-                        )
+                Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("我的收藏", Modifier.weight(1f), fontSize = 26.sp, fontWeight = FontWeight.SemiBold,
+                        letterSpacing = (-0.5).sp, color = MaterialTheme.colorScheme.onBackground)
+                    IconButton(onClick = { if (searchExpanded || vm.search.isNotEmpty()) { vm.search(""); searchExpanded = false } else searchExpanded = true }, modifier = Modifier.size(48.dp).testTag("collection-search-toggle")) {
+                        Icon(if (searchExpanded || vm.search.isNotEmpty()) Glyph.Close else Glyph.Search,
+                            if (searchExpanded || vm.search.isNotEmpty()) "收起搜索" else "展开搜索", Modifier.size(20.dp))
                     }
-                    if (maxWidth >= 600.dp) {
-                        val tabWidth = (maxWidth - 262.dp).coerceAtLeast(300.dp)
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Bottom) {
-                            tabContent(Modifier.width(tabWidth))
-                            SearchBox(vm.search, vm::search, "搜索收藏", Modifier.width(250.dp))
-                        }
-                    } else {
-                        Column {
-                            tabContent(Modifier.fillMaxWidth())
-                            Spacer(Modifier.height(8.dp))
-                            SearchBox(vm.search, vm::search, "搜索标题、链接、备注、标签")
+                }
+                if (searchExpanded || vm.search.isNotEmpty()) {
+                    CollectionSearch(vm.search, vm::search, onClose = { vm.search(""); searchExpanded = false })
+                }
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    scopeLabels.forEachIndexed { index, label ->
+                        TextButton(onClick = { vm.scope(index) }, modifier = Modifier.heightIn(min = 48.dp).semantics { selected = vm.scope == index },
+                            colors = ButtonDefaults.textButtonColors(contentColor = if (vm.scope == index) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)) {
+                            Text(label, fontWeight = if (vm.scope == index) FontWeight.SemiBold else FontWeight.Normal, maxLines = 1)
+                            if (counts[index] > 0 && index != 0) Text(" ${counts[index]}", fontSize = 12.sp, maxLines = 1)
                         }
                     }
                 }
-
-                if (tagNames.isNotEmpty() && vm.items.isNotEmpty()) {
+                if (filtersExpanded && tagNames.isNotEmpty() && vm.items.isNotEmpty()) {
                     Row(
-                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 8.dp),
+                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         tagNames.forEach { tag ->
@@ -130,50 +144,44 @@ internal fun CollectionPage(
                                 modifier = Modifier
                                     .clip(shape)
                                     .clickable { vm.filter(if (selected) "" else tag) }
+                                    .heightIn(min = 48.dp)
+                                    .widthIn(min = 48.dp)
+                                    .semantics { this.selected = selected }
                             ) {
-                                Text(
+                                Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 9.dp)) { Text(
                                     tag,
                                     fontSize = 11.5.sp,
                                     fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
                                     color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
                                     maxLines = 1
-                                )
+                                ) }
                             }
                         }
                     }
                 }
 
-                Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     val heading = when {
                         vm.filter.isNotBlank() -> "# ${vm.filter}"
                         vm.scope == 3 -> "归档"
                         else -> "最近收藏"
                     }
-                    // 条数并进分区标题：单独占一行右对齐，白占一行高度却只有一句话
-                    Text(
-                        buildString {
-                            append(heading)
-                            if (vm.items.isNotEmpty()) append(" · ${visible.size} 条")
-                        },
-                        Modifier.weight(1f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis
-                    )
-                    if (visible.isNotEmpty()) {
-                        TextButton(
-                            onClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                vm.randomRead()
-                            },
-                            contentPadding = PaddingValues(horizontal = 6.dp)
-                        ) {
-                            Icon(Glyph.Shuffle, null, Modifier.size(13.dp))
-                            Spacer(Modifier.width(3.dp))
-                            Text("翻一篇", fontSize = 12.sp)
-                        }
-                        TextButton(onClick = { selectedIds = visible.map { it.id }.toSet() }, contentPadding = PaddingValues(horizontal = 6.dp)) { Text("多选", fontSize = 12.sp) }
+                    Column(Modifier.weight(1f)) {
+                        Text("${visible.size} 条", fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.testTag("collection-result-count"))
+                        Text(heading, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
-                    SortMenuButton(sortOrder = vm.sortOrder, onSelectSort = vm::setSort)
+                    if (tagNames.isNotEmpty()) IconButton(onClick = { filtersExpanded = !filtersExpanded }, modifier = Modifier.size(48.dp)) {
+                        Icon(Glyph.Tag, if (filtersExpanded) "收起标签筛选" else "展开标签筛选", Modifier.size(20.dp),
+                            tint = if (vm.filter.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    CollectionMoreMenu(vm.sortOrder, vm::setSort, visible.isNotEmpty(), vm.busy,
+                        onRandom = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            vm.randomRead()
+                        }, onSelectAll = { selectedIds = visible.map { it.id }.toSet() },
+                        onClearFilter = if (vm.filter.isNotBlank()) ({ vm.filter("") }) else null)
                 }
             }
         }
@@ -237,26 +245,36 @@ internal fun CollectionPage(
 }
 
 @Composable
-private fun SortMenuButton(sortOrder: Int, onSelectSort: (Int) -> Unit) {
+private fun CollectionSearch(value: String, onChange: (String) -> Unit, onClose: () -> Unit) {
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focus.requestFocus() }
+    OutlinedTextField(value = value, onValueChange = { onChange(it.replace("\n", "").replace("\r", "")) },
+        singleLine = true, keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        placeholder = { Text("搜索标题、链接、备注、标签", fontSize = 13.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        leadingIcon = { Icon(Glyph.Search, null, Modifier.size(18.dp)) },
+        trailingIcon = { IconButton(onClick = { if (value.isNotEmpty()) onChange("") else onClose() }, modifier = Modifier.size(48.dp)) {
+            Icon(Glyph.Close, if (value.isNotEmpty()) "清空搜索" else "关闭搜索", Modifier.size(16.dp))
+        } }, shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth().focusRequester(focus).testTag("collection-search"))
+}
+
+@Composable
+private fun CollectionMoreMenu(sortOrder: Int, onSelectSort: (Int) -> Unit, hasResults: Boolean, busy: Boolean,
+    onRandom: () -> Unit, onSelectAll: () -> Unit, onClearFilter: (() -> Unit)?) {
     var expanded by remember { mutableStateOf(false) }
     val labels = listOf("最新添加", "最早添加", "标题 A-Z", "站点聚合")
-    val currentLabel = labels.getOrElse(sortOrder) { "最新添加" }
     Box {
-        Surface(
-            shape = RoundedCornerShape(8.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-            modifier = Modifier.clickable { expanded = true }
-        ) {
-            Row(
-                Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Icon(Glyph.Sort, "排序", Modifier.size(13.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(currentLabel, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+        IconButton(onClick = { expanded = true }, modifier = Modifier.size(48.dp).testTag("collection-more")) {
+            Icon(Glyph.More, "更多收藏操作与排序", Modifier.size(20.dp))
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(text = { Text("随机翻一篇") }, leadingIcon = { Icon(Glyph.Shuffle, null) },
+                enabled = hasResults && !busy, onClick = { expanded = false; onRandom() })
+            DropdownMenuItem(text = { Text("多选当前结果") }, leadingIcon = { Icon(Glyph.Check, null) },
+                enabled = hasResults && !busy, onClick = { expanded = false; onSelectAll() })
+            if (onClearFilter != null) DropdownMenuItem(text = { Text("清除标签筛选") },
+                onClick = { expanded = false; onClearFilter() })
+            HorizontalDivider()
             labels.forEachIndexed { index, label ->
                 DropdownMenuItem(
                     text = {
@@ -280,6 +298,87 @@ private fun SortMenuButton(sortOrder: Int, onSelectSort: (Int) -> Unit) {
 }
 
 private val CardShape = RoundedCornerShape(16.dp)
+
+/** 首条 assistant 消息才是总结；追问答案不能冒充摘要。 */
+internal fun collectionAiExcerpt(summary: String): String = summary.lineSequence()
+    .map { it.trim() }
+    .filter { it.isNotBlank() && !it.startsWith("#") && !it.startsWith("```") && !it.startsWith("![") }
+    .map { it.replace(Regex("^[-*>\\s]+|^\\d+[.)、]\\s*"), "")
+        .replace(Regex("\\[([^]]+)]\\([^)]+\\)"), "$1")
+        .replace("**", "").replace("`", "") }
+    .filter { it.isNotBlank() && it.trimEnd('：', ':') !in listOf("一句话概括", "内容概要", "核心观点", "总结") }
+    .firstOrNull().orEmpty().take(160)
+
+internal fun collectionAiStatus(item: Bookmark, record: AnalysisRecord?, state: String?, error: String?): String = when {
+    !state.isNullOrBlank() -> "AI · $state"
+    !error.isNullOrBlank() -> "AI · 需处理，打开详情查看"
+    record == null -> "AI · 未分析"
+    (record.suggestedTitle.isNotBlank() && record.suggestedTitle != item.title) ||
+        record.suggestedTags.any { suggestion -> parseTags(item.tags).none { Links.tagKey(it) == Links.tagKey(suggestion) } } -> "AI · 标题 / 标签建议待确认"
+    else -> "AI · 已总结"
+}
+
+/** 预留隐藏计数的实际宽度，任何字号下都只排一行。 */
+internal fun collectionVisibleTagCount(widths: List<Int>, available: Int, gap: Int, overflowWidth: (Int) -> Int): Int {
+    var used = 0
+    var count = 0
+    for (width in widths) {
+        val next = used + (if (count > 0) gap else 0) + width
+        val hidden = widths.size - count - 1
+        val total = next + if (hidden > 0) gap + overflowWidth(hidden) else 0
+        if (total > available) break
+        used = next
+        count++
+    }
+    return count
+}
+
+@Composable
+private fun CollectionCardTags(tags: List<String>, onTag: (String) -> Unit) {
+    var showAll by remember { mutableStateOf(false) }
+    val measurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    val style = MaterialTheme.typography.bodyLarge.copy(fontSize = 12.sp, fontWeight = FontWeight.Medium)
+    BoxWithConstraints(Modifier.fillMaxWidth().testTag("collection-card-tags")) {
+        val padding = with(density) { 18.dp.roundToPx() }
+        val minimum = with(density) { 48.dp.roundToPx() }
+        val gap = with(density) { 6.dp.roundToPx() }
+        fun width(text: String) = (measurer.measure(text, style, maxLines = 1).size.width + padding).coerceAtLeast(minimum)
+        val widths = tags.map { width(it) }
+        val count = collectionVisibleTagCount(widths, constraints.maxWidth, gap) { width("+$it") }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            tags.take(count).forEachIndexed { index, tag ->
+                CollectionTagButton(tag, Modifier.width(with(density) { widths[index].toDp() })) { onTag(tag) }
+            }
+            if (count < tags.size) CollectionTagButton("+${tags.size - count}",
+                Modifier.widthIn(min = 48.dp).semantics { contentDescription = "查看全部 ${tags.size} 个标签" }) { showAll = true }
+        }
+    }
+    if (showAll) AlertDialog(onDismissRequest = { showAll = false }, title = { Text("全部标签（${tags.size}）") },
+        text = {
+            FlowRow(Modifier.fillMaxWidth().heightIn(max = 360.dp).verticalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                tags.forEach { tag ->
+                    TextButton(onClick = { showAll = false; onTag(tag) }, modifier = Modifier.heightIn(min = 48.dp)) {
+                        Text(tag, fontSize = 12.sp)
+                    }
+                }
+            }
+        }, confirmButton = { TextButton(onClick = { showAll = false }) { Text("关闭") } })
+}
+
+@Composable
+private fun CollectionTagButton(text: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Box(modifier.heightIn(min = 48.dp).widthIn(min = 48.dp).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
+        Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
+            border = BorderStroke(0.6.dp, MaterialTheme.colorScheme.outlineVariant)) {
+            Text(text, Modifier.padding(horizontal = 9.dp, vertical = 5.dp), fontSize = 12.sp,
+                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 12.sp, fontWeight = FontWeight.Medium),
+                fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
 
 @Composable
 private fun SwipeableBookmarkCard(
@@ -402,6 +501,11 @@ private fun BookmarkCard(
     val displayTitle = remember(item.url, item.title) { Links.displayTitle(item.url, item.title) }
     val stamp = remember(item.createdAt) { Stamp.date(item.createdAt) }
     val tags = remember(item.tags) { parseTags(item.tags) }
+    val aiKey = "b-${item.id}"
+    LaunchedEffect(aiKey) { vm.analysis.load(aiKey) }
+    val record = vm.analysis.records[aiKey]
+    val aiStatus = collectionAiStatus(item, record, vm.analysis.states[aiKey], vm.analysis.errors[aiKey])
+    val aiSummary = remember(record) { collectionAiExcerpt(record?.messages?.firstOrNull()?.text.orEmpty()) }
 
     Box {
         Surface(
@@ -419,7 +523,7 @@ private fun BookmarkCard(
         ) {
             // 标题是卡片的第一视觉：来源色块从顶部横排挪到底部元信息行，
             // 正文因此占满宽度，两行标题不再被色块挤成三行。
-            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
                     displayTitle,
                     fontSize = 16.sp,
@@ -429,9 +533,9 @@ private fun BookmarkCard(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
-                if (item.summary.isNotBlank()) {
+                if (aiSummary.isNotBlank() || item.summary.isNotBlank()) {
                     Text(
-                        item.summary,
+                        if (aiSummary.isNotBlank()) "AI 摘要 · $aiSummary" else item.summary,
                         fontSize = 12.5.sp,
                         lineHeight = 18.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -442,17 +546,13 @@ private fun BookmarkCard(
                 if (item.notes.isNotBlank()) {
                     NoteSnippetCard(text = item.notes, maxLines = 2)
                 }
-                if (tags.isNotEmpty()) FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                    tags.take(4).forEach { tag -> TagPill(tag, onClick = { onTag(tag) }) }
-                    if (tags.size > 4) TagPill("+${tags.size - 4}")
-                }
+                if (tags.isNotEmpty()) CollectionCardTags(tags, onTag)
+                if (record != null || vm.analysis.auto || vm.analysis.states[aiKey] != null || vm.analysis.errors[aiKey] != null) Text(aiStatus, fontSize = 11.5.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.testTag("collection-ai-status-${item.id}"))
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                     SourceMark(item.url, size = MarkSize.Tiny, muted = item.read)
-                    if (site.length > 1) {
-                        Text(site, Modifier.weight(1f), fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    } else {
-                        Spacer(Modifier.weight(1f))
-                    }
+                    Text(site, Modifier.weight(1f), fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     if (item.pinned) Icon(Glyph.Pin, "已置顶", Modifier.size(11.dp), tint = MaterialTheme.colorScheme.primary)
                     Text(stamp, fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f))
                 }

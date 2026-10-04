@@ -27,6 +27,7 @@ class AnalysisVisualTest {
     @After fun restore() { Analysis.transport = realTransport }
 
     private fun capture(name: String) {
+        rule.runOnIdle { ViewModelProvider(rule.activity)[VaultViewModel::class.java].clearMessage() }
         rule.waitForIdle()
         rule.runOnIdle {
             val root = rule.activity.window.decorView
@@ -51,6 +52,7 @@ class AnalysisVisualTest {
             JSONObject().put("choices", JSONArray().put(JSONObject().put("finish_reason", "stop").put("message", JSONObject().put("content", text)))).toString()
         }
         rule.runOnIdle { vm.tab(3); vm.theme("light"); vm.analysis.auto(false); vm.selectAiProvider(AiProviders.default); vm.clearAiKey() }
+        rule.onNodeWithText("AI 接口").performScrollTo().performClick()
         rule.onNodeWithText("你的 API Key").performScrollTo()
         rule.onNode(hasSetTextAction() and hasText("你的 API Key")).performTextInput("fake-visual-key")
         rule.runOnIdle { check(vm.aiKey == "fake-visual-key") }
@@ -58,8 +60,11 @@ class AnalysisVisualTest {
         rule.waitUntil(10_000) { rule.runOnIdle { vm.aiVerified && !vm.aiTesting } }
         rule.onNodeWithText("连接验证通过，可以使用总结和对话").performScrollTo().assertIsDisplayed()
         capture("analysis-01-provider-verified")
+        rule.onNodeWithText("返回").performClick()
+        rule.onNodeWithText("阅读助手").performScrollTo().performClick()
         rule.onNodeWithText("我的工作、兴趣与关注方向").performScrollTo()
         rule.onNode(hasSetTextAction() and hasText("我的工作、兴趣与关注方向")).performTextInput("关注工作中可行动的新方法")
+        rule.onNodeWithText("编辑模板").performScrollTo().performClick()
         rule.onNodeWithText("提示词框架（可直接编辑）").performScrollTo().assertIsDisplayed()
         capture("analysis-02-framework")
 
