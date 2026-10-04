@@ -11,8 +11,8 @@ android {
         applicationId = "cn.linkvault"
         minSdk = 26
         targetSdk = 35
-        versionCode = 22
-        versionName = "1.5.1"
+        versionCode = 24
+        versionName = "1.6.0"
     }
     buildFeatures { compose = true }
     // 迁移测试直接读取已版本化的历史 schema，避免遗漏或维护两份副本。
@@ -32,6 +32,8 @@ android {
     }
     buildTypes {
         release {
+            // 版本追溯由发布标签绑定提交；不嵌入构建前的旧 HEAD，保证审核后的同源码产物可复现。
+            vcsInfo { include = false }
             // 调试包留着 adb 读私有目录的通道，发布包必须关掉；顺带打开代码与资源收缩。
             isDebuggable = false
             isMinifyEnabled = true

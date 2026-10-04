@@ -35,7 +35,7 @@ internal object Translate {
     var transport: (endpoint: String, apiKey: String, body: String) -> String =
         { endpoint, key, body -> Net.post(endpoint, key, body) }
 
-    fun request(config: Config, chunk: String): String = JSONObject().apply {
+    fun request(config: Config, chunk: String): String = AiProviders.adapt(config, JSONObject().apply {
         put("model", config.model.trim())
         put("temperature", 0)
         put(
@@ -43,7 +43,7 @@ internal object Translate {
                 .put(JSONObject().put("role", "system").put("content", SYSTEM))
                 .put(JSONObject().put("role", "user").put("content", chunk))
         )
-    }.toString()
+    }).toString()
 
     /** 从响应里取译文。服务商的错误信息要原样带出来，否则用户只知道「失败了」。 */
     fun reply(json: String): String {

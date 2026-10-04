@@ -118,6 +118,8 @@ internal fun DetailPage(
             )
         }
 
+        AnalysisPanel(vm, "b-${item.id}")
+
         // 封面图：库里只有 URL，每次进页面现取；取不到就一行都不占，不画灰块也不画破图。
         val cover = if (canFetch) rememberLoadedImage(item.image) else null
         if (cover != null) {
@@ -491,7 +493,7 @@ private fun DetailStatusPill(
 private val snapshotImageLine = Regex("^!\\[(.*?)]\\((https?://[^)\\s]+)\\)$")
 
 @Composable
-private fun SnapshotMarkdownViewer(
+internal fun SnapshotMarkdownViewer(
     markdown: String,
     expanded: Boolean,
     showImages: Boolean

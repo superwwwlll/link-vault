@@ -48,12 +48,21 @@ cd ~/Documents/Android/android-link-vault
 
 ```kotlin
 // app/build.gradle.kts —— 版本号的唯一来源
-versionCode = 21         // 必须递增，Android 靠它判断能否覆盖
-versionName = "1.5.0"
+versionCode = 24         // 必须递增，Android 靠它判断能否覆盖
+versionName = "1.6.0"
 ```
 
 同一个版本号绝不发两次：Android 靠 `versionCode` 判断能否覆盖安装，
 应用内更新也靠它判断新旧。重发同号会让「现在装的是哪一版」变成无法回答的问题。
+
+macOS 也可以使用已配置的隔离构建环境发布（不需要 Docker）：
+
+```bash
+BUILD_BACKEND=macos VAULT_KEYSTORE=/绝对路径/原签名备份/debug.keystore ./release.sh
+```
+
+仍执行测试、lint、正式构建、签名指纹/非调试校验、发布和回拉 SHA-256 核对。
+`RELEASE_NOTES=docs/RELEASE-1.6.0.md` 可指定发布说明；发布标签明确指向本次 git 提交。
 
 ---
 

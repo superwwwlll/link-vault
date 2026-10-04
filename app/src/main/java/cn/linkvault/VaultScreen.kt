@@ -156,12 +156,9 @@ fun VaultScreen(vm: VaultViewModel) {
                 Surface(color = MaterialTheme.colorScheme.surface) {
                     Column {
                         HorizontalDivider(thickness = 0.6.dp, color = MaterialTheme.colorScheme.outlineVariant)
-                        NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
-                            listOf("收藏" to Glyph.Bookmark, "笔记" to Glyph.Note, "标签" to Glyph.Tag, "设置" to Glyph.Settings).forEachIndexed { index, (label, icon) ->
-                                NavigationBarItem(selected = vm.tab == index, onClick = { vm.tab(index) }, icon = { Icon(icon, label, Modifier.size(20.dp)) }, label = { Text(label, fontSize = 11.sp, fontWeight = if (vm.tab == index) FontWeight.SemiBold else FontWeight.Normal) },
-                                    colors = NavigationBarItemDefaults.colors(indicatorColor = MaterialTheme.colorScheme.surfaceVariant, selectedIconColor = MaterialTheme.colorScheme.onSurface, selectedTextColor = MaterialTheme.colorScheme.onSurface, unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant, unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant))
-                            }
-                        }
+                        ScopeTabs(items = listOf(0, 1, 2, 3), selectedItem = vm.tab,
+                            onSelect = vm::tab, label = { listOf("收藏", "笔记", "标签", "设置")[it] },
+                            modifier = Modifier.navigationBarsPadding())
                     }
                 }
             }

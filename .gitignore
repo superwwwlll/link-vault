@@ -11,3 +11,6 @@ publish/
 *.zip
 *.tar.gz
 .DS_Store
+
+# 迁移包包含私密签名备份和旧环境，只留本机，绝不能提交。
+lian-cang-new-computer-*/

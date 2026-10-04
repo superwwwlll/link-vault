@@ -24,6 +24,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 
 data class Draft(val id: Long = 0, val url: String = "", val title: String = "", val notes: String = "", val tags: String = "")
 
@@ -55,7 +57,10 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
     // ------------------------------------------------------------ 界面状态
 
     /** 笔记区（含主密码会话）。独立成类，见 [NotesController]。 */
-    val notes = NotesController(db, viewModelScope, saved, ::toast, ::fail)
+    internal val analysis = AnalysisController(app, db, viewModelScope,
+        { Translate.Config(aiEndpoint, aiKey, aiModel) }, { aiVerified }, { fetchEnabled })
+    val notes = NotesController(db, viewModelScope, saved, ::toast, ::fail,
+        { analysis.afterNoteSave(it) }, { analysis.clear("n-$it") })
 
     var theme by mutableStateOf(prefs.getString("theme", "system") ?: "system"); private set
     var tab by mutableStateOf(saved.get<Int>("tab") ?: 0); private set
@@ -103,12 +108,16 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
         }
     }
 
-    /** 抓正文并落盘。网络与文件写入都留在 IO 线程上。 */
-    private suspend fun fetchAndSaveSnapshot(item: Bookmark): String = withContext(Dispatchers.IO) {
-        val text = Net.fetchArticle(item.url)
+    /** 抓取期间条目可能被编辑/删除，返回后先核对再写文件。 */
+    private suspend fun fetchAndSaveSnapshot(item: Bookmark): String {
+        val text = withContext(Dispatchers.IO) { Net.fetchArticle(item.url) }
+        val current = dao.byId(item.id)
+        require(current != null && current.deletedAt == 0L && current.url == item.url) { "收藏已变化，本次正文未保存" }
         Snapshots.save(app, item.id, text)
-        text
+        return text
     }
+
+    private val autoFetchQueue = Semaphore(2)
 
     /**
      * 保存之后自动补齐：先页面标题与描述，再离线正文。
@@ -117,25 +126,41 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
      * 两种情况都不该用一句提示打断用户。抓取开关没打开时一条请求都不发。
      */
     private fun autoComplete(item: Bookmark) {
-        if (!fetchEnabled || !item.url.startsWith("https://", true)) return
+        if (!fetchEnabled || !item.url.startsWith("https://", true)) {
+            analysis.afterBookmarkSave(item.id)
+            return
+        }
         viewModelScope.launch {
-            fetchingId = item.id
-            val head = runCatching { withContext(Dispatchers.IO) { Net.fetchHead(item.url) } }.getOrNull()
-            fetchingId = null
-            var applied = ""
-            if (head != null && !head.isEmpty) {
-                applied = Titles.resolve(item.url, item.title, head.title, head.siteName)
-                dao.applyFetch(item.id, head.description.take(8000), head.siteName.take(200), applied,
-                    head.image.ifBlank { item.image }, System.currentTimeMillis())
-            }
-            fetchingSnapshot = true
-            val text = runCatching { fetchAndSaveSnapshot(item) }.getOrNull()
-            fetchingSnapshot = false
-            if (text != null && detailId == item.id) currentSnapshot = text
-            // 页面标题本身就是「首页」这类空壳时，退到正文里取名字。只读刚落盘的快照，不再联网。
-            if (text != null && Titles.meaningless(item.url, applied.ifBlank { item.title })) {
-                val derived = Titles.fromArticle(text)
-                if (derived.isNotEmpty()) dao.setTitle(item.id, derived.take(Titles.LIMIT))
+            autoFetchQueue.withPermit {
+                val current = dao.byId(item.id)
+                if (current == null || current.deletedAt != 0L || current.url != item.url) return@withPermit
+                if (fetchEnabled) {
+                    fetchingId = item.id
+                    try {
+                        val head = try { withContext(Dispatchers.IO) { Net.fetchHead(item.url) } }
+                            catch (e: CancellationException) { throw e }
+                            catch (_: Exception) { null }
+                        val latest = dao.byId(item.id)
+                        if (latest == null || latest.deletedAt != 0L || latest.url != item.url) return@withPermit
+                        var applied = latest.title
+                        if (head != null && !head.isEmpty) {
+                            applied = Titles.resolve(item.url, latest.title, head.title, head.siteName)
+                            dao.applyFetch(item.id, head.description.take(8000), head.siteName.take(200), applied,
+                                head.image.ifBlank { latest.image }, System.currentTimeMillis())
+                        }
+                        if (fetchEnabled) {
+                            val text = try { fetchAndSaveSnapshot(latest) }
+                                catch (e: CancellationException) { throw e }
+                                catch (_: Exception) { null }
+                            if (text != null && detailId == item.id) currentSnapshot = text
+                            if (text != null && Titles.meaningless(item.url, applied)) {
+                                val derived = Titles.fromArticle(text)
+                                if (derived.isNotEmpty()) dao.setTitle(item.id, derived.take(Titles.LIMIT))
+                            }
+                        }
+                    } finally { if (fetchingId == item.id) fetchingId = null }
+                }
+                analysis.afterBookmarkSave(item.id)
             }
         }
     }
@@ -203,8 +228,8 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
     // ------------------------------------------------------------ AI 翻译（用户自备接口）
 
     var aiEnabled by mutableStateOf(settings.getBoolean("aiOn", false)); private set
-    var aiEndpoint by mutableStateOf(settings.getString("aiEndpoint", Translate.DEFAULT_ENDPOINT).orEmpty()); private set
-    var aiModel by mutableStateOf(settings.getString("aiModel", Translate.DEFAULT_MODEL).orEmpty()); private set
+    var aiEndpoint by mutableStateOf(settings.getString("aiEndpoint", AiProviders.default.endpoint).orEmpty()); private set
+    var aiModel by mutableStateOf(settings.getString("aiModel", AiProviders.default.model).orEmpty()); private set
 
     /**
      * 密钥。存在应用私有目录的 SharedPreferences 里，是明文：
@@ -212,6 +237,38 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
      * 所以边界写成「不 root 就拿不到」，并在设置页如实告诉用户。
      */
     var aiKey by mutableStateOf(settings.getString("aiKey", "").orEmpty()); private set
+
+    private var aiVerifiedHash by mutableStateOf(settings.getString("aiVerifiedHash", "").orEmpty())
+    var aiTesting by mutableStateOf(false); private set
+    var aiTestResult by mutableStateOf(""); private set
+    val aiVerified: Boolean get() = aiVerifiedHash.isNotEmpty() && aiVerifiedHash == AiProviders.fingerprint(Translate.Config(aiEndpoint, aiKey, aiModel))
+    internal var aiProvider by mutableStateOf(settings.getString("aiProvider", AiProviders.detect(aiEndpoint).id).orEmpty()); private set
+    internal fun selectAiProvider(provider: AiProvider) {
+        if (aiProvider != provider.id) clearAiKey()
+        aiProvider = provider.id; settings.edit().putString("aiProvider", provider.id).apply()
+        if (provider.id != "custom") { aiEndpoint(provider.endpoint); aiModel(provider.model) }
+        aiTestResult = ""
+    }
+    fun testAiConnection() {
+        if (aiTesting) return
+        val connection = Translate.Config(aiEndpoint, aiKey, aiModel)
+        aiTesting = true; aiTestResult = "正在测试…"
+        viewModelScope.launch {
+            try {
+                Analysis.answer(connection, "请简短回答。", "连接测试，请只回答 OK。", null, null)
+                if (connection == Translate.Config(aiEndpoint, aiKey, aiModel)) {
+                    aiVerifiedHash = AiProviders.fingerprint(connection)
+                    settings.edit().putString("aiVerifiedHash", aiVerifiedHash).apply()
+                    aiTestResult = "连接验证通过，可以使用总结和对话"
+                } else aiTestResult = "配置已变化，请重新测试"
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) {
+                aiVerifiedHash = ""; settings.edit().remove("aiVerifiedHash").apply()
+                aiTestResult = "连接失败：${e.localizedMessage?.replace(connection.apiKey.takeIf { it.isNotBlank() } ?: "\u0000", "[密钥]") }"
+            }
+            finally { aiTesting = false }
+        }
+    }
 
     val canTranslate: Boolean get() = aiEnabled && Translate.Config(aiEndpoint, aiKey, aiModel).ready
 
@@ -283,7 +340,7 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
                 val cutoff = System.currentTimeMillis() - TRASH_RETENTION_MS
                 val gone = dao.trashedIdsBefore(cutoff)
                 dao.purgeTrash(cutoff)
-                gone.forEach { Snapshots.delete(app, it) }
+                gone.forEach { Snapshots.delete(app, it); AnalysisStore.delete(app, "b-$it") }
             }
         }
     }
@@ -412,6 +469,7 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
 
     fun deleteForever(item: Bookmark) = act("已永久删除") {
         check(dao.deleteForever(item.id) == 1) { "这条收藏已不存在" }
+        analysis.clear("b-${item.id}")
         withContext(Dispatchers.IO) { Snapshots.delete(app, item.id) }
         if (detailId == item.id) currentSnapshot = null
     }
@@ -612,14 +670,7 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
                 val item = Bookmark(url = url, canonical = key, title = readableTitle, createdAt = now, updatedAt = now)
                 val id = dao.insert(item)
                 toast("已收录剪贴板链接")
-                if (fetchEnabled && url.startsWith("https://", true)) {
-                    val head = runCatching { withContext(Dispatchers.IO) { Net.fetchHead(url) } }.getOrNull()
-                    if (head != null && !head.isEmpty) {
-                        val title = Titles.cleanse(url, head.title, head.siteName).ifBlank { readableTitle }
-                        dao.applyFetch(id, head.description.take(8000), head.siteName.take(200), title, head.image, System.currentTimeMillis())
-                    }
-                    runCatching { fetchAndSaveSnapshot(item.copy(id = id)) }
-                }
+                autoComplete(item.copy(id = id))
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) { fail("收录失败：${e.localizedMessage}") }
             finally { busy = false }
@@ -681,7 +732,13 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
                     show(written); tab(0)
                     // 只补没抓过的。已经抓到过信息的条目即便改了网址也不自动重抓，
                     // 想在编辑后刷新还有详情页那个「重新抓取」。
-                    if (written.fetchedAt == 0L) autoComplete(written)
+                    if (existing != null && existing.url != written.url) {
+                        analysis.clear("b-$id")
+                        withContext(Dispatchers.IO) { Snapshots.delete(app, id) }
+                        currentSnapshot = null; currentTranslation = null
+                    }
+                    if (written.fetchedAt == 0L || existing?.url != written.url) autoComplete(written)
+                    else analysis.afterBookmarkSave(id)
                     edit(null); notice = null; detected = emptyList(); saved["detected"] = null
                 }
             } catch (e: CancellationException) { throw e }
@@ -699,17 +756,20 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
             try {
                 var added = 0
                 var skipped = 0
+                val written = mutableListOf<Bookmark>()
                 db.withTransaction {
                     val now = System.currentTimeMillis()
                     urls.forEach { raw ->
                         val key = runCatching { Links.canonical(raw) }.getOrNull() ?: return@forEach
                         if (dao.byKey(key) != null) { skipped++; return@forEach }
-                        dao.insert(Bookmark(url = raw, canonical = key, title = Links.readable(raw).take(200), createdAt = now, updatedAt = now))
+                        val item = Bookmark(url = raw, canonical = key, title = Links.readable(raw).take(200), createdAt = now, updatedAt = now)
+                        written += item.copy(id = dao.insert(item))
                         added++
                     }
                 }
                 edit(null); notice = null; detected = emptyList(); saved["detected"] = null; tab(0)
                 toast("已收藏 $added 条，跳过 $skipped 条重复链接")
+                written.forEach { autoComplete(it) }
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) { fail("批量收藏失败，已整体回滚：${e.localizedMessage}") }
             finally { busy = false }

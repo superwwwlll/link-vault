@@ -97,9 +97,11 @@ class VisualTest {
         rule.onNode(hasText("全部") and hasClickAction()).performClick()
         rule.onNode(hasText("全部") and hasClickAction()).assertIsSelected()
         rule.runOnIdle { check(vm.scope == 0) }
+        rule.onNodeWithContentDescription("展开搜索").performClick()
         rule.onNode(hasSetTextAction()).performTextInput("Compose")
         rule.onNodeWithText("用 Compose 构建更好的 Android 界面").assertIsDisplayed()
         rule.onNodeWithContentDescription("清空搜索").performClick()
+        rule.onNodeWithContentDescription("关闭搜索").performClick()
         capture("01-collection-light")
         // 添加按钮压在列表右下角，必须给卡片让位：向下滚收起、回到顶部再出现。
         // 截图看不到这件事，所以这里按语义节点断言，而不是靠肉眼看图。
@@ -217,7 +219,7 @@ class VisualTest {
             vm.aiEnabled(true); vm.aiEndpoint("https://api.example.com/v1/chat/completions")
             vm.aiModel("gpt-4o-mini"); vm.aiKey("sk-demo-key-0123456789")
         }
-        rule.onNodeWithText("接口密钥").performScrollTo()
+        rule.onNodeWithText("你的 API Key").performScrollTo()
         capture("05b-settings-ai-light")
         rule.runOnIdle {
             vm.aiEnabled(false); vm.aiEndpoint(Translate.DEFAULT_ENDPOINT)

@@ -14,8 +14,15 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -45,6 +52,15 @@ internal fun RootHeading(title: String, subtitle: String = "") {
 
 @Composable
 internal fun SearchBox(value: String, onChange: (String) -> Unit, placeholder: String, modifier: Modifier = Modifier) {
+    var expanded by rememberSaveable { mutableStateOf(value.isNotEmpty()) }
+    val focus = remember { FocusRequester() }
+    if (!expanded && value.isEmpty()) {
+        Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            IconButton(onClick = { expanded = true }) { Icon(Glyph.Search, "展开搜索", Modifier.size(20.dp)) }
+        }
+        return
+    }
+    LaunchedEffect(expanded) { if (expanded) focus.requestFocus() }
     OutlinedTextField(
         value = value,
         onValueChange = { onChange(it.replace("\n", "").replace("\r", "")) },
@@ -61,7 +77,12 @@ internal fun SearchBox(value: String, onChange: (String) -> Unit, placeholder: S
             )
         },
         leadingIcon = { Icon(Glyph.Search, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant) },
-        trailingIcon = { if (value.isNotEmpty()) IconButton(onClick = { onChange("") }) { Icon(Glyph.Close, "清空搜索", Modifier.size(16.dp)) } },
+        trailingIcon = {
+            Row {
+                if (value.isNotEmpty()) IconButton(onClick = { onChange("") }) { Icon(Glyph.Close, "清空搜索", Modifier.size(16.dp)) }
+                IconButton(onClick = { onChange(""); expanded = false }) { Icon(Glyph.Back, "关闭搜索", Modifier.size(16.dp)) }
+            }
+        },
         shape = RoundedCornerShape(16.dp),
         colors = OutlinedTextFieldDefaults.colors(
             unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
@@ -69,7 +90,7 @@ internal fun SearchBox(value: String, onChange: (String) -> Unit, placeholder: S
             unfocusedContainerColor = MaterialTheme.colorScheme.surface,
             focusedContainerColor = MaterialTheme.colorScheme.surface
         ),
-        modifier = modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth().focusRequester(focus)
     )
 }
 
@@ -136,7 +157,7 @@ internal fun NoteSnippetCard(
 }
 
 /**
- * 等宽分段筛选：浅底承托选中胶囊，窄屏优先保留标签文字。
+ * 等宽文字页签，保留 1.5.2 发布说明中的轻量切换交互。
  */
 @Composable
 internal fun <T> ScopeTabs(
@@ -147,16 +168,15 @@ internal fun <T> ScopeTabs(
     modifier: Modifier = Modifier,
     badge: ((T) -> String?)? = null
 ) {
-    Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surfaceVariant, modifier = modifier) {
+    Surface(color = Color.Transparent, modifier = modifier) {
         Row(Modifier.fillMaxWidth().selectableGroup().padding(4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
             items.forEach { item ->
                 val isSelected = item == selectedItem
-                val background by animateColorAsState(if (isSelected) MaterialTheme.colorScheme.surface else Color.Transparent, tween(160), label = "scopePill")
                 Surface(
                     onClick = { onSelect(item) },
                     modifier = Modifier.weight(1f).semantics { selected = isSelected; role = Role.Tab },
                     shape = RoundedCornerShape(10.dp),
-                    color = background,
+                    color = Color.Transparent,
                     contentColor = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
                 ) {
                     Row(Modifier.heightIn(min = 48.dp).padding(horizontal = 4.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
@@ -181,58 +201,7 @@ internal fun <T> SegmentedPills(
     modifier: Modifier = Modifier,
     badge: ((T) -> String?)? = null
 ) {
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f),
-        modifier = modifier
-    ) {
-        Row(
-            modifier = Modifier.padding(3.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            items.forEach { item ->
-                val selected = item == selectedItem
-                val shape = RoundedCornerShape(12.dp)
-                val pillColor by animateColorAsState(
-                    if (selected) {
-                        MaterialTheme.colorScheme.surface
-                    } else Color.Transparent,
-                    animationSpec = tween(160),
-                    label = "segmentedPill"
-                )
-
-                Box(
-                    modifier = Modifier
-                        .clip(shape)
-                        .background(pillColor)
-                        .clickable { onSelect(item) }
-                        .padding(horizontal = 11.dp, vertical = 6.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(
-                            text = label(item),
-                            fontSize = 13.sp,
-                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-                            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        val b = badge?.invoke(item)
-                        if (!b.isNullOrEmpty()) {
-                            Text(
-                                text = b,
-                                fontSize = 11.5.sp,
-                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
+    ScopeTabs(items, selectedItem, onSelect, label, modifier, badge)
 }
 
 @Composable

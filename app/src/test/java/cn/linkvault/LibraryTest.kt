@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.viewModelScope
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -12,6 +13,8 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.joinAll
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
@@ -27,6 +30,7 @@ class LibraryTest {
     private lateinit var app: Application
     private lateinit var dao: BookmarkDao
     private val store = ViewModelStore()
+    private val models = mutableListOf<VaultViewModel>()
 
     @Before fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -36,13 +40,17 @@ class LibraryTest {
     }
 
     @After fun tearDown() {
-        app.getSharedPreferences("draft", Context.MODE_PRIVATE).edit().clear().commit()
-        app.getSharedPreferences("settings", Context.MODE_PRIVATE).edit().clear().commit()
+        if (::app.isInitialized) {
+            app.getSharedPreferences("draft", Context.MODE_PRIVATE).edit().clear().commit()
+            app.getSharedPreferences("settings", Context.MODE_PRIVATE).edit().clear().commit()
+        }
+        val jobs = models.mapNotNull { it.viewModelScope.coroutineContext[Job] }
         store.clear()
+        runBlocking { withTimeout(10_000) { jobs.joinAll() } }
         Dispatchers.resetMain()
     }
 
-    private fun viewModel(): VaultViewModel = VaultViewModel(app, SavedStateHandle()).also { store.put("vm", it) }
+    private fun viewModel(): VaultViewModel = VaultViewModel(app, SavedStateHandle()).also { models += it; store.put("vm", it) }
     private fun settle(vm: VaultViewModel) = runBlocking { withTimeout(10_000) { while (vm.busy) delay(10) } }
     private fun awaitItems(vm: VaultViewModel, size: Int) = runBlocking { withTimeout(10_000) { while (vm.items.size != size) delay(10) } }
     private fun insert(url: String, title: String = "", tags: String = "", read: Boolean = false, archived: Boolean = false): Long =

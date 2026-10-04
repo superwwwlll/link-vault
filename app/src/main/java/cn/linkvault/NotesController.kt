@@ -46,7 +46,9 @@ class NotesController(
     private val scope: CoroutineScope,
     private val saved: SavedStateHandle,
     private val toast: (String) -> Unit,
-    private val fail: (String) -> Unit
+    private val fail: (String) -> Unit,
+    private val onSaved: (Note) -> Unit = {},
+    private val onDeleted: (Long) -> Unit = {}
 ) {
     private val notes = db.notes()
     private val vault = db.vault()
@@ -200,7 +202,8 @@ class NotesController(
             Note(id = existing?.id ?: 0L, text = body, cipher = "", secret = false,
                 createdAt = existing?.createdAt ?: now, updatedAt = now)
         }
-        if (existing == null) notes.insert(row) else notes.update(row)
+        val id = if (existing == null) notes.insert(row) else { notes.update(row); row.id }
+        onSaved(row.copy(id = id))
         edit(null)
         toast(if (existing == null) "已保存笔记" else "已更新笔记")
     }
@@ -224,7 +227,8 @@ class NotesController(
                 // 只对明文去重：密文每次 iv 不同，比对密文永远得不出"重复"。
                 if (notes.plainTexts().any { it == body }) { toast("这段文字已经在笔记里了"); return@launch }
                 val now = System.currentTimeMillis()
-                notes.insert(Note(text = body, createdAt = now, updatedAt = now))
+                val row = Note(text = body, createdAt = now, updatedAt = now)
+                onSaved(row.copy(id = notes.insert(row)))
                 toast("已存为笔记 · ${body.length} 字")
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) { fail("存为笔记失败：${e.localizedMessage}") }
@@ -238,6 +242,7 @@ class NotesController(
         scope.launch {
             try {
                 check(notes.delete(id) == 1) { "这条笔记已不存在" }
+                onDeleted(id)
                 if (draft?.id == id) edit(null)
                 toast("已删除笔记。笔记不进回收站，删掉就没了")
             } catch (e: CancellationException) { throw e }

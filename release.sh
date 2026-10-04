@@ -38,12 +38,36 @@ PUBLISH_DIR="${PUBLISH_DIR:-$PWD/publish}"
 PUBLISH_GITHUB="${PUBLISH_GITHUB-superwwwlll/link-vault}"
 PUBLISH_REMOTE="${PUBLISH_REMOTE:-}"
 BUILD_TOOLS="/opt/android-sdk/build-tools/34.0.0"
+BUILD_BACKEND="${BUILD_BACKEND:-docker}"
+if [ "$BUILD_BACKEND" = macos ]; then
+    [ "$(uname -s)" = Darwin ] || die "macos 构建只支持 macOS"
+    BASE="${VAULT_ANDROID_ENV:-$HOME/.local/share/link-vault-android}"
+    export JAVA_HOME="$BASE/jdk/Contents/Home"
+    export ANDROID_HOME="$BASE/sdk"
+    export ANDROID_USER_HOME="$BASE/android-user"
+    export GRADLE_USER_HOME="$BASE/gradle-cache"
+    BUILD_TOOLS="$ANDROID_HOME/build-tools/34.0.0"
+    [ -x "$BASE/gradle-8.9/bin/gradle" ] || die "先执行 ./setup-macos.sh"
+    [ -f "${VAULT_KEYSTORE:-$HOME/.android/debug.keystore}" ] || die "请用 VAULT_KEYSTORE 指定原签名备份，禁止用新密钥发布"
+elif [ "$BUILD_BACKEND" != docker ]; then
+    die "BUILD_BACKEND 仅支持 docker 或 macos"
+fi
+
+apk_tool() {
+    local tool="$1"; shift
+    if [ "$BUILD_BACKEND" = macos ]; then
+        "$BUILD_TOOLS/$tool" "$@"
+    else
+        docker exec "$CONTAINER" "$BUILD_TOOLS/$tool" "$@"
+    fi
+}
 
 WANT="$(grep -oE '[0-9a-fA-F]{64}' SIGNING-CERT.txt | head -1 | tr 'A-Z' 'a-z')"
 [ -n "$WANT" ] || die "读不到 SIGNING-CERT.txt 里的记录指纹"
 
 # ---------------------------------------------------------------- 构建容器
 
+if [ "$BUILD_BACKEND" = docker ]; then
 docker image inspect "$IMAGE" >/dev/null 2>&1 || die "找不到镜像 $IMAGE
 先执行一次：  bash docker-build.sh"
 
@@ -62,22 +86,32 @@ fi
 docker volume inspect link-vault-sdk >/dev/null 2>&1 || die "缺少 SDK 卷 link-vault-sdk（见 README 的构建说明）"
 docker volume inspect link-vault-debug-signing >/dev/null 2>&1 || die "缺少签名卷 link-vault-debug-signing
 用 ./signing-key.sh restore 从备份恢复，否则构建出的 APK 装不上已有版本"
+fi
 
 # ---------------------------------------------------------------- 构建
 
 step "构建（测试 + lint + 打包）"
-docker exec "$CONTAINER" bash -lc "cd /project && VERSION=$VERSION bash build-in-container.sh" \
-    | tee /tmp/link-vault-release-build.log | tail -5
+if [ "$BUILD_BACKEND" = macos ]; then
+    "$BASE/gradle-8.9/bin/gradle" --no-daemon --console=plain testDebugUnitTest lintDebug assembleRelease
+    mkdir -p deliverables
+    cp app/build/outputs/apk/release/app-release.apk "deliverables/lian-cang-${VERSION}.apk"
+else
+    docker exec "$CONTAINER" bash -lc "cd /project && VERSION=$VERSION bash build-in-container.sh"
+fi
 
 APK_SRC="deliverables/lian-cang-${VERSION}.apk"
 [ -f "$APK_SRC" ] || die "构建结束但没找到 $APK_SRC"
+MANIFEST_DUMP="$(apk_tool aapt2 dump xmltree --file AndroidManifest.xml "$APK_SRC")" || die "无法读取 APK Manifest，禁止发布"
+if printf '%s\n' "$MANIFEST_DUMP" | grep 'android:debuggable' >/dev/null; then
+    die "APK 带 android:debuggable，禁止发布"
+fi
 
 # ---------------------------------------------------------------- 签名校验（发布前的闸门）
 
 step "核对签名证书"
 # apksigner 打印的指纹不带冒号，keytool 打印的带冒号，两种都要能取。
 # 末尾的 `|| true` 是必需的：set -e + pipefail 下，grep 没命中会让整个脚本静默退出。
-CERT_DUMP="$(docker exec "$CONTAINER" bash -lc "cd /project && $BUILD_TOOLS/apksigner verify --print-certs '$APK_SRC'" 2>&1 || true)"
+CERT_DUMP="$(apk_tool apksigner verify --print-certs "$APK_SRC" 2>&1)" || die "APK 签名验证失败"
 GOT="$(printf '%s\n' "$CERT_DUMP" | grep -i 'certificate SHA-256 digest' \
         | grep -oE '([0-9a-fA-F]{2}:){31}[0-9a-fA-F]{2}|[0-9a-fA-F]{64}' | fingerprint || true)"
 if [ -z "$GOT" ]; then
@@ -97,17 +131,21 @@ EOF
     exit 1
 fi
 ok "指纹一致：$GOT"
+apk_tool apksigner verify --verbose --print-certs "$APK_SRC" > "deliverables/apk-verification-${VERSION}.txt"
+shasum -a 256 "$APK_SRC" > "deliverables/SHA256SUMS-${VERSION}.txt"
 
 # ---------------------------------------------------------------- 元数据
 
-BADGING="$(docker exec "$CONTAINER" bash -lc "cd /project && $BUILD_TOOLS/aapt2 dump badging '$APK_SRC'" 2>/dev/null | head -1 || true)"
+BADGING="$(apk_tool aapt2 dump badging "$APK_SRC" 2>/dev/null)"
 VERSION_NAME="$(printf '%s' "$BADGING" | grep -oE "versionName='[^']*'" | cut -d"'" -f2 || true)"
 VERSION_CODE="$(printf '%s' "$BADGING" | grep -oE "versionCode='[^']*'" | cut -d"'" -f2 || true)"
-MIN_SDK="$(docker exec "$CONTAINER" bash -lc "cd /project && $BUILD_TOOLS/aapt2 dump badging '$APK_SRC'" 2>/dev/null | grep -oE "^sdkVersion:'[^']*'" | cut -d"'" -f2 || true)"
+MIN_SDK="$(printf '%s\n' "$BADGING" | grep -oE "^sdkVersion:'[^']*'" | cut -d"'" -f2 || true)"
 SIZE="$(stat -f%z "$APK_SRC" 2>/dev/null || stat -c%s "$APK_SRC")"
 SHA="$(shasum -a 256 "$APK_SRC" | awk '{print $1}')"
 STAMP="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 [ -n "$VERSION_NAME" ] || die "无法从 APK 读出版本号（aapt2 输出：${BADGING}）"
+[ "$VERSION_NAME" = "$VERSION" ] || die "产物版本与源码不一致，禁止发布"
+[ -n "$VERSION_CODE" ] || die "无法从 APK 读出 versionCode，禁止发布"
 ok "链藏 $VERSION_NAME (versionCode $VERSION_CODE) · $SIZE 字节"
 ok "sha256 $SHA"
 
@@ -193,7 +231,9 @@ Obtainium 靠版本号判断新旧；重发同号会让「现在装的是哪一�
 请先改 app/build.gradle.kts 里的 versionCode（递增）与 versionName。"
     fi
 
-    NOTES="$(mktemp)"
+    NOTES="${RELEASE_NOTES:-}"
+    if [ -z "$NOTES" ]; then
+    NOTES="$(mktemp "${TMPDIR:-/tmp}/link-vault-notes.XXXXXX")"
     cat > "$NOTES" <<EOF
 本地链接收藏夹。**直接覆盖安装，不要卸载** —— 卸载或清除数据会永久丢失全部收藏。
 
@@ -204,19 +244,20 @@ Obtainium 靠版本号判断新旧；重发同号会让「现在装的是哪一�
 手机端用 [Obtainium](https://github.com/ImranR98/Obtainium) 订阅本仓库即可收到更新通知；
 也可以直接下载下面的 APK 覆盖安装。
 EOF
+    fi
     # latest.json 必须一起传：应用内更新读的就是
     # releases/latest/download/latest.json 这个固定地址。
     # 每个 release 只放一个 APK，所以 releases/latest/download/lian-cang-debug.apk
     # 也永远指向最新版。
     gh release create "$TAG" --repo "$PUBLISH_GITHUB" \
-        --title "链藏 $VERSION_NAME" --notes-file "$NOTES" \
+        --target "$(git rev-parse HEAD)" --latest --title "链藏 $VERSION_NAME" --notes-file "$NOTES" \
         "$PUBLISH_DIR/lian-cang-debug.apk" "$PUBLISH_DIR/latest.json" >/dev/null
-    rm -f "$NOTES"
+    if [ -z "${RELEASE_NOTES:-}" ]; then rm -f "$NOTES"; fi
     ok "已发布 $TAG"
 
     step "回拉校验（确认手机下到的就是刚构建的这份）"
     DOWNLOAD_URL="https://github.com/$PUBLISH_GITHUB/releases/latest/download/lian-cang-debug.apk"
-    GOT_SHA="$(curl -sL "$DOWNLOAD_URL" | shasum -a 256 | awk '{print $1}' || true)"
+    GOT_SHA="$(curl -fsL --retry 3 --max-time 180 "$DOWNLOAD_URL" | shasum -a 256 | awk '{print $1}' || true)"
     [ "$GOT_SHA" = "$SHA" ] || die "从 GitHub 下载回来的 APK 与本地不一致！
   本地：$SHA
   远端：$GOT_SHA"
@@ -237,4 +278,4 @@ printf '本地目录  %s\n' "$PUBLISH_DIR"
 [ -n "$DOWNLOAD_URL" ] && printf '固定地址  %s\n' "$DOWNLOAD_URL"
 [ -n "$PUBLISH_REMOTE" ] && printf 'NAS 副本  %s\n' "$PUBLISH_REMOTE"
 printf '\n手机端在 Obtainium 里添加仓库地址即可自动跟踪更新：\n'
-[ -n "$PUBLISH_GITHUB" ] && printf '  https://github.com/%s\n' "$PUBLISH_GITHUB"
+if [ -n "$PUBLISH_GITHUB" ]; then printf '  https://github.com/%s\n' "$PUBLISH_GITHUB"; fi

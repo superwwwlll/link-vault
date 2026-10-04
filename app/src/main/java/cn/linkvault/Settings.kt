@@ -56,8 +56,8 @@ internal fun SettingsPage(
                         Icon(Glyph.Shield, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.primary)
                     }
                     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text("数据留在你的设备", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                        Text("无需账号 · 无云同步 · 不采集任何数据", fontSize = 12.sp, fontWeight = FontWeight.Normal, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("收藏与笔记存于本机", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                        Text("无云同步；使用 AI 时内容会发给你配置的服务商", fontSize = 12.sp, fontWeight = FontWeight.Normal, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -148,6 +148,9 @@ internal fun SettingsPage(
                     fontSize = 11.5.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
+            AiConnectionSettings(vm)
+            AnalysisSettings(vm)
+
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 SectionLabel("AI 翻译", trailing = when {
                     !vm.aiEnabled -> "默认关闭"
@@ -157,49 +160,9 @@ internal fun SettingsPage(
                 Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(0.7.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)), shadowElevation = 0.5.dp) {
                     Column {
                         SwitchRow(Glyph.Translate, "启用翻译", "详情页把离线正文快照译成简体中文；快照要「联网抓取」才会产生", vm.aiEnabled, !vm.busy) { vm.aiEnabled(it) }
-                        if (vm.aiEnabled) {
-                            Column(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedTextField(
-                                    value = vm.aiEndpoint,
-                                    onValueChange = { vm.aiEndpoint(it.take(300)) },
-                                    label = { Text("接口地址（OpenAI 兼容）") },
-                                    singleLine = true,
-                                    placeholder = { Text(Translate.DEFAULT_ENDPOINT) },
-                                    textStyle = LocalTextStyle.current.copy(fontSize = 13.sp),
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                                OutlinedTextField(
-                                    value = vm.aiModel,
-                                    onValueChange = { vm.aiModel(it.take(100)) },
-                                    label = { Text("模型名") },
-                                    singleLine = true,
-                                    placeholder = { Text(Translate.DEFAULT_MODEL) },
-                                    textStyle = LocalTextStyle.current.copy(fontSize = 13.sp),
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                                OutlinedTextField(
-                                    value = vm.aiKey,
-                                    onValueChange = { vm.aiKey(it.take(400)) },
-                                    label = { Text("接口密钥") },
-                                    singleLine = true,
-                                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
-                                    textStyle = LocalTextStyle.current.copy(fontSize = 13.sp),
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    OutlinedButton(
-                                        onClick = { vm.clearAiKey() },
-                                        shape = RoundedCornerShape(11.dp),
-                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                                        modifier = Modifier.height(32.dp)
-                                    ) { Text("清除密钥", fontSize = 12.sp) }
-                                    if (!vm.canTranslate) Text("地址必须是 https，密钥必填", fontSize = 11.5.sp, color = MaterialTheme.colorScheme.error)
-                                }
-                            }
-                        }
                     }
                 }
-                // 这是本应用唯一的第三方数据出口，必须说清楚，不能只写「启用翻译」四个字
+                // 翻译与阅读助手共用用户配置的第三方接口。
                 Text(
                     "翻译会把整段正文原样发给你填的那个地址，费用记在你的账号上：一篇最多 24,000 字，" +
                         "按段发送，最多 20 段，每段等 60 秒，长文可能要等几分钟。密钥存在本机应用私有目录（明文，" +

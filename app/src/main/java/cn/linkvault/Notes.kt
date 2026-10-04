@@ -247,6 +247,10 @@ internal fun NotesEditorPage(vm: VaultViewModel, draft: NoteDraft, onBack: () ->
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         NoteSecretSwitch(vm, draft)
+        if (row != null && !draft.secret && !row.secret) {
+            if (draft.text == row.text) AnalysisPanel(vm, "n-${draft.id}")
+            else Text("正文有未保存的修改，请先保存再分析或继续对话。", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         if (row != null) {
             var confirmDelete by remember { mutableStateOf(false) }
             TextButton(onClick = { confirmDelete = true }, modifier = Modifier.align(Alignment.Start)) {
