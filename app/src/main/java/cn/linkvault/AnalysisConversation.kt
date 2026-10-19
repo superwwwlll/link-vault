@@ -70,7 +70,7 @@ internal fun AnalysisConversationPage(vm: VaultViewModel, key: String, onBack: (
                         if (record.sourceChars > Analysis.MAX_SOURCE) Text("材料 ${record.sourceChars} 字，仅分析前 ${Analysis.MAX_SOURCE} 字；对话也只能参考这部分。",
                             style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
                     }
-                    Text("AI 回答不等于事实核验，请结合原文判断。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("AI 回答不等于事实核验，请结合原文判断。发送原文、总结及最近最多 6 轮；全部历史仅存本机。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (record == null) Text("尚无可用总结，请返回原内容先完成分析。", style = MaterialTheme.typography.bodyMedium)
                     else if (history.isEmpty()) Text("围绕这篇内容继续追问", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -90,17 +90,20 @@ internal fun AnalysisConversationPage(vm: VaultViewModel, key: String, onBack: (
                     }
                 }
                 if (error != null) Text(error, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error, maxLines = 3, overflow = TextOverflow.Ellipsis)
-                if (!vm.aiVerified) Text("先到设置测试 AI 连接，验证通过后即可对话。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                OutlinedTextField(question, { vm.conversationQuestion(key, it) }, label = { Text("围绕这篇内容继续追问") },
-                    modifier = Modifier.fillMaxWidth(), minLines = 1, maxLines = 4, enabled = state == null)
+                if (!vm.aiVerified) Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("AI 接口未验证", Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, maxLines = 2)
+                    TextButton(onClick = { vm.openSettings("AI 接口") }, modifier = Modifier.heightIn(min = 48.dp)) { Text("去设置") }
+                }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("发送原文、总结及最近最多6轮；全部历史仅存本机。", Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Button(onClick = {
+                    OutlinedTextField(question, { vm.conversationQuestion(key, it) }, placeholder = { Text("围绕这篇内容继续追问", style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        textStyle = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.weight(1f), minLines = 1, maxLines = 4, enabled = state == null)
+                    FilledIconButton(onClick = {
                         val sent = question.trim()
                         vm.beginConversationQuestion(key, sent, messages.size)
                         ai.run(key, sent)
                     }, enabled = record != null && state == null && question.isNotBlank() && vm.aiVerified,
-                        modifier = Modifier.heightIn(min = 48.dp)) { Text("发送追问") }
+                        modifier = Modifier.size(48.dp)) { Icon(Glyph.Next, "发送追问", Modifier.size(24.dp)) }
                 }
             }
         }
