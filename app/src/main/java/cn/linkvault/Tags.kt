@@ -60,7 +60,7 @@ internal fun TagsPage(vm: VaultViewModel) {
             PageToolbar(if (existing == null) "重命名标签" else "合并到已有标签", { if (!vm.busy) renameTarget = null })
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("原标签：$tag", fontWeight = FontWeight.Medium)
-                Text(if (existing == null) "将更新所有关联的收藏标签。" else "将把「$tag」合并到「$existing」，原标签会移除，重复标签会去重；收藏本身不会删除。", fontSize = 13.sp)
+                Text(if (existing == null) "将更新所有关联的收藏标签。" else "将把「$tag」合并到「$existing」，原标签会移除，重复标签会去重；收藏本身不会删除。", style = MaterialTheme.typography.bodyMedium)
                 OutlinedTextField(renameValue, { renameValue = it.take(1000) }, label = { Text("新标签名") },
                     supportingText = { Text("不能包含逗号、分号或换行，且不能与原标签相同。") },
                     enabled = !vm.busy, modifier = Modifier.fillMaxWidth(), minLines = 1, maxLines = 4)
@@ -81,7 +81,7 @@ internal fun TagsPage(vm: VaultViewModel) {
             LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 item {
                     Text("原标签：$source", fontWeight = FontWeight.Medium)
-                    Text("选择要保留的已有标签。合并会更新所有关联收藏（含归档），移除原标签并去重，不会删除收藏。", fontSize = 13.sp)
+                    Text("选择要保留的已有标签。合并会更新所有关联收藏（含归档），移除原标签并去重，不会删除收藏。", style = MaterialTheme.typography.bodyMedium)
                     OutlinedTextField(mergeQuery, { mergeQuery = it.take(1000) }, label = { Text("查找目标标签") }, singleLine = true,
                         enabled = !vm.busy, modifier = Modifier.fillMaxWidth())
                 }
@@ -108,7 +108,7 @@ internal fun TagsPage(vm: VaultViewModel) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        if (!searchExpanded) Text("标签", fontSize = 26.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground)
+        if (!searchExpanded) Text("标签", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground)
         SearchBox(query, { query = it.take(1000) }, "查找标签", Modifier.weight(1f), onExpandedChange = { searchExpanded = it }, initiallyExpanded = searchExpanded)
     }
     Row(
@@ -117,7 +117,7 @@ internal fun TagsPage(vm: VaultViewModel) {
     ) {
         Text(
             if (query.isEmpty()) "${totals.size} 个标签" else "${visible.size} / ${totals.size} 个标签",
-            Modifier.weight(1f), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant
+            Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Box {
             TextButton(onClick = { sortMenu = true }, modifier = Modifier.heightIn(min = 48.dp)) {
@@ -153,10 +153,10 @@ internal fun TagsPage(vm: VaultViewModel) {
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        tag, Modifier.weight(1f), fontWeight = FontWeight.Medium, fontSize = 16.sp,
+                        tag, Modifier.weight(1f), fontWeight = FontWeight.Medium, style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    Text("$count 条", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("$count 条", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Box {
                         IconButton(onClick = { menu = true }, modifier = Modifier.size(48.dp), enabled = !vm.busy) {
                             Icon(Glyph.More, "标签操作：$tag", Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -187,7 +187,7 @@ internal fun TagsPage(vm: VaultViewModel) {
             onDismissRequest = { if (!vm.busy) deleteTarget = null },
             icon = { Icon(Glyph.Tag, null) },
             title = { Text("删除标签「$tag」？") },
-            text = { Text("将从所有收藏中移除此标签，收藏本身不会被删除。", fontSize = 13.sp) },
+            text = { Text("将从所有收藏中移除此标签，收藏本身不会被删除。", style = MaterialTheme.typography.bodyMedium) },
             confirmButton = { TextButton(onClick = { vm.deleteTag(tag); deleteTarget = null }, enabled = !vm.busy) { Text("删除标签", color = MaterialTheme.colorScheme.error) } },
             dismissButton = { TextButton(onClick = { deleteTarget = null }, enabled = !vm.busy) { Text("取消") } }
         )

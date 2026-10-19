@@ -43,8 +43,8 @@ import java.util.Locale
 @Composable
 internal fun RootHeading(title: String, subtitle: String = "") {
     Column(Modifier.padding(top = 10.dp, bottom = 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(title, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp, color = MaterialTheme.colorScheme.onBackground)
-        if (subtitle.isNotEmpty()) Text(subtitle, fontSize = 13.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp, color = MaterialTheme.colorScheme.onBackground)
+        if (subtitle.isNotEmpty()) Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -68,7 +68,7 @@ internal fun SearchBox(value: String, onChange: (String) -> Unit, placeholder: S
         placeholder = {
             Text(
                 placeholder,
-                fontSize = 13.5.sp,
+                style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
@@ -101,10 +101,10 @@ internal fun TagPill(text: String, trailing: String = "", onClick: (() -> Unit)?
         modifier = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
     ) {
         Row(Modifier.padding(horizontal = 9.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(text, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(text, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (trailing.isNotEmpty()) {
                 Spacer(Modifier.width(4.dp))
-                Text(trailing, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+                Text(trailing, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
             }
         }
     }
@@ -143,8 +143,7 @@ internal fun NoteSnippetCard(
             )
             Text(
                 text = text,
-                fontSize = 13.sp,
-                lineHeight = 19.5.sp,
+                style = MaterialTheme.typography.bodyMedium,
                 color = noteColors.onContainer,
                 fontWeight = FontWeight.Normal,
                 maxLines = maxLines,
@@ -178,10 +177,10 @@ internal fun <T> ScopeTabs(
                     contentColor = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
                 ) {
                     Row(Modifier.heightIn(min = 48.dp).padding(horizontal = 4.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-                        Text(label(item), Modifier.weight(1f, fill = false), fontSize = 13.sp, fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(label(item), Modifier.weight(1f, fill = false), style = MaterialTheme.typography.bodyMedium, fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         badge?.invoke(item)?.takeIf { it.isNotEmpty() }?.let {
                             Spacer(Modifier.width(4.dp))
-                            Text(it, fontSize = 10.sp, maxLines = 1, softWrap = false)
+                            Text(it, style = MaterialTheme.typography.labelMedium, maxLines = 1, softWrap = false)
                         }
                     }
                 }
@@ -212,8 +211,8 @@ internal fun <T> SegmentedPills(
                 border = BorderStroke(1.dp, if (chosen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)
             ) {
                 Row(Modifier.heightIn(min = 48.dp).padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(label(item), fontSize = 13.sp, fontWeight = if (chosen) FontWeight.SemiBold else FontWeight.Normal)
-                    badge?.invoke(item)?.takeIf { it.isNotEmpty() }?.let { Text(" $it", fontSize = 11.sp) }
+                    Text(label(item), style = MaterialTheme.typography.bodyMedium, fontWeight = if (chosen) FontWeight.SemiBold else FontWeight.Normal)
+                    badge?.invoke(item)?.takeIf { it.isNotEmpty() }?.let { Text(" $it", style = MaterialTheme.typography.labelMedium) }
                 }
             }
         }
@@ -233,9 +232,9 @@ internal fun EmptyState(icon: ImageVector, title: String, subtitle: String = "")
         ) {
             Icon(icon, null, Modifier.size(26.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Text(title, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
         if (subtitle.isNotBlank()) {
-            Text(subtitle, fontSize = 13.sp, lineHeight = 21.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         }
     }
 }
@@ -247,7 +246,7 @@ internal fun PageToolbar(title: String, onBack: () -> Unit, action: (@Composable
         verticalAlignment = Alignment.CenterVertically
     ) {
         IconButton(onClick = onBack) { Icon(Glyph.Back, "返回", tint = MaterialTheme.colorScheme.onSurface) }
-        Text(title, Modifier.weight(1f).padding(start = 4.dp), fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+        Text(title, Modifier.weight(1f).padding(start = 4.dp), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
         action?.invoke()
     }
 }
@@ -255,10 +254,10 @@ internal fun PageToolbar(title: String, onBack: () -> Unit, action: (@Composable
 @Composable
 internal fun SectionLabel(text: String, trailing: String = "") {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(text, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant, letterSpacing = 0.5.sp)
+        Text(text, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant, letterSpacing = 0.5.sp)
         if (trailing.isNotEmpty()) {
             Spacer(Modifier.width(8.dp))
-            Text(trailing, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.primary)
+            Text(trailing, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.primary)
         }
     }
 }
@@ -305,7 +304,7 @@ internal fun Banner(text: String, tone: BannerTone, modifier: Modifier = Modifie
     }
     Surface(color = container, modifier = modifier.fillMaxWidth()) {
         Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(text, Modifier.weight(1f).padding(vertical = 10.dp), fontSize = 12.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(text, Modifier.weight(1f).padding(vertical = 10.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             action?.invoke()
         }
     }

@@ -54,7 +54,7 @@ internal fun NotesPage(vm: VaultViewModel, listState: LazyListState = rememberLa
                 if (notes.hiddenByLock > 0) Text(
                     "另有 ${notes.hiddenByLock} 条私密笔记未参与搜索：内容锁着，解锁后才能读。",
                     Modifier.fillMaxWidth().padding(top = 6.dp),
-                    fontSize = 12.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -105,17 +105,17 @@ private fun NotesKeyRow(vm: VaultViewModel) {
                     else -> " · 未解锁"
                 })
             },
-            Modifier.weight(1f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant
+            Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         if (notes.hasMaster) {
             TextButton(onClick = { if (notes.unlocked) notes.lock() else notes.requireKey() }, contentPadding = PaddingValues(horizontal = 8.dp)) {
                 Icon(Glyph.Shield, null, Modifier.size(13.dp))
                 Spacer(Modifier.width(3.dp))
-                Text(if (notes.unlocked) "锁定" else "解锁", fontSize = 12.sp)
+                Text(if (notes.unlocked) "锁定" else "解锁", style = MaterialTheme.typography.labelMedium)
             }
         } else {
             TextButton(onClick = { notes.requireKey() }, contentPadding = PaddingValues(horizontal = 8.dp)) {
-                Text("设主密码", fontSize = 12.sp)
+                Text("设主密码", style = MaterialTheme.typography.labelMedium)
             }
         }
     }
@@ -144,7 +144,7 @@ private fun NoteCard(row: NoteRow, onClick: () -> Unit, onCopy: () -> Unit, modi
             )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 if (!masked && row.heading.isNotEmpty()) Text(
-                    row.heading, fontSize = 15.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold,
+                    row.heading, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold,
                     maxLines = 2, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurface
                 )
                 val preview = when {
@@ -155,7 +155,7 @@ private fun NoteCard(row: NoteRow, onClick: () -> Unit, onCopy: () -> Unit, modi
                 }
                 if (preview.isNotEmpty()) Text(
                     preview,
-                    fontSize = 13.sp, lineHeight = 19.sp,
+                    style = MaterialTheme.typography.bodyMedium,
                     maxLines = if (row.locked || row.unreadable || masked) 1 else 3,
                     overflow = TextOverflow.Ellipsis,
                     color = if (row.locked || row.unreadable) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
@@ -164,14 +164,14 @@ private fun NoteCard(row: NoteRow, onClick: () -> Unit, onCopy: () -> Unit, modi
                     onClick = { revealed = true },
                     contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp),
                     modifier = Modifier.align(Alignment.Start).height(24.dp)
-                ) { Text("显示", fontSize = 12.sp) }
+                ) { Text("显示", style = MaterialTheme.typography.labelMedium) }
                 Text(
                     buildString {
                         append(Stamp.date(row.updatedAt)).append(" 改")
                         // 锁着的时候字数本身就是没说出来的内容，显示 0 字更像出错。
                         if (!row.locked && !row.unreadable && !masked) append(" · ${row.text.length} 字")
                     },
-                    fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             if (!row.locked && !row.unreadable) IconButton(onClick = onCopy, modifier = Modifier.size(30.dp)) {
@@ -194,9 +194,9 @@ internal fun LockedDraftPage(vm: VaultViewModel, onBack: () -> Unit) {
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = { notes.requireKey() }, enabled = !notes.busy, shape = RoundedCornerShape(12.dp)) {
-                Icon(Glyph.Shield, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("解锁继续", fontSize = 13.sp)
+                Icon(Glyph.Shield, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("解锁继续", style = MaterialTheme.typography.bodyMedium)
             }
-            OutlinedButton(onClick = onBack, shape = RoundedCornerShape(12.dp)) { Text("返回", fontSize = 13.sp) }
+            OutlinedButton(onClick = onBack, shape = RoundedCornerShape(12.dp)) { Text("返回", style = MaterialTheme.typography.bodyMedium) }
         }
     }
 }
@@ -222,13 +222,13 @@ internal fun NotesEditorPage(vm: VaultViewModel, draft: NoteDraft, onBack: () ->
                     else notes.change(draft.copy(text = next))
                 },
                 enabled = !notes.busy
-            ) { Icon(Glyph.Copy, null, Modifier.size(14.dp)); Spacer(Modifier.width(4.dp)); Text("粘贴", fontSize = 12.sp) }
+            ) { Icon(Glyph.Copy, null, Modifier.size(14.dp)); Spacer(Modifier.width(4.dp)); Text("粘贴", style = MaterialTheme.typography.labelMedium) }
         }
         OutlinedTextField(
             value = draft.text,
             onValueChange = { notes.change(draft.copy(text = it)) },
             enabled = !notes.busy,
-            placeholder = { Text("记下来：账号、地址、验证码、一段想法…", fontSize = 13.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)) },
+            placeholder = { Text("记下来：账号、地址、验证码、一段想法…", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)) },
             modifier = Modifier.fillMaxWidth(),
             minLines = 8,
             maxLines = 16,
@@ -242,21 +242,21 @@ internal fun NotesEditorPage(vm: VaultViewModel, draft: NoteDraft, onBack: () ->
         )
         Text(
             "${draft.text.length} / ${NoteCrypto.MAX_TEXT} 字",
-            Modifier.fillMaxWidth(), fontSize = 11.sp,
+            Modifier.fillMaxWidth(), style = MaterialTheme.typography.labelMedium,
             textAlign = androidx.compose.ui.text.style.TextAlign.End,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         NoteSecretSwitch(vm, draft)
         if (row != null && !draft.secret && !row.secret) {
             if (draft.text == row.text) AnalysisPanel(vm, "n-${draft.id}")
-            else Text("正文有未保存的修改，请先保存再分析或继续对话。", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            else Text("正文有未保存的修改，请先保存再分析或继续对话。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (row != null) {
             var confirmDelete by remember { mutableStateOf(false) }
             TextButton(onClick = { confirmDelete = true }, modifier = Modifier.align(Alignment.Start)) {
                 Icon(Glyph.Delete, null, Modifier.size(15.dp), tint = MaterialTheme.colorScheme.error)
                 Spacer(Modifier.width(6.dp))
-                Text("删除这条笔记", fontSize = 13.sp, color = MaterialTheme.colorScheme.error)
+                Text("删除这条笔记", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
             }
             if (confirmDelete) AlertDialog(
                 onDismissRequest = { confirmDelete = false },
@@ -283,7 +283,7 @@ private fun NoteSecretSwitch(vm: VaultViewModel, draft: NoteDraft) {
     ) {
         Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("私密", Modifier.weight(1f), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                Text("私密", Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                 Switch(
                     checked = draft.secret,
                     onCheckedChange = { notes.change(draft.copy(secret = it)) },
@@ -294,7 +294,7 @@ private fun NoteSecretSwitch(vm: VaultViewModel, draft: NoteDraft) {
             Text(
                 if (draft.secret) "正文加密后才落盘，列表与搜索只显示掩码；打开笔记页需要主密码。解锁期间本应用禁止截屏。"
                 else "这段文字会以明文存在本机数据库里。账号、口令这类内容建议打开「私密」。",
-                fontSize = 11.5.sp, lineHeight = 17.sp, color = MaterialTheme.colorScheme.onSurfaceVariant
+                style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -314,13 +314,13 @@ internal fun MasterPasswordDialog(vm: VaultViewModel, setup: Boolean, onDismiss:
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (setup) Text(
                     "主密码不记在任何地方，也不写进备份文件。忘了无法找回。",
-                    fontSize = 12.5.sp, lineHeight = 19.sp, color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 PasswordField("主密码", first, { first = it }, "password-first")
                 if (setup) PasswordField("再输一次", second, { second = it }, "password-second")
                 Text(
                     "至少 ${NoteCrypto.MIN_PASSWORD} 个字符。",
-                    fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         },
@@ -339,7 +339,7 @@ private fun PasswordField(label: String, value: String, onChange: (String) -> Un
     OutlinedTextField(
         value = value,
         onValueChange = { onChange(it.take(200)) },
-        label = { Text(label, fontSize = 13.sp) },
+        label = { Text(label, style = MaterialTheme.typography.bodyMedium) },
         singleLine = true,
         visualTransformation = PasswordVisualTransformation(),
         shape = RoundedCornerShape(12.dp),
@@ -363,7 +363,7 @@ internal fun ChangeMasterDialog(vm: VaultViewModel, onDismiss: () -> Unit) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
                     "全部私密笔记会用新密码重新加密一遍。笔记多的时候要等几秒，中途不写库。",
-                    fontSize = 12.5.sp, lineHeight = 19.sp, color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 PasswordField("旧主密码", old, { old = it }, "password-old")
                 PasswordField("新主密码", fresh, { fresh = it }, "password-new")

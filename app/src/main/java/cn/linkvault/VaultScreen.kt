@@ -160,14 +160,14 @@ fun VaultScreen(vm: VaultViewModel) {
                     Button(onClick = vm.notes::save, enabled = !vm.notes.busy, shape = RoundedCornerShape(14.dp), modifier = Modifier
                         .navigationBarsPadding().imePadding().padding(horizontal = 24.dp, vertical = 12.dp).fillMaxWidth().height(50.dp)) {
                         Icon(Glyph.Check, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp))
-                        Text(if (vm.notes.busy) "保存中…" else if (nd.secret) "加密保存" else "保存笔记", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                        Text(if (vm.notes.busy) "保存中…" else if (nd.secret) "加密保存" else "保存笔记", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     }
                 }
             } else if (d != null) {
                 Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
                     Button(onClick = vm::save, enabled = !vm.busy, shape = RoundedCornerShape(14.dp), modifier = Modifier
                         .navigationBarsPadding().imePadding().padding(horizontal = 24.dp, vertical = 12.dp).fillMaxWidth().height(50.dp)) {
-                        Icon(Glyph.Check, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(if (vm.busy) "保存中…" else "保存收藏", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                        Icon(Glyph.Check, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(if (vm.busy) "保存中…" else "保存收藏", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     }
                 }
             } else if (vm.detailId == null && !vm.trashOpen) {
@@ -177,7 +177,7 @@ fun VaultScreen(vm: VaultViewModel) {
                     labels.forEachIndexed { index, label ->
                         NavigationBarItem(selected = vm.tab == index, onClick = { vm.tab(index) },
                             icon = { Icon(icons[index], null, Modifier.size(22.dp)) },
-                            label = { Text(label, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) })
+                            label = { Text(label, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis) })
                     }
                 }
             }
@@ -219,10 +219,10 @@ fun VaultScreen(vm: VaultViewModel) {
                         Row(Modifier.padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                             Icon(Glyph.Cloud, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
                             Column(Modifier.weight(1f).padding(start = 10.dp, top = 10.dp, bottom = 10.dp)) {
-                                Text("发现新版本 ${info.versionName}", fontSize = 13.5.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                                Text("发现新版本 ${info.versionName}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onPrimaryContainer)
                             }
                             TextButton(onClick = { vm.downloadUpdate() }, enabled = !vm.updateDownloading) {
-                                Text(if (vm.updateDownloading) "${(vm.updateProgress * 100).toInt()}%" else "更新", fontSize = 13.sp)
+                                Text(if (vm.updateDownloading) "${(vm.updateProgress * 100).toInt()}%" else "更新", style = MaterialTheme.typography.bodyMedium)
                             }
                             IconButton(onClick = vm::dismissUpdateBanner, modifier = Modifier.size(32.dp)) { Icon(Glyph.Close, "忽略这次更新", Modifier.size(15.dp)) }
                         }
@@ -307,12 +307,12 @@ private fun ClipboardSuggestion(
         Row(Modifier.padding(start = 14.dp, end = 4.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(if (url != null) Glyph.LinkChain else Glyph.Note, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
             Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
-                Text(if (url != null) "检测到剪贴板链接" else "检测到剪贴板文字", fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSecondaryContainer)
-                Text((url ?: text.orEmpty()).take(80), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (url == null) Text("存下来是明文笔记 · 要加密就在笔记里打开「私密」", fontSize = 10.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(if (url != null) "检测到剪贴板链接" else "检测到剪贴板文字", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                Text((url ?: text.orEmpty()).take(80), style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (url == null) Text("存下来是明文笔记 · 要加密就在笔记里打开「私密」", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             TextButton(onClick = if (url != null) onSaveUrl else onSaveNote, contentPadding = PaddingValues(horizontal = 8.dp)) {
-                Text(if (url != null) "收录" else "存为笔记", fontSize = 12.5.sp, fontWeight = FontWeight.Bold)
+                Text(if (url != null) "收录" else "存为笔记", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
             }
             IconButton(onClick = onDismiss, modifier = Modifier.size(30.dp)) {
                 Icon(Glyph.Close, "忽略", Modifier.size(14.dp))

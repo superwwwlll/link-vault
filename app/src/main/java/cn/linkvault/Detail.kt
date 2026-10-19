@@ -97,12 +97,12 @@ internal fun DetailPage(
             SourceMark(item.url, size = MarkSize.Large)
             Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 val site = Links.siteName(item.url)
-                if (site.length > 1) Text(site, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground)
+                if (site.length > 1) Text(site, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground)
                 val stamp = buildString {
                     append("收藏于 ").append(Stamp.date(item.createdAt))
                     if (item.updatedAt / 60_000L > item.createdAt / 60_000L) append(" · 更新于 ").append(Stamp.date(item.updatedAt))
                 }
-                Text(stamp, fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stamp, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
 
@@ -110,8 +110,7 @@ internal fun DetailPage(
         SelectionContainer {
             Text(
                 Links.displayTitle(item.url, item.title),
-                fontSize = 24.sp,
-                lineHeight = 34.sp,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = (-0.4).sp,
                 color = MaterialTheme.colorScheme.onBackground
@@ -185,7 +184,7 @@ internal fun DetailPage(
                 Icon(Glyph.LinkChain, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
                 Text(
                     item.url,
-                    fontSize = 13.sp,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -209,7 +208,7 @@ internal fun DetailPage(
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
                     modifier = Modifier.height(30.dp)
                 ) {
-                    Text("打开", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    Text("打开", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.width(3.dp))
                     Icon(Glyph.External, null, Modifier.size(11.dp))
                 }
@@ -230,12 +229,12 @@ internal fun DetailPage(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Glyph.Note, null, Modifier.size(14.dp), tint = noteColors.icon)
                             Spacer(Modifier.width(6.dp))
-                            Text("思考与备忘", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = noteColors.icon)
+                            Text("思考与备忘", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = noteColors.icon)
                             Spacer(Modifier.weight(1f))
                             Icon(Glyph.Edit, null, Modifier.size(13.dp), tint = noteColors.icon.copy(alpha = 0.6f))
                         }
                         SelectionContainer {
-                            Text(item.notes, fontSize = 14.5.sp, lineHeight = 22.sp, color = noteColors.onContainer)
+                            Text(item.notes, style = MaterialTheme.typography.bodyMedium, color = noteColors.onContainer)
                         }
                     }
                 }
@@ -256,7 +255,7 @@ internal fun DetailPage(
                 ) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         SelectionContainer {
-                            Text(item.summary, fontSize = 13.5.sp, lineHeight = 22.sp, color = MaterialTheme.colorScheme.onSurface)
+                            Text(item.summary, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
                         }
                         if (canFetch) {
                             OutlinedButton(
@@ -269,7 +268,7 @@ internal fun DetailPage(
                                 if (fetching) CircularProgressIndicator(Modifier.size(13.dp), strokeWidth = 1.8.dp)
                                 else Icon(Glyph.Search, null, Modifier.size(14.dp))
                                 Spacer(Modifier.width(6.dp))
-                                Text(if (fetching) "抓取中…" else if (item.fetchedAt > 0) "重新抓取" else "抓取页面信息", fontSize = 12.sp)
+                                Text(if (fetching) "抓取中…" else if (item.fetchedAt > 0) "重新抓取" else "抓取页面信息", style = MaterialTheme.typography.labelMedium)
                             }
                         }
                     }
@@ -329,7 +328,7 @@ internal fun DetailPage(
                                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                                     modifier = Modifier.height(30.dp)
                                 ) {
-                                    Text(if (expandedReader) "收起阅读模式" else "展开全文阅读", fontSize = 12.sp)
+                                    Text(if (expandedReader) "收起阅读模式" else "展开全文阅读", style = MaterialTheme.typography.labelMedium)
                                 }
                             }
                             OutlinedButton(
@@ -343,7 +342,7 @@ internal fun DetailPage(
                             ) {
                                 Icon(Glyph.Markdown, null, Modifier.size(13.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text("复制 Markdown", fontSize = 12.sp)
+                                Text("复制 Markdown", style = MaterialTheme.typography.labelMedium)
                             }
                             // 只有没配好接口时灰掉。已经翻过的直接走缓存，不重复花钱。
                             OutlinedButton(
@@ -357,11 +356,11 @@ internal fun DetailPage(
                                     CircularProgressIndicator(Modifier.size(11.dp), strokeWidth = 1.6.dp)
                                     Spacer(Modifier.width(4.dp))
                                     val (done, total) = vm.translateStep
-                                    Text(if (total > 0) "翻译中 $done/$total 段" else "翻译中…", fontSize = 12.sp)
+                                    Text(if (total > 0) "翻译中 $done/$total 段" else "翻译中…", style = MaterialTheme.typography.labelMedium)
                                 } else {
                                     Icon(Glyph.Translate, null, Modifier.size(12.dp))
                                     Spacer(Modifier.width(4.dp))
-                                    Text(if (translation == null) "译成中文" else "看译文", fontSize = 12.sp)
+                                    Text(if (translation == null) "译成中文" else "看译文", style = MaterialTheme.typography.labelMedium)
                                 }
                             }
                             if (canFetch) {
@@ -375,7 +374,7 @@ internal fun DetailPage(
                                     if (fetchingSnapshot) CircularProgressIndicator(Modifier.size(11.dp), strokeWidth = 1.6.dp)
                                     else Icon(Glyph.Book, null, Modifier.size(12.dp))
                                     Spacer(Modifier.width(4.dp))
-                                    Text(if (fetchingSnapshot) "抓取中…" else "更新快照", fontSize = 12.sp)
+                                    Text(if (fetchingSnapshot) "抓取中…" else "更新快照", style = MaterialTheme.typography.labelMedium)
                                 }
                             }
                             TextButton(
@@ -383,7 +382,7 @@ internal fun DetailPage(
                                 contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
                                 modifier = Modifier.height(30.dp)
                             ) {
-                                Text("删除快照", fontSize = 11.5.sp, color = MaterialTheme.colorScheme.outline)
+                                Text("删除快照", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline)
                             }
                         }
                     }
@@ -400,7 +399,7 @@ internal fun DetailPage(
             Text(
                 "一键翻译读的是离线正文快照，这条还没有。到「设置 → 联网抓取」打开抓取，" +
                     "这里就会出现提取正文的入口。",
-                fontSize = 12.sp, lineHeight = 17.sp, color = MaterialTheme.colorScheme.onSurfaceVariant
+                style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
@@ -408,7 +407,7 @@ internal fun DetailPage(
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             SectionLabel("标签")
             if (item.tags.isEmpty()) {
-                Text("尚未添加标签", fontSize = 12.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("尚未添加标签", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     parseTags(item.tags).forEach { tag -> TagPill(tag, onClick = { vm.tag(tag) }) }
@@ -425,7 +424,7 @@ internal fun DetailPage(
         ) {
             Icon(Glyph.Delete, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.error)
             Spacer(Modifier.width(6.dp))
-            Text("删除这条收藏", fontSize = 13.sp, color = MaterialTheme.colorScheme.error)
+            Text("删除这条收藏", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
         }
     }
 }
@@ -446,7 +445,7 @@ private fun DetailActionRow(icon: ImageVector, text: String, busy: Boolean = fal
         ) {
             if (busy) CircularProgressIndicator(Modifier.size(13.dp), strokeWidth = 1.8.dp)
             else Icon(icon, null, Modifier.size(15.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(text, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -481,7 +480,7 @@ private fun DetailStatusPill(
             )
             Text(
                 label,
-                fontSize = 12.sp,
+                style = MaterialTheme.typography.labelMedium,
                 fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
                 color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -503,8 +502,7 @@ internal fun SnapshotMarkdownViewer(
         // 图本身在展开态才画，折叠态没有位置容纳它。
         Text(
             text = markdown.lineSequence().filterNot { snapshotImageLine.matches(it.trim()) }.joinToString("\n"),
-            fontSize = 14.sp,
-            lineHeight = 22.sp,
+            style = MaterialTheme.typography.bodyMedium,
             maxLines = 8,
             overflow = TextOverflow.Ellipsis,
             color = MaterialTheme.colorScheme.onSurface
@@ -527,9 +525,8 @@ internal fun SnapshotMarkdownViewer(
                         ) {
                             Text(
                                 text = codeLines.joinToString("\n"),
-                                fontSize = 12.5.sp,
+                                style = MaterialTheme.typography.labelMedium,
                                 fontFamily = FontFamily.Monospace,
-                                lineHeight = 18.sp,
                                 modifier = Modifier.padding(10.dp),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -573,18 +570,16 @@ internal fun SnapshotMarkdownViewer(
                     trimmed.startsWith("# ") -> {
                         Text(
                             text = trimmed.removePrefix("# ").trim(),
-                            fontSize = 19.sp,
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            lineHeight = 27.sp,
                             color = MaterialTheme.colorScheme.onBackground
                         )
                     }
                     trimmed.startsWith("## ") -> {
                         Text(
                             text = trimmed.removePrefix("## ").trim(),
-                            fontSize = 16.5.sp,
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            lineHeight = 24.sp,
                             color = MaterialTheme.colorScheme.onBackground
                         )
                     }
@@ -592,9 +587,8 @@ internal fun SnapshotMarkdownViewer(
                         val header = trimmed.replace(Regex("^#{3,4}\\s*"), "")
                         Text(
                             text = header,
-                            fontSize = 15.sp,
+                            style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.SemiBold,
-                            lineHeight = 22.sp,
                             color = MaterialTheme.colorScheme.onBackground
                         )
                     }
@@ -609,8 +603,7 @@ internal fun SnapshotMarkdownViewer(
                             Spacer(Modifier.width(8.dp))
                             Text(
                                 text = trimmed.removePrefix("> ").trim(),
-                                fontSize = 13.5.sp,
-                                lineHeight = 21.sp,
+                                style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -619,15 +612,14 @@ internal fun SnapshotMarkdownViewer(
                         Row(Modifier.fillMaxWidth()) {
                             Text(
                                 "•",
-                                fontSize = 14.sp,
+                                style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
                             )
                             Spacer(Modifier.width(6.dp))
                             Text(
                                 text = trimmed.drop(2).trim(),
-                                fontSize = 14.sp,
-                                lineHeight = 23.sp,
+                                style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                         }
@@ -635,8 +627,7 @@ internal fun SnapshotMarkdownViewer(
                     else -> {
                         Text(
                             text = trimmed,
-                            fontSize = 14.sp,
-                            lineHeight = 24.sp,
+                            style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                     }

@@ -54,7 +54,7 @@ internal fun SettingsPage(
         } else {
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                 TextButton(onClick = goBack, modifier = Modifier.heightIn(min = 48.dp)) { Text("返回") }
-                Text(page, Modifier.weight(1f).padding(8.dp), fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                Text(page, Modifier.weight(1f).padding(8.dp), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             }
         }
         key(page) {
@@ -77,7 +77,7 @@ internal fun SettingsPage(
                     SettingsValueRow(Glyph.Archive, "备份与更新", "当前 ${vm.installedVersionName}") { page = "备份与更新" }
                 }
             }
-            Text("收藏与笔记仅存本机，无云同步。AI 会发送内容给服务商，可能计费；请勿发送敏感内容。", Modifier.padding(horizontal = 4.dp), fontSize = 12.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("收藏与笔记仅存本机，无云同步。AI 会发送内容给服务商，可能计费；请勿发送敏感内容。", Modifier.padding(horizontal = 4.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
             if (page == "外观") {
@@ -121,31 +121,31 @@ internal fun SettingsPage(
                 when {
                     ready != null -> Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.primaryContainer) {
                         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text("新版本已下载并通过校验", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-                            Text("${info?.versionName ?: ""} · ${size(ready.length())}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            Text("新版本已下载并通过校验", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                            Text("${info?.versionName ?: ""} · ${size(ready.length())}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
                             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Button(onClick = { vm.installDownloaded() }, shape = RoundedCornerShape(13.dp)) { Text("立即安装") }
-                                OutlinedButton(onClick = { vm.openDownloadInBrowser() }, shape = RoundedCornerShape(13.dp)) { Text("用浏览器安装", fontSize = 12.sp) }
+                                OutlinedButton(onClick = { vm.openDownloadInBrowser() }, shape = RoundedCornerShape(13.dp)) { Text("用浏览器安装", style = MaterialTheme.typography.labelMedium) }
                             }
                             if (!allowed) {
-                                OutlinedButton(onClick = { vm.openInstallPermission() }, shape = RoundedCornerShape(12.dp)) { Text("开启应用安装权限", fontSize = 12.sp) }
+                                OutlinedButton(onClick = { vm.openInstallPermission() }, shape = RoundedCornerShape(12.dp)) { Text("开启应用安装权限", style = MaterialTheme.typography.labelMedium) }
                             }
                         }
                     }
                     info != null -> Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.primaryContainer) {
                         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text("发现新版本 ${info.versionName}", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-                            Text("${size(info.size)} · ${info.releasedAt}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            Text("发现新版本 ${info.versionName}", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                            Text("${size(info.size)} · ${info.releasedAt}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
                             if (vm.updateDownloading) {
                                 LinearProgressIndicator(progress = { vm.updateProgress }, modifier = Modifier.fillMaxWidth())
-                                Text(downloadLabel(vm), fontSize = 11.sp, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                                Text(downloadLabel(vm), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
                             } else {
                                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Button(onClick = { vm.downloadUpdate() }, shape = RoundedCornerShape(13.dp)) { Text("下载并安装") }
-                                    OutlinedButton(onClick = { vm.openDownloadInBrowser() }, shape = RoundedCornerShape(13.dp)) { Text("用浏览器", fontSize = 12.sp) }
+                                    OutlinedButton(onClick = { vm.openDownloadInBrowser() }, shape = RoundedCornerShape(13.dp)) { Text("用浏览器", style = MaterialTheme.typography.labelMedium) }
                                 }
                                 if (!allowed) {
-                                    OutlinedButton(onClick = { vm.openInstallPermission() }, shape = RoundedCornerShape(12.dp)) { Text("开启应用安装权限", fontSize = 12.sp) }
+                                    OutlinedButton(onClick = { vm.openInstallPermission() }, shape = RoundedCornerShape(12.dp)) { Text("开启应用安装权限", style = MaterialTheme.typography.labelMedium) }
                                 }
                             }
                         }
@@ -155,8 +155,8 @@ internal fun SettingsPage(
                 vm.updateError?.let { text ->
                     Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
                         Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text(text, Modifier.weight(1f), fontSize = 12.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.error)
-                            TextButton(onClick = { vm.clearUpdateError() }) { Text("关闭", fontSize = 12.sp) }
+                            Text(text, Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
+                            TextButton(onClick = { vm.clearUpdateError() }) { Text("关闭", style = MaterialTheme.typography.labelMedium) }
                         }
                     }
                 }
@@ -179,7 +179,7 @@ internal fun SettingsPage(
                     }
                 }
                 Text("只读本机已有的正文快照，不发任何请求；改坏的标题可以在编辑页改回去。",
-                    fontSize = 11.5.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             }
 
@@ -194,7 +194,7 @@ internal fun SettingsPage(
                         SwitchRow(Glyph.Translate, "启用翻译", "详情页把离线正文快照译成简体中文；快照要「联网抓取」才会产生", vm.aiEnabled, !vm.busy) { vm.aiEnabled(it) }
                     }
                 }
-                Text("与阅读助手共用「AI 接口」。翻译会发送正文到你配置的服务商，可能计费；敏感内容请勿翻译。", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("与阅读助手共用「AI 接口」。翻译会发送正文到你配置的服务商，可能计费；敏感内容请勿翻译。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 TextButton(onClick = { returnPage = "翻译"; page = "AI 接口" }, modifier = Modifier.heightIn(min = 48.dp)) { Text("配置 AI 接口") }
                 var details by rememberSaveable { mutableStateOf(false) }
                 TextButton(onClick = { details = !details }, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (details) "收起翻译说明" else "详细隐私与用量说明") }
@@ -204,7 +204,7 @@ internal fun SettingsPage(
                         "按段发送，最多 20 段，每段等 60 秒，长文可能要等几分钟。密钥存在本机应用私有目录（明文，" +
                         "未 root 的设备上其他应用读不到），不导入备份、不同步、不参与更新检查；" +
                         "接口地址跨域跳转时一律停止，避免密钥被送到别的域名。不用时请关掉开关。",
-                    fontSize = 11.5.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             }
@@ -262,13 +262,13 @@ internal fun SettingsPage(
                     }
                 }
                 if (vm.lastBackupAt > 0L) {
-                    Text("上次备份：${Stamp.ago(vm.lastBackupAt)}", fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("上次备份：${Stamp.ago(vm.lastBackupAt)}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 SectionLabel("关于链藏")
-                Text(vm.versionLabel, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                Text(vm.versionLabel, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
             }
             }
             Spacer(Modifier.height(24.dp))
@@ -348,8 +348,8 @@ internal fun SettingsValueRow(icon: ImageVector, title: String, value: String, o
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Icon(icon, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
-        Text(title, Modifier.weight(0.43f), fontSize = 15.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
-        Text(value, Modifier.weight(0.57f), fontSize = 12.5.sp, textAlign = TextAlign.End, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(title, Modifier.weight(0.43f), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+        Text(value, Modifier.weight(0.57f), style = MaterialTheme.typography.labelMedium, textAlign = TextAlign.End, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Icon(Glyph.Next, null, Modifier.size(15.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
@@ -360,7 +360,7 @@ private fun SettingsOptionRow(title: String, selected: Boolean, onClick: () -> U
         Modifier.fillMaxWidth().heightIn(min = 48.dp).selectable(selected = selected, role = Role.RadioButton, onClick = onClick).padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(title, Modifier.weight(1f), fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurface)
+        Text(title, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
         if (selected) Icon(Glyph.Check, "已选择", Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
     }
 }
@@ -394,8 +394,8 @@ private fun SettingRow(icon: ImageVector, title: String, subtitle: String, enabl
     ) {
         Icon(icon, null, Modifier.size(20.dp), tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(title, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(subtitle, fontSize = 12.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(subtitle, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Icon(Glyph.Next, null, Modifier.size(15.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
     }
@@ -413,8 +413,8 @@ private fun SwitchRow(icon: ImageVector, title: String, subtitle: String, checke
     ) {
         Icon(icon, null, Modifier.size(20.dp), tint = if (checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(title, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
-            Text(subtitle, fontSize = 12.5.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+            Text(subtitle, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Switch(checked = checked, enabled = enabled, onCheckedChange = onChange)
     }

@@ -24,7 +24,7 @@ internal fun TrashPage(vm: VaultViewModel, onBack: () -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 item {
-                    Text("删除后保留 30 天，之后自动清理", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("删除后保留 30 天，之后自动清理", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 items(vm.trashItems, key = { it.id }) { item ->
                     Surface(
@@ -34,7 +34,7 @@ internal fun TrashPage(vm: VaultViewModel, onBack: () -> Unit) {
                     ) {
                         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(Links.displayTitle(item.url, item.title), maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleMedium)
-                            Text(item.url, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(item.url, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 OutlinedButton(onClick = { vm.restoreTrash(item) }, enabled = !vm.busy, shape = RoundedCornerShape(11.dp)) {
                                     Icon(Glyph.Check, null, Modifier.size(16.dp)); Spacer(Modifier.width(5.dp)); Text("恢复")

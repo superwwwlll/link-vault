@@ -61,7 +61,7 @@ internal fun AnalysisConversationPage(vm: VaultViewModel, key: String, onBack: (
                 Column(Modifier.weight(1f).padding(horizontal = 8.dp)) {
                     Text("AI 对话", fontWeight = FontWeight.SemiBold)
                     Text(title?.takeIf { it.isNotBlank() } ?: "这篇内容", maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -75,11 +75,11 @@ internal fun AnalysisConversationPage(vm: VaultViewModel, key: String, onBack: (
                         Text("原总结 · ${record.template}", fontWeight = FontWeight.SemiBold)
                         SelectionContainer { SnapshotMarkdownViewer(messages.firstOrNull()?.text.orEmpty(), expanded = true, showImages = false) }
                         if (record.sourceChars > Analysis.MAX_SOURCE) Text("材料 ${record.sourceChars} 字，仅分析前 ${Analysis.MAX_SOURCE} 字；对话也只能参考这部分。",
-                            fontSize = 12.sp, color = MaterialTheme.colorScheme.error)
+                            style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
                     }
-                    Text("AI 回答不等于事实核验，请结合原文判断。", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    if (record == null) Text("尚无可用总结，请返回原内容先完成分析。", fontSize = 13.sp)
-                    else if (history.isEmpty()) Text("围绕这篇内容继续追问", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("AI 回答不等于事实核验，请结合原文判断。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (record == null) Text("尚无可用总结，请返回原内容先完成分析。", style = MaterialTheme.typography.bodyMedium)
+                    else if (history.isEmpty()) Text("围绕这篇内容继续追问", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             itemsIndexed(history, key = { index, _ -> "message-$index" }) { _, message -> AnalysisConversationMessage(message) }
@@ -92,17 +92,16 @@ internal fun AnalysisConversationPage(vm: VaultViewModel, key: String, onBack: (
                 if (state != null) {
                     LinearProgressIndicator(Modifier.fillMaxWidth())
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(state, Modifier.weight(1f), fontSize = 12.sp)
+                        Text(state, Modifier.weight(1f), style = MaterialTheme.typography.labelMedium)
                         TextButton(onClick = { ai.cancel(key); vm.finishConversationQuestion(key, succeeded = false) }, modifier = Modifier.heightIn(min = 48.dp)) { Text("停止生成") }
                     }
                 }
-                if (error != null) Text(error, fontSize = 12.sp, color = MaterialTheme.colorScheme.error, maxLines = 3, overflow = TextOverflow.Ellipsis)
-                if (!vm.aiVerified) Text("先到设置测试 AI 连接，验证通过后即可对话。", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (error != null) Text(error, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                if (!vm.aiVerified) Text("先到设置测试 AI 连接，验证通过后即可对话。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 OutlinedTextField(question, { vm.conversationQuestion(key, it) }, label = { Text("围绕这篇内容继续追问") },
                     modifier = Modifier.fillMaxWidth(), minLines = 1, maxLines = 4, enabled = state == null)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("发送原文、总结及最近最多6轮；全部历史仅存本机。", Modifier.weight(1f), fontSize = 10.sp,
-                        lineHeight = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("发送原文、总结及最近最多6轮；全部历史仅存本机。", Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Button(onClick = {
                         val sent = question.trim()
                         vm.beginConversationQuestion(key, sent, messages.size)
@@ -126,12 +125,12 @@ private fun AnalysisConversationMessage(message: AnalysisMessage, pending: Boole
     val user = message.role == "user"
     Column(Modifier.fillMaxWidth(), horizontalAlignment = if (user) Alignment.End else Alignment.Start,
         verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(if (user) if (pending) "我 · 等待回答" else "我" else "AI", fontSize = 11.sp,
+        Text(if (user) if (pending) "我 · 等待回答" else "我" else "AI", style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (user) {
             Surface(shape = RoundedCornerShape(16.dp, 16.dp, 4.dp, 16.dp), color = MaterialTheme.colorScheme.primaryContainer,
                 border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)) {
-                SelectionContainer { Text(message.text, Modifier.padding(14.dp), fontSize = 15.sp, lineHeight = 23.sp) }
+                SelectionContainer { Text(message.text, Modifier.padding(14.dp), style = MaterialTheme.typography.bodyLarge, lineHeight = 23.sp) }
             }
         } else {
             // 长回答采用文章宽度，不挤进狭窄气泡；Markdown 与详情总结使用同一渲染器。
