@@ -307,12 +307,12 @@ private fun ClipboardSuggestion(
         Row(Modifier.padding(start = 14.dp, end = 4.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(if (url != null) Glyph.LinkChain else Glyph.Note, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
             Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
-                Text(if (url != null) "检测到剪贴板链接" else "检测到剪贴板文字", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                Text(if (url != null) "检测到剪贴板链接" else "检测到剪贴板文字", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSecondaryContainer)
                 Text((url ?: text.orEmpty()).take(80), style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (url == null) Text("存下来是明文笔记 · 要加密就在笔记里打开「私密」", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             TextButton(onClick = if (url != null) onSaveUrl else onSaveNote, contentPadding = PaddingValues(horizontal = 8.dp)) {
-                Text(if (url != null) "收录" else "存为笔记", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                Text(if (url != null) "收录" else "存为笔记", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
             }
             IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp)) {
                 Icon(Glyph.Close, "忽略", Modifier.size(14.dp))

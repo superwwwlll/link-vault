@@ -104,7 +104,7 @@ internal fun CollectionPage(
             Column(Modifier.padding(horizontal = 16.dp).testTag("collection-toolbar")) {
                 Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text("我的收藏", Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold,
-                        letterSpacing = (-0.5).sp, color = MaterialTheme.colorScheme.onBackground)
+                        color = MaterialTheme.colorScheme.onBackground)
                     IconButton(onClick = { if (searchExpanded || vm.search.isNotEmpty()) { vm.search(""); searchExpanded = false } else searchExpanded = true }, modifier = Modifier.size(48.dp).testTag("collection-search-toggle")) {
                         Icon(if (searchExpanded || vm.search.isNotEmpty()) Glyph.Close else Glyph.Search,
                             if (searchExpanded || vm.search.isNotEmpty()) "收起搜索" else "展开搜索", Modifier.size(20.dp))
@@ -345,7 +345,7 @@ private fun CollectionCardTags(tags: List<String>, onTag: (String) -> Unit) {
     var showAll by remember { mutableStateOf(false) }
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
-    val style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium)
+    val style = MaterialTheme.typography.labelMedium
     BoxWithConstraints(Modifier.fillMaxWidth().testTag("collection-card-tags")) {
         val padding = with(density) { 18.dp.roundToPx() }
         val minimum = with(density) { 48.dp.roundToPx() }
@@ -379,8 +379,7 @@ private fun CollectionTagButton(text: String, modifier: Modifier = Modifier, onC
     Box(modifier.heightIn(min = 48.dp).widthIn(min = 48.dp).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
         Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
             border = BorderStroke(0.6.dp, MaterialTheme.colorScheme.outlineVariant)) {
-            Text(text, Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
-                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
+            Text(text, Modifier.padding(horizontal = 9.dp, vertical = 5.dp), style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
