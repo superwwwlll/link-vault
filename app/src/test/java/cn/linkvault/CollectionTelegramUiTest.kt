@@ -83,7 +83,7 @@ class CollectionTelegramUiTest {
 
     @Test fun largeFontNarrowScreenKeepsArchivedFilterReachable() {
         seed(fontScale = 2f)
-        rule.onNodeWithTag("collection-scope-3").performScrollTo().performClick().assertIsSelected()
+        rule.onNodeWithTag("collection-scope-3").performClick().assertIsSelected()
         rule.onNodeWithText("归档为空").assertIsDisplayed()
         rule.onNodeWithContentDescription("展开搜索").performClick()
         rule.onNodeWithTag("collection-search").assertIsDisplayed()

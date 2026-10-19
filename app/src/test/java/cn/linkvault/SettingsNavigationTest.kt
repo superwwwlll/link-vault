@@ -87,7 +87,7 @@ class SettingsNavigationTest {
         rule.onNodeWithText("你的 API Key").performScrollTo().assertIsDisplayed()
         back()
         rule.onNodeWithText("启用翻译").assertIsDisplayed()
-        rule.onNodeWithText("返回").performClick()
+        rule.onNodeWithContentDescription("返回").performClick()
         rule.onNodeWithText("收藏与笔记仅存本机", substring = true).performScrollTo().assertIsDisplayed()
     }
 

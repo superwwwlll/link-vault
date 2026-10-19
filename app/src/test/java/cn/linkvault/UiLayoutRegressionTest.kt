@@ -101,7 +101,7 @@ class UiLayoutRegressionTest {
         rule.onNode(hasSetTextAction() and hasText("API 地址（完整 chat/completions 地址）"))
             .performScrollTo().assertIsDisplayed()
         capture("ui-161-ai-large-text")
-        rule.onNodeWithText("返回").performClick()
+        rule.onNodeWithContentDescription("返回").performClick()
         rule.onNodeWithText("阅读助手").performScrollTo().performClick()
         rule.onNodeWithText("我的工作、兴趣与关注方向").performScrollTo().assertIsDisplayed()
         rule.onNodeWithText("编辑模板").performScrollTo().performClick()

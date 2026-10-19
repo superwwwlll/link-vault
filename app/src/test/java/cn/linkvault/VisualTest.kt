@@ -79,6 +79,11 @@ class VisualTest {
     }
     @Test fun navigateAndRenderAllMajorScreens() {
         val vm = ViewModelProvider(rule.activity)[VaultViewModel::class.java]
+        // VaultDb 的进程内实例可能跨 UI 用例保留主密码；此场景必须从未配置状态开始。
+        runBlocking { VaultDb.get(rule.activity).notes().clear(); VaultDb.get(rule.activity).vault().clear() }
+        rule.runOnIdle { vm.notes.afterImport() }
+        // afterImport 是异步读库；等 hasMaster 真正落到 false，否则笔记页会显示「解锁」而不是「设主密码」。
+        rule.waitUntil(20_000) { rule.runOnIdle { !vm.notes.hasMaster && !vm.notes.busy } }
         val samples = listOf(
             Bookmark(url = "https://x.com/Astronaut_1216/status/2097610542127223251?s=20", canonical = "https://x.com/Astronaut_1216/status/2097610542127223251", title = "值得慢慢看的宇宙", notes = "把浩瀚星空收进口袋。留一些时间，给日常之外的好奇心。", tags = "灵感,稍后读", updatedAt = 1788950400000),
             Bookmark(url = "https://developer.android.com/compose", canonical = "https://developer.android.com/compose", title = "用 Compose 构建更好的 Android 界面", notes = "关于状态、布局与设计系统的一份学习笔记。", tags = "技术,设计", updatedAt = 1788864000000),
@@ -229,10 +234,10 @@ class VisualTest {
         rule.onNodeWithText("AI 接口").performScrollTo().performClick()
         rule.onNodeWithText("你的 API Key").performScrollTo()
         capture("05b-settings-ai-light")
-        rule.onNodeWithText("返回").performClick()
+        rule.onNodeWithContentDescription("返回").performClick()
         rule.onNodeWithText("备份与更新").performScrollTo().performClick()
         rule.onNodeWithText("导出收藏").performScrollTo().assertExists()
-        rule.onNodeWithText("返回").performClick()
+        rule.onNodeWithContentDescription("返回").performClick()
         rule.runOnIdle {
             vm.aiEnabled(false); vm.aiEndpoint(Translate.DEFAULT_ENDPOINT)
             vm.aiModel(Translate.DEFAULT_MODEL); vm.aiKey("")
@@ -244,6 +249,8 @@ class VisualTest {
         rule.onNode(hasText("笔记") and hasClickAction()).performClick()
         rule.onNodeWithText("还没有笔记").assertIsDisplayed()
         // 没设过主密码时这一行只给「设主密码」：没有可解的东西，弹解锁框只是骗用户输一遍密码。
+        // 页签切换先让短动画落地，避免空态已经出现而头部可见性尚未稳定。
+        settle()
         rule.onNode(hasText("设主密码") and hasClickAction()).assertIsDisplayed()
         // 主密码弹窗和改密码页拍不出图：带输入框的 Compose 弹窗在这条 Robolectric 通道里
         // 窗口停在 0x0，而且 Espresso 永远等不到 idle（60 秒 AppNotIdleException）。
@@ -256,7 +263,7 @@ class VisualTest {
         rule.onNode(hasSetTextAction()).performTextInput("家里 WiFi：链藏-5G\n管理页口令 hello-vault-2026")
         rule.onNode(SemanticsMatcher.expectValue(SemanticsProperties.ToggleableState, ToggleableState.Off)).performClick()
         rule.onNodeWithText("正文加密后才落盘", substring = true).assertIsDisplayed()
-        capture("09-note-editor-light")
+        capture("09-note-editor-secret-light")
         rule.onNodeWithText("加密保存").performClick()
         rule.waitUntil(20000) { rule.runOnIdle { vm.notes.rows.size == 1 && vm.notes.draft == null } }
         rule.onAllNodes(hasContentDescription("新建笔记")).onFirst().performClick()
@@ -288,7 +295,7 @@ class VisualTest {
         rule.onNodeWithText("设置").performClick()
         rule.onNodeWithText("备份与更新").performScrollTo().performClick()
         rule.onNodeWithText("修改主密码").performScrollTo().assertIsDisplayed()
-        rule.onNodeWithText("返回").performClick()
+        rule.onNodeWithContentDescription("返回").performClick()
         // 提示条的纯文本分支：链接那条 1.4.0 已经拍过，这里要的是「存为笔记」那颗按钮和它下面
         // 那行「存下来是明文笔记」。口令样子的内容无所谓——它只存在于测试沙箱。
         rule.onNodeWithText("收藏").performClick()

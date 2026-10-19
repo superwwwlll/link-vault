@@ -40,10 +40,10 @@ class CollectionCompactUiTest {
 
     @Test fun compactEntrancesAndScrollHidingRemainUsable() {
         seed()
-        rule.onNodeWithTag("collection-result-count").assertTextEquals("16 条")
+        rule.onNodeWithTag("collection-result-count").assertTextEquals("最近收藏 · 16 条")
         rule.onNodeWithContentDescription("展开搜索").performClick()
         rule.onNode(hasSetTextAction()).performTextInput("示例 15")
-        rule.onNodeWithTag("collection-result-count").assertTextEquals("1 条")
+        rule.onNodeWithTag("collection-result-count").assertTextEquals("搜索结果 · 1 条")
         rule.onNodeWithContentDescription("清空搜索").performClick()
         rule.onNodeWithContentDescription("关闭搜索").performClick()
         rule.onNodeWithContentDescription("展开标签筛选").performClick()
@@ -79,7 +79,7 @@ class CollectionCompactUiTest {
                 }
             }
         }
-        rule.onNodeWithTag("collection-result-count").assertIsDisplayed().assertTextEquals("16 条")
+        rule.onNodeWithTag("collection-result-count").assertIsDisplayed().assertTextEquals("最近收藏 · 16 条")
         rule.onNodeWithText("AI 摘要 · 这是一条短结论。").performScrollTo().assertIsDisplayed()
         rule.onNodeWithText("AI · 标题 / 标签建议待确认").assertIsDisplayed()
         rule.onAllNodesWithContentDescription("查看全部 6 个标签").onFirst().performClick()

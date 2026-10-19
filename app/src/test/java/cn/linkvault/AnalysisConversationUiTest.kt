@@ -36,22 +36,22 @@ class AnalysisConversationUiTest {
         show(listOf(AnalysisMessage("assistant", "原总结全文")) + (1..12).flatMap { index ->
             listOf(AnalysisMessage("user", "历史问题 $index"), AnalysisMessage("assistant", "历史答案 $index"))
         })
-        rule.onNodeWithText("发送追问").assertIsDisplayed()
-        rule.onNodeWithText("返回").assertIsDisplayed()
+        rule.onNodeWithContentDescription("发送追问").assertIsDisplayed()
+        rule.onNodeWithContentDescription("返回").assertIsDisplayed()
         rule.onNodeWithTag("analysis-conversation-history").performScrollToIndex(1)
         rule.onNodeWithText("历史问题 1").assertIsDisplayed()
         rule.onNodeWithTag("analysis-conversation-history").performScrollToIndex(0)
         rule.onNodeWithText("查看原总结").performClick()
         rule.onNodeWithText("原总结全文").assertIsDisplayed()
-        rule.onNodeWithText("发送追问").assertIsDisplayed()
+        rule.onNodeWithContentDescription("发送追问").assertIsDisplayed()
         rule.onNodeWithTag("analysis-conversation-history").performScrollToIndex(24)
         rule.onNodeWithText("历史答案 12").assertIsDisplayed()
-        rule.onNodeWithText("返回").assertIsDisplayed()
+        rule.onNodeWithContentDescription("返回").assertIsDisplayed()
     }
 
     @Test fun stoppingAndFailureKeepDraftAndDoNotAppendMessages() {
         val vm = show(listOf(AnalysisMessage("assistant", "原总结全文")))
-        val input = rule.onNode(hasSetTextAction() and hasText("围绕这篇内容继续追问"))
+        val input = rule.onNode(hasTestTag("analysis-conversation-input"))
         input.performTextInput("保留这个问题")
         rule.runOnIdle { vm.analysis.states["n-900001"] = "等待分析…" }
         rule.onNodeWithText("等待分析…").assertIsDisplayed()

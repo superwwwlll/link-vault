@@ -95,11 +95,11 @@ class TelegramIntegrationUiTest {
             vm.openAnalysisConversation(key)
         }
         rule.onNodeWithText("AI 对话").assertIsDisplayed()
-        rule.onNode(hasSetTextAction() and hasText("围绕这篇内容继续追问")).assertIsDisplayed()
+        rule.onNode(hasTestTag("analysis-conversation-input")).assertIsDisplayed()
         rule.onAllNodesWithContentDescription("收藏链接").assertCountEquals(0)
         rule.onNodeWithTag("analysis-conversation-history").performScrollToIndex(1)
-        rule.onNode(hasSetTextAction() and hasText("围绕这篇内容继续追问")).assertIsDisplayed().performTextInput("保留尚未发送的问题")
-        capture("ui-162-conversation-large-text")
+        rule.onNode(hasTestTag("analysis-conversation-input")).assertIsDisplayed().performTextInput("保留尚未发送的问题")
+        capture("ui-162-conversation-large-text-1_5x")
         rule.runOnIdle { vm.receive(Shared("https://example.com/incoming", "外部分享")) }
         rule.onNodeWithText("AI 对话").assertIsDisplayed()
         rule.runOnIdle { check(vm.draft == null); check(vm.pending != null) }
@@ -107,7 +107,7 @@ class TelegramIntegrationUiTest {
         rule.onNodeWithText("收藏详情").assertIsDisplayed()
         rule.runOnIdle { check(vm.detailId == item.id); check(vm.analysisConversationKey == null) }
         rule.runOnIdle { vm.openAnalysisConversation(key) }
-        rule.onNode(hasSetTextAction() and hasText("围绕这篇内容继续追问")).assertTextContains("保留尚未发送的问题")
+        rule.onNode(hasTestTag("analysis-conversation-input")).assertTextContains("保留尚未发送的问题")
     }
 
     @Test fun failedRequestSurvivesBackAndReentryThenOnlySuccessfulRetryClearsDraft() {
@@ -127,14 +127,14 @@ class TelegramIntegrationUiTest {
             vm.openAnalysisConversation(key)
         }
         Analysis.transport = { _, _, _ -> calls.incrementAndGet(); error("模拟请求失败") }
-        rule.onNode(hasSetTextAction() and hasText("围绕这篇内容继续追问")).performTextInput("失败后保留的问题")
-        rule.onNodeWithText("发送追问").performClick()
+        rule.onNode(hasTestTag("analysis-conversation-input")).performTextInput("失败后保留的问题")
+        rule.onNodeWithContentDescription("发送追问").performClick()
         rule.waitUntil(10_000) { rule.runOnIdle { vm.analysis.errors[key] != null && vm.analysis.states[key] == null } }
         rule.runOnIdle { rule.activity.onBackPressedDispatcher.onBackPressed() }
         rule.runOnIdle { vm.openAnalysisConversation(key) }
-        rule.onNode(hasSetTextAction() and hasText("围绕这篇内容继续追问")).assertTextContains("失败后保留的问题")
+        rule.onNode(hasTestTag("analysis-conversation-input")).assertTextContains("失败后保留的问题")
         Analysis.transport = { _, _, _ -> calls.incrementAndGet(); response("重试后成功回答") }
-        rule.onNodeWithText("发送追问").performClick()
+        rule.onNodeWithContentDescription("发送追问").performClick()
         rule.waitUntil(10_000) { rule.runOnIdle { vm.analysis.records[key]?.messages?.size == 3 && vm.conversationDraft(key).question.isEmpty() } }
         rule.runOnIdle { check(calls.get() == 3); check(vm.analysis.errors[key] == null); vm.closeAnalysisConversation(); vm.analysis.clear(key) }
         runBlocking { VaultDb.get(rule.activity).notes().delete(id) }

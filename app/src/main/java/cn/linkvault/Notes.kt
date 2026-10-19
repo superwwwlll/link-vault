@@ -113,13 +113,13 @@ private fun NotesKeyRow(vm: VaultViewModel) {
             Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         if (notes.hasMaster) {
-            TextButton(onClick = { if (notes.unlocked) notes.lock() else notes.requireKey() }, contentPadding = PaddingValues(horizontal = 8.dp)) {
+            TextButton(onClick = { if (notes.unlocked) notes.lock() else notes.requireKey() }, modifier = Modifier.heightIn(min = 48.dp), contentPadding = PaddingValues(horizontal = 8.dp)) {
                 Icon(Glyph.Shield, null, Modifier.size(13.dp))
                 Spacer(Modifier.width(3.dp))
                 Text(if (notes.unlocked) "锁定" else "解锁", style = MaterialTheme.typography.labelMedium)
             }
         } else {
-            TextButton(onClick = { notes.requireKey() }, contentPadding = PaddingValues(horizontal = 8.dp)) {
+            TextButton(onClick = { notes.requireKey() }, modifier = Modifier.heightIn(min = 48.dp), contentPadding = PaddingValues(horizontal = 8.dp)) {
                 Text("设主密码", style = MaterialTheme.typography.labelMedium)
             }
         }
@@ -149,7 +149,7 @@ private fun NoteCard(row: NoteRow, onClick: () -> Unit, onCopy: () -> Unit, modi
             )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 if (!masked && row.heading.isNotEmpty()) Text(
-                    row.heading, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold,
+                    row.heading, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold,
                     maxLines = 2, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurface
                 )
                 val preview = when {
@@ -252,13 +252,13 @@ internal fun NotesEditorPage(vm: VaultViewModel, draft: NoteDraft, onBack: () ->
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         NoteSecretSwitch(vm, draft)
-        if (row != null && !draft.secret && !row.secret) {
+        if (!draft.secret && row?.secret != true) {
             var aiExpanded by rememberSaveable(draft.id) { mutableStateOf(false) }
             val key = "n-${draft.id}"
-            LaunchedEffect(key) { vm.analysis.load(key) }
+            LaunchedEffect(key) { if (row != null) vm.analysis.load(key) }
             val record = vm.analysis.records[key]
             val status = when {
-                draft.text != row.text -> "先保存再分析"
+                row == null || draft.text != row.text -> "先保存再分析"
                 vm.analysis.states[key] != null -> "正在分析…"
                 record != null -> "已有总结 · ${(record.messages.size - 1) / 2} 轮对话"
                 !vm.aiVerified -> "配置 AI 后可用"
@@ -274,7 +274,7 @@ internal fun NotesEditorPage(vm: VaultViewModel, draft: NoteDraft, onBack: () ->
                     Icon(if (aiExpanded) Glyph.Close else Glyph.Next, if (aiExpanded) "收起 AI" else "展开 AI", Modifier.size(20.dp))
                 }
             }
-            if (aiExpanded && draft.text == row.text) AnalysisPanel(vm, key)
+            if (aiExpanded && row != null && draft.text == row.text) AnalysisPanel(vm, key)
         }
         if (row != null) {
             var confirmDelete by remember { mutableStateOf(false) }

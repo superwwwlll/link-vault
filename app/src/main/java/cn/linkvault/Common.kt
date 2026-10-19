@@ -54,7 +54,7 @@ internal fun SearchBox(value: String, onChange: (String) -> Unit, placeholder: S
     val focus = remember { FocusRequester() }
     if (!expanded && value.isEmpty()) {
         Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            IconButton(onClick = { expanded = true; onExpandedChange(true) }) { Icon(Glyph.Search, "展开搜索", Modifier.size(20.dp)) }
+            IconButton(onClick = { expanded = true; onExpandedChange(true) }, modifier = Modifier.size(48.dp)) { Icon(Glyph.Search, "展开搜索", Modifier.size(20.dp)) }
         }
         return
     }
@@ -77,8 +77,8 @@ internal fun SearchBox(value: String, onChange: (String) -> Unit, placeholder: S
         leadingIcon = { Icon(Glyph.Search, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant) },
         trailingIcon = {
             Row {
-                if (value.isNotEmpty()) IconButton(onClick = { onChange("") }) { Icon(Glyph.Close, "清空搜索", Modifier.size(16.dp)) }
-                IconButton(onClick = { onChange(""); expanded = false; onExpandedChange(false) }) { Icon(Glyph.Back, "关闭搜索", Modifier.size(16.dp)) }
+                if (value.isNotEmpty()) IconButton(onClick = { onChange("") }, modifier = Modifier.size(48.dp)) { Icon(Glyph.Close, "清空搜索", Modifier.size(16.dp)) }
+                IconButton(onClick = { onChange(""); expanded = false; onExpandedChange(false) }, modifier = Modifier.size(48.dp)) { Icon(Glyph.Back, "关闭搜索", Modifier.size(16.dp)) }
             }
         },
         shape = RoundedCornerShape(16.dp),
@@ -245,7 +245,7 @@ internal fun PageToolbar(title: String, onBack: () -> Unit, subtitle: String = "
         Modifier.fillMaxWidth().heightIn(min = 60.dp).padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        IconButton(onClick = onBack) { Icon(Glyph.Back, "返回", tint = MaterialTheme.colorScheme.onSurface) }
+        IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) { Icon(Glyph.Back, "返回", tint = MaterialTheme.colorScheme.onSurface) }
         Column(Modifier.weight(1f).padding(start = 4.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
             if (subtitle.isNotEmpty()) Text(subtitle, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)

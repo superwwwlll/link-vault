@@ -80,7 +80,7 @@ internal fun AnalysisConversationPage(vm: VaultViewModel, key: String, onBack: (
                 AnalysisConversationMessage(AnalysisMessage("user", pendingQuestion!!), pending = true)
             }
         }
-        Surface(tonalElevation = 3.dp) {
+        Surface(tonalElevation = 3.dp, modifier = Modifier.testTag("analysis-conversation-composer")) {
             Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (state != null) {
                     LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -97,7 +97,7 @@ internal fun AnalysisConversationPage(vm: VaultViewModel, key: String, onBack: (
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(question, { vm.conversationQuestion(key, it) }, placeholder = { Text("围绕这篇内容继续追问", style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                         textStyle = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.weight(1f), minLines = 1, maxLines = 4, enabled = state == null)
+                        modifier = Modifier.weight(1f).testTag("analysis-conversation-input"), minLines = 1, maxLines = 4, enabled = state == null)
                     FilledIconButton(onClick = {
                         val sent = question.trim()
                         vm.beginConversationQuestion(key, sent, messages.size)

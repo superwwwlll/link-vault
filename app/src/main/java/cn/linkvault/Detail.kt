@@ -52,11 +52,11 @@ internal fun DetailPage(
     val canFetch = vm.fetchEnabled && item.url.startsWith("https://", true)
 
     PageToolbar("收藏详情", onBack) {
-        IconButton(onClick = onEdit, enabled = !vm.busy) {
+        IconButton(onClick = onEdit, enabled = !vm.busy, modifier = Modifier.size(48.dp)) {
             Icon(Glyph.Edit, "编辑收藏", Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurface)
         }
         Box {
-            IconButton(onClick = { menu = true }, enabled = !vm.busy) {
+            IconButton(onClick = { menu = true }, enabled = !vm.busy, modifier = Modifier.size(48.dp)) {
                 Icon(Glyph.More, "更多操作", Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurface)
             }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
@@ -420,7 +420,7 @@ internal fun DetailPage(
         TextButton(
             onClick = onDelete,
             enabled = !vm.busy,
-            modifier = Modifier.align(Alignment.Start)
+            modifier = Modifier.align(Alignment.Start).heightIn(min = 48.dp)
         ) {
             Icon(Glyph.Delete, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.error)
             Spacer(Modifier.width(6.dp))

@@ -102,7 +102,7 @@ internal fun CollectionPage(
             }
         }
             Column(Modifier.padding(horizontal = 16.dp).testTag("collection-toolbar")) {
-                Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text("我的收藏", Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onBackground)
                     IconButton(onClick = { if (searchExpanded || vm.search.isNotEmpty()) { vm.search(""); searchExpanded = false } else searchExpanded = true }, modifier = Modifier.size(48.dp).testTag("collection-search-toggle")) {
@@ -115,13 +115,14 @@ internal fun CollectionPage(
                 }
                 Row(Modifier.fillMaxWidth()) {
                     scopeLabels.forEachIndexed { index, label ->
-                        Column(Modifier.weight(1f).heightIn(min = 56.dp)
+                        Column(Modifier.weight(1f).heightIn(min = 48.dp)
                             .testTag("collection-scope-$index").semantics { selected = vm.scope == index; contentDescription = label }
-                            .clickable { vm.scope(index) }, horizontalAlignment = Alignment.CenterHorizontally) {
+                            .clickable { vm.scope(index) }, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceBetween) {
                             Text(label, style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = if (vm.scope == index) FontWeight.SemiBold else FontWeight.Normal,
                                 color = if (vm.scope == index) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1, softWrap = false, overflow = TextOverflow.Clip)
+                                maxLines = 1, softWrap = false, overflow = TextOverflow.Clip,
+                                 letterSpacing = if (LocalDensity.current.fontScale >= 2f) (-2).sp else 0.sp)
                             Text("${counts[index]}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Box(Modifier.fillMaxWidth().height(3.dp).background(if (vm.scope == index) MaterialTheme.colorScheme.primary else Color.Transparent))
                         }
@@ -379,7 +380,8 @@ private fun CollectionTagButton(text: String, modifier: Modifier = Modifier, onC
     Box(modifier.heightIn(min = 48.dp).widthIn(min = 48.dp).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
         Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
             border = BorderStroke(0.6.dp, MaterialTheme.colorScheme.outlineVariant)) {
-            Text(text, Modifier.padding(horizontal = 9.dp, vertical = 5.dp), style = MaterialTheme.typography.labelMedium,
+            Text(text, Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+                style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
@@ -555,7 +557,7 @@ private fun BookmarkCard(
                 if (summary.isNotBlank()) {
                     Text(
                         summary,
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
