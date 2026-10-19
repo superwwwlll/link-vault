@@ -118,7 +118,7 @@ internal fun DetailPage(
         }
 
         // 状态微胶囊栏（已读、置顶、归档）
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             DetailStatusPill(
                 label = if (item.read) "已读" else "标为已读",
                 selected = item.read,
@@ -176,21 +176,21 @@ internal fun DetailPage(
                 )
                 IconButton(
                     onClick = { clipboard.setText(AnnotatedString(item.url)); vm.toast("已复制原链接") },
-                    modifier = Modifier.size(28.dp)
+                    modifier = Modifier.size(48.dp)
                 ) {
-                    Icon(Glyph.Copy, "复制原链接", Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(Glyph.Copy, "复制原链接", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 IconButton(
                     onClick = onCopyMarkdown,
-                    modifier = Modifier.size(28.dp)
+                    modifier = Modifier.size(48.dp)
                 ) {
-                    Icon(Glyph.Markdown, "复制 Markdown", Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(Glyph.Markdown, "复制 Markdown", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 FilledTonalButton(
                     onClick = onOpen,
                     shape = RoundedCornerShape(8.dp),
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
-                    modifier = Modifier.height(30.dp)
+                    modifier = Modifier.heightIn(min = 48.dp)
                 ) {
                     Text("打开", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.width(3.dp))
@@ -273,7 +273,7 @@ internal fun DetailPage(
                                 enabled = !vm.busy,
                                 shape = RoundedCornerShape(9.dp),
                                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                                modifier = Modifier.height(34.dp)
+                                modifier = Modifier.heightIn(min = 48.dp)
                             ) {
                                 if (fetching) CircularProgressIndicator(Modifier.size(13.dp), strokeWidth = 1.8.dp)
                                 else Icon(Glyph.Search, null, Modifier.size(14.dp))
@@ -328,15 +328,15 @@ internal fun DetailPage(
                                 showImages = canFetch && !(showTranslated && translation != null)
                             )
                         }
-                        Row(
+                        FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             if (snapshot.length > 200) {
                                 TextButton(
                                     onClick = { expandedReader = !expandedReader },
                                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                                    modifier = Modifier.height(30.dp)
+                                    modifier = Modifier.heightIn(min = 48.dp)
                                 ) {
                                     Text(if (expandedReader) "收起阅读模式" else "展开全文阅读", style = MaterialTheme.typography.labelMedium)
                                 }
@@ -348,7 +348,7 @@ internal fun DetailPage(
                                 },
                                 shape = RoundedCornerShape(8.dp),
                                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
-                                modifier = Modifier.height(30.dp)
+                                modifier = Modifier.heightIn(min = 48.dp)
                             ) {
                                 Icon(Glyph.Markdown, null, Modifier.size(13.dp))
                                 Spacer(Modifier.width(4.dp))
@@ -360,7 +360,7 @@ internal fun DetailPage(
                                 enabled = !vm.busy && !vm.translating,
                                 shape = RoundedCornerShape(8.dp),
                                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
-                                modifier = Modifier.height(30.dp)
+                                modifier = Modifier.heightIn(min = 48.dp)
                             ) {
                                 if (vm.translating) {
                                     CircularProgressIndicator(Modifier.size(11.dp), strokeWidth = 1.6.dp)
@@ -379,7 +379,7 @@ internal fun DetailPage(
                                     enabled = !vm.busy && !fetchingSnapshot,
                                     shape = RoundedCornerShape(8.dp),
                                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
-                                    modifier = Modifier.height(30.dp)
+                                    modifier = Modifier.heightIn(min = 48.dp)
                                 ) {
                                     if (fetchingSnapshot) CircularProgressIndicator(Modifier.size(11.dp), strokeWidth = 1.6.dp)
                                     else Icon(Glyph.Book, null, Modifier.size(12.dp))
@@ -390,7 +390,7 @@ internal fun DetailPage(
                             TextButton(
                                 onClick = { vm.removeSnapshot(item.id) },
                                 contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
-                                modifier = Modifier.height(30.dp)
+                                modifier = Modifier.heightIn(min = 48.dp)
                             ) {
                                 Text("删除快照", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline)
                             }
@@ -436,7 +436,7 @@ private fun DetailActionRow(icon: ImageVector, text: String, busy: Boolean = fal
         shape = shape,
         color = Color.Transparent,
         border = BorderStroke(0.8.dp, MaterialTheme.colorScheme.outlineVariant),
-        modifier = Modifier.fillMaxWidth().clip(shape).clickable(enabled = !busy, onClick = onClick)
+        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(shape).clickable(enabled = !busy, onClick = onClick)
     ) {
         Row(
             Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
@@ -464,6 +464,7 @@ private fun DetailStatusPill(
         color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
         border = if (selected) null else BorderStroke(0.6.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier
+            .heightIn(min = 48.dp).widthIn(min = 48.dp)
             .clip(shape)
             .clickable(enabled = enabled, onClick = onClick)
     ) {

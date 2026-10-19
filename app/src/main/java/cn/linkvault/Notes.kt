@@ -163,7 +163,7 @@ private fun NoteCard(row: NoteRow, onClick: () -> Unit, onCopy: () -> Unit, modi
                 if (masked) TextButton(
                     onClick = { revealed = true },
                     contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp),
-                    modifier = Modifier.align(Alignment.Start).height(24.dp)
+                    modifier = Modifier.align(Alignment.Start).heightIn(min = 48.dp).widthIn(min = 48.dp)
                 ) { Text("显示", style = MaterialTheme.typography.labelMedium) }
                 Text(
                     buildString {
@@ -174,8 +174,8 @@ private fun NoteCard(row: NoteRow, onClick: () -> Unit, onCopy: () -> Unit, modi
                     style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            if (!row.locked && !row.unreadable) IconButton(onClick = onCopy, modifier = Modifier.size(30.dp)) {
-                Icon(Glyph.Copy, "复制全文", Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (!row.locked && !row.unreadable) IconButton(onClick = onCopy, modifier = Modifier.size(48.dp)) {
+                Icon(Glyph.Copy, "复制全文", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }

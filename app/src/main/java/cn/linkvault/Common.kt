@@ -98,7 +98,7 @@ internal fun TagPill(text: String, trailing: String = "", onClick: (() -> Unit)?
         shape = RoundedCornerShape(8.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
         border = BorderStroke(0.6.dp, MaterialTheme.colorScheme.outlineVariant),
-        modifier = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
+        modifier = if (onClick != null) Modifier.heightIn(min = 48.dp).widthIn(min = 48.dp).clickable(onClick = onClick) else Modifier
     ) {
         Row(Modifier.padding(horizontal = 9.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(text, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -128,7 +128,7 @@ internal fun NoteSnippetCard(
         border = BorderStroke(0.6.dp, noteColors.border),
         modifier = modifier
             .fillMaxWidth()
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .then(if (onClick != null) Modifier.heightIn(min = 48.dp).widthIn(min = 48.dp).clickable(onClick = onClick) else Modifier)
     ) {
         Row(
             Modifier.padding(horizontal = 12.dp, vertical = 9.dp),

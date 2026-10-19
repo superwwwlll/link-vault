@@ -211,7 +211,7 @@ fun VaultScreen(vm: VaultViewModel) {
                 TextButton(onClick = vm::importPending, enabled = !editing && conversationKey == null && !vm.busy && vm.preview == null) { Text(if (!editing && conversationKey == null) "有一条待收分享 · 点击处理" else "新分享已暂存，当前内容不受影响") }
             }
             vm.message?.let { text ->
-                Banner(text, BannerTone.Info, action = { IconButton(onClick = vm::clearMessage, modifier = Modifier.size(32.dp)) { Icon(Glyph.Close, "关闭提示", Modifier.size(15.dp)) } })
+                Banner(text, BannerTone.Info, action = { IconButton(onClick = vm::clearMessage, modifier = Modifier.size(48.dp)) { Icon(Glyph.Close, "关闭提示", Modifier.size(15.dp)) } })
             }
             if (d == null && vm.detailId == null && vm.tab == 0 && !vm.updateBannerDismissed) {
                 vm.available?.let { info ->
@@ -224,7 +224,7 @@ fun VaultScreen(vm: VaultViewModel) {
                             TextButton(onClick = { vm.downloadUpdate() }, enabled = !vm.updateDownloading) {
                                 Text(if (vm.updateDownloading) "${(vm.updateProgress * 100).toInt()}%" else "更新", style = MaterialTheme.typography.bodyMedium)
                             }
-                            IconButton(onClick = vm::dismissUpdateBanner, modifier = Modifier.size(32.dp)) { Icon(Glyph.Close, "忽略这次更新", Modifier.size(15.dp)) }
+                            IconButton(onClick = vm::dismissUpdateBanner, modifier = Modifier.size(48.dp)) { Icon(Glyph.Close, "忽略这次更新", Modifier.size(15.dp)) }
                         }
                     }
                 }
@@ -314,7 +314,7 @@ private fun ClipboardSuggestion(
             TextButton(onClick = if (url != null) onSaveUrl else onSaveNote, contentPadding = PaddingValues(horizontal = 8.dp)) {
                 Text(if (url != null) "收录" else "存为笔记", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
             }
-            IconButton(onClick = onDismiss, modifier = Modifier.size(30.dp)) {
+            IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp)) {
                 Icon(Glyph.Close, "忽略", Modifier.size(14.dp))
             }
         }
