@@ -117,22 +117,6 @@ internal fun DetailPage(
             )
         }
 
-        AnalysisPanel(vm, "b-${item.id}")
-
-        // 封面图：库里只有 URL，每次进页面现取；取不到就一行都不占，不画灰块也不画破图。
-        val cover = if (canFetch) rememberLoadedImage(item.image) else null
-        if (cover != null) {
-            Image(
-                bitmap = cover,
-                contentDescription = "封面图",
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio((cover.width.toFloat() / cover.height).coerceIn(0.8f, 2.2f))
-                    .clip(RoundedCornerShape(14.dp)),
-                contentScale = ContentScale.Crop
-            )
-        }
-
         // 状态微胶囊栏（已读、置顶、归档）
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             DetailStatusPill(
@@ -215,6 +199,20 @@ internal fun DetailPage(
             }
         }
 
+        // 封面图：库里只有 URL，每次进页面现取；取不到就一行都不占，不画灰块也不画破图。
+        val cover = if (canFetch) rememberLoadedImage(item.image) else null
+        if (cover != null) {
+            Image(
+                bitmap = cover,
+                contentDescription = "封面图",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio((cover.width.toFloat() / cover.height).coerceIn(0.8f, 2.2f))
+                    .clip(RoundedCornerShape(14.dp)),
+                contentScale = ContentScale.Crop
+            )
+        }
+
         // 我的手记：有内容才铺便签，空着的时候只留一行入口
         if (item.notes.isNotBlank()) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -241,6 +239,18 @@ internal fun DetailPage(
             }
         } else {
             DetailActionRow(Glyph.Note, "添加备注", onClick = onEdit)
+        }
+
+        // 标签栏
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            SectionLabel("标签")
+            if (item.tags.isEmpty()) {
+                Text("尚未添加标签", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    parseTags(item.tags).forEach { tag -> TagPill(tag, onClick = { vm.tag(tag) }) }
+                }
+            }
         }
 
         // 页面描述：抓不到就不占一整张卡片，只留抓取入口
@@ -403,17 +413,7 @@ internal fun DetailPage(
             )
         }
 
-        // 标签栏
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            SectionLabel("标签")
-            if (item.tags.isEmpty()) {
-                Text("尚未添加标签", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            } else {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    parseTags(item.tags).forEach { tag -> TagPill(tag, onClick = { vm.tag(tag) }) }
-                }
-            }
-        }
+        AnalysisPanel(vm, "b-${item.id}")
 
         Spacer(Modifier.height(4.dp))
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f))

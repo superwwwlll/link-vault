@@ -129,6 +129,23 @@ internal fun AnalysisPanel(vm: VaultViewModel, key: String) {
     var confirmReplace by remember { mutableStateOf(false) }
     var confirmClear by remember { mutableStateOf(false) }
     var confirmApply by remember { mutableStateOf(false) }
+    if (!vm.aiVerified && record == null && state == null && error == null) {
+        Surface(onClick = { vm.openSettings("AI 接口") }, color = MaterialTheme.colorScheme.surfaceVariant,
+            shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
+            Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Glyph.LinkChain, null, Modifier.size(20.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("AI 总结与对话", style = MaterialTheme.typography.bodyMedium)
+                    Text("配置 AI 接口后可分析这篇内容", style = MaterialTheme.typography.labelMedium)
+                }
+                TextButton(onClick = { vm.openSettings("AI 接口") }, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text("去设置"); Icon(Glyph.Next, null, Modifier.size(18.dp))
+                }
+            }
+        }
+        return
+    }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         SectionLabel("AI 总结与对话", trailing = record?.template ?: ai.active.name)
         if (record == null && state == null) Text("保存后自动分析${if (ai.auto) "已开启" else "未开启"}，也可以点下面手动分析。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)

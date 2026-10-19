@@ -45,6 +45,9 @@ internal fun SettingsPage(
     var page by rememberSaveable { mutableStateOf("") }
     var returnPage by rememberSaveable { mutableStateOf("") }
     var changeMaster by rememberSaveable { mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(vm.settingsTarget) {
+        vm.settingsTarget?.let { page = it; returnPage = ""; vm.settingsTarget = null }
+    }
     val goBack: () -> Unit = { page = returnPage; returnPage = "" }
     BackHandler(enabled = page.isNotEmpty() && secureAction == null && !changeMaster) { goBack() }
 

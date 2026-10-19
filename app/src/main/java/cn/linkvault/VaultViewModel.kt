@@ -76,6 +76,16 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
         if (Regex("[bn]-[1-9][0-9]*").matches(key) && key.substringAfter('-').toLongOrNull() != null) { analysisConversationKey = key; analysis.load(key) }
     }
     fun closeAnalysisConversation() { analysisConversationKey = null }
+    var settingsTarget by mutableStateOf<String?>(null)
+    fun openSettings(page: String) {
+        closeAnalysisConversation()
+        closeDetail()
+        edit(null)
+        notes.edit(null)
+        tab(3)
+        settingsTarget = page
+    }
+
     internal fun conversationDraft(key: String): ConversationDraft = conversationDrafts[key] ?: ConversationDraft()
     internal fun conversationQuestion(key: String, value: String) { conversationDrafts[key] = conversationDraft(key).copy(question = value.take(Analysis.MAX_QUESTION)) }
     internal fun beginConversationQuestion(key: String, sent: String, baseline: Int) {
