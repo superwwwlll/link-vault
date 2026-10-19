@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.sp
 internal fun NotesPage(vm: VaultViewModel, listState: LazyListState = rememberLazyListState()) {
     val notes = vm.notes
     val clipboard = LocalClipboardManager.current
+    var searchExpanded by rememberSaveable { mutableStateOf(false) }
     val rows = notes.visible
 
     LazyColumn(
@@ -45,9 +46,13 @@ internal fun NotesPage(vm: VaultViewModel, listState: LazyListState = rememberLa
     ) {
         item {
             Column(Modifier.padding(horizontal = 24.dp)) {
-                RootHeading("笔记")
-                SearchBox(notes.search, { notes.search(it) }, "搜索笔记正文")
-                Spacer(Modifier.height(10.dp))
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text("笔记", Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall)
+                    IconButton(onClick = { searchExpanded = !searchExpanded; if (!searchExpanded) notes.search("") }, modifier = Modifier.size(48.dp)) {
+                        Icon(if (searchExpanded) Glyph.Close else Glyph.Search, if (searchExpanded) "收起搜索" else "展开搜索", Modifier.size(20.dp))
+                    }
+                }
+                if (searchExpanded || notes.search.isNotEmpty()) SearchBox(notes.search, { notes.search(it) }, "搜索笔记正文", initiallyExpanded = true)
                 NotesKeyRow(vm)
                 // 锁着的条数在两种列表状态下都得说：搜完什么都看不到，和最开始就没有，
                 // 是同一件事——用户会把"现在读不到"理解成"内容没了"。
