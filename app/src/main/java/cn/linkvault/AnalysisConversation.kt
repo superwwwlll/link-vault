@@ -56,14 +56,7 @@ internal fun AnalysisConversationPage(vm: VaultViewModel, key: String, onBack: (
 
     Column(Modifier.fillMaxSize().imePadding()) {
         Surface(tonalElevation = 2.dp) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) { Text("返回") }
-                Column(Modifier.weight(1f).padding(horizontal = 8.dp)) {
-                    Text("AI 对话", fontWeight = FontWeight.SemiBold)
-                    Text(title?.takeIf { it.isNotBlank() } ?: "这篇内容", maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
+            PageToolbar("AI 对话", onBack, subtitle = title?.takeIf { it.isNotBlank() } ?: "这篇内容")
         }
         LazyColumn(state = listState, modifier = Modifier.weight(1f).fillMaxWidth().testTag("analysis-conversation-history"),
             contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {

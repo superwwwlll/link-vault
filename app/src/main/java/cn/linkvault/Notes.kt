@@ -201,7 +201,7 @@ internal fun LockedDraftPage(vm: VaultViewModel, onBack: () -> Unit) {
             Button(onClick = { notes.requireKey() }, enabled = !notes.busy, shape = RoundedCornerShape(12.dp)) {
                 Icon(Glyph.Shield, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("解锁继续", style = MaterialTheme.typography.bodyMedium)
             }
-            OutlinedButton(onClick = onBack, shape = RoundedCornerShape(12.dp)) { Text("返回", style = MaterialTheme.typography.bodyMedium) }
+            OutlinedButton(onClick = onBack, shape = RoundedCornerShape(12.dp)) { Text("返回列表", style = MaterialTheme.typography.bodyMedium) }
         }
     }
 }

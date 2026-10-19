@@ -55,10 +55,7 @@ internal fun SettingsPage(
         if (page.isEmpty()) {
             Box(Modifier.padding(horizontal = 20.dp)) { RootHeading("设置") }
         } else {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = goBack, modifier = Modifier.heightIn(min = 48.dp)) { Text("返回") }
-                Text(page, Modifier.weight(1f).padding(8.dp), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            }
+            PageToolbar(page, goBack)
         }
         key(page) {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {

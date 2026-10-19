@@ -240,13 +240,16 @@ internal fun EmptyState(icon: ImageVector, title: String, subtitle: String = "")
 }
 
 @Composable
-internal fun PageToolbar(title: String, onBack: () -> Unit, action: (@Composable () -> Unit)? = null) {
+internal fun PageToolbar(title: String, onBack: () -> Unit, subtitle: String = "", action: (@Composable () -> Unit)? = null) {
     Row(
         Modifier.fillMaxWidth().heightIn(min = 60.dp).padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         IconButton(onClick = onBack) { Icon(Glyph.Back, "返回", tint = MaterialTheme.colorScheme.onSurface) }
-        Text(title, Modifier.weight(1f).padding(start = 4.dp), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+        Column(Modifier.weight(1f).padding(start = 4.dp)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+            if (subtitle.isNotEmpty()) Text(subtitle, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         action?.invoke()
     }
 }
