@@ -253,8 +253,28 @@ internal fun NotesEditorPage(vm: VaultViewModel, draft: NoteDraft, onBack: () ->
         )
         NoteSecretSwitch(vm, draft)
         if (row != null && !draft.secret && !row.secret) {
-            if (draft.text == row.text) AnalysisPanel(vm, "n-${draft.id}")
-            else Text("正文有未保存的修改，请先保存再分析或继续对话。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            var aiExpanded by rememberSaveable(draft.id) { mutableStateOf(false) }
+            val key = "n-${draft.id}"
+            LaunchedEffect(key) { vm.analysis.load(key) }
+            val record = vm.analysis.records[key]
+            val status = when {
+                draft.text != row.text -> "先保存再分析"
+                vm.analysis.states[key] != null -> "正在分析…"
+                record != null -> "已有总结 · ${(record.messages.size - 1) / 2} 轮对话"
+                !vm.aiVerified -> "配置 AI 后可用"
+                else -> "未分析"
+            }
+            Surface(onClick = { aiExpanded = !aiExpanded }, shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
+                Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("AI 总结与对话", style = MaterialTheme.typography.bodyMedium)
+                        Text(status, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Icon(if (aiExpanded) Glyph.Close else Glyph.Next, if (aiExpanded) "收起 AI" else "展开 AI", Modifier.size(20.dp))
+                }
+            }
+            if (aiExpanded && draft.text == row.text) AnalysisPanel(vm, key)
         }
         if (row != null) {
             var confirmDelete by remember { mutableStateOf(false) }
