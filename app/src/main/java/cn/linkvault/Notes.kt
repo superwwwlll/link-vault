@@ -169,7 +169,11 @@ private fun NoteCard(row: NoteRow, onClick: () -> Unit, onCopy: () -> Unit, modi
                     onClick = { revealed = true },
                     contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp),
                     modifier = Modifier.align(Alignment.Start).heightIn(min = 48.dp).widthIn(min = 48.dp)
-                ) { Text("显示", style = MaterialTheme.typography.labelMedium) }
+                ) {
+                    Box(Modifier.widthIn(min = ButtonDefaults.MinWidth), contentAlignment = Alignment.CenterStart) {
+                        Text("显示", style = MaterialTheme.typography.labelMedium)
+                    }
+                }
                 Text(
                     buildString {
                         append(Stamp.date(row.updatedAt)).append(" 改")
