@@ -160,16 +160,14 @@ internal fun CollectionPage(
 
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     val heading = when {
+                        vm.search.isNotBlank() -> "搜索结果"
                         vm.filter.isNotBlank() -> "# ${vm.filter}"
                         vm.scope == 3 -> "归档"
                         else -> "最近收藏"
                     }
-                    Column(Modifier.weight(1f)) {
-                        Text("${visible.size} 条", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.testTag("collection-result-count"))
-                        Text(heading, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
+                    Text("$heading · ${visible.size} 条", style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f).testTag("collection-result-count"))
                     if (tagNames.isNotEmpty()) IconButton(onClick = { filtersExpanded = !filtersExpanded }, modifier = Modifier.size(48.dp)) {
                         Icon(Glyph.Tag, if (filtersExpanded) "收起标签筛选" else "展开标签筛选", Modifier.size(20.dp),
                             tint = if (vm.filter.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
