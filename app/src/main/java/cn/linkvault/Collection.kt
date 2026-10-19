@@ -113,15 +113,17 @@ internal fun CollectionPage(
                 if (searchExpanded || vm.search.isNotEmpty()) {
                     CollectionSearch(vm.search, vm::search, onClose = { vm.search(""); searchExpanded = false })
                 }
-                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(Modifier.fillMaxWidth()) {
                     scopeLabels.forEachIndexed { index, label ->
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        TextButton(onClick = { vm.scope(index) }, modifier = Modifier.heightIn(min = 48.dp).testTag("collection-scope-$index").semantics { selected = vm.scope == index },
-                            colors = ButtonDefaults.textButtonColors(contentColor = if (vm.scope == index) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)) {
-                            Text(label, fontWeight = if (vm.scope == index) FontWeight.SemiBold else FontWeight.Normal, maxLines = 1)
-                            Text(" ${counts[index]}", style = MaterialTheme.typography.labelMedium, maxLines = 1)
-                        }
-                        Box(Modifier.width(64.dp).height(3.dp).background(if (vm.scope == index) MaterialTheme.colorScheme.primary else Color.Transparent))
+                        Column(Modifier.weight(1f).heightIn(min = 56.dp)
+                            .testTag("collection-scope-$index").semantics { selected = vm.scope == index; contentDescription = label }
+                            .clickable { vm.scope(index) }, horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(label, style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (vm.scope == index) FontWeight.SemiBold else FontWeight.Normal,
+                                color = if (vm.scope == index) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1, softWrap = false, overflow = TextOverflow.Clip)
+                            Text("${counts[index]}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Box(Modifier.fillMaxWidth().height(3.dp).background(if (vm.scope == index) MaterialTheme.colorScheme.primary else Color.Transparent))
                         }
                     }
                 }
