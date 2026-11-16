@@ -228,17 +228,32 @@ internal fun EmptyState(icon: ImageVector, title: String, subtitle: String = "")
 @Composable
 internal fun PageToolbar(title: String, onBack: () -> Unit, subtitle: String = "", action: (@Composable () -> Unit)? = null) {
     Row(
-        Modifier.fillMaxWidth().heightIn(min = 60.dp).padding(horizontal = 10.dp),
+        Modifier.fillMaxWidth().heightIn(min = 48.dp).background(MaterialTheme.colorScheme.surface),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) { Icon(Glyph.Back, "返回", tint = MaterialTheme.colorScheme.onSurface) }
-        Column(Modifier.weight(1f).padding(start = 4.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
-            if (subtitle.isNotEmpty()) Text(subtitle, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) { Icon(Glyph.Back, "返回", tint = MaterialTheme.colorScheme.primary) }
+        Column(Modifier.weight(1f)) {
+            Text(title, fontSize = 17.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurface)
+            if (subtitle.isNotEmpty()) Text(subtitle, fontSize = 13.sp, lineHeight = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         action?.invoke()
     }
 }
+
+@Composable
+internal fun quietFillColors() = TextFieldDefaults.colors(
+    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+    disabledTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    focusedContainerColor = if (LocalVaultDark.current) Color(0xFF1A1A19) else Color(0xFFE9E8E4),
+    unfocusedContainerColor = if (LocalVaultDark.current) Color(0xFF1A1A19) else Color(0xFFE9E8E4),
+    disabledContainerColor = if (LocalVaultDark.current) Color(0xFF1A1A19) else Color(0xFFE9E8E4),
+    cursorColor = MaterialTheme.colorScheme.primary,
+    focusedIndicatorColor = Color.Transparent,
+    unfocusedIndicatorColor = Color.Transparent,
+    disabledIndicatorColor = Color.Transparent,
+    errorIndicatorColor = Color.Transparent
+)
 
 @Composable
 internal fun SectionLabel(text: String, trailing: String = "") {

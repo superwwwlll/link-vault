@@ -2,9 +2,11 @@
 package cn.linkvault
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -15,6 +17,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 /** Committed tags stay in Draft; only unfinished input is local state. */
 @Composable
@@ -47,37 +50,40 @@ internal fun TagInput(vm: VaultViewModel, draft: Draft) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (selected.isNotEmpty()) FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             selected.forEach { tag ->
+                val fill = if (LocalVaultDark.current) Color(0xFF1A1A19) else Color(0xFFE9E8E4)
                 Surface(onClick = { update(selected.filter { Links.tagKey(it) != Links.tagKey(tag) }) }, enabled = !vm.busy,
-                    color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.medium,
+                    color = fill, shape = RoundedCornerShape(8.dp),
                     modifier = Modifier.heightIn(min = 48.dp).widthIn(min = 48.dp, max = 280.dp).semantics { contentDescription = "移除标签 $tag" }) {
                     Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(tag, Modifier.weight(1f, fill = false), style = MaterialTheme.typography.labelMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        Text("×", style = MaterialTheme.typography.bodyMedium)
+                        Text(tag, Modifier.weight(1f, fill = false), fontSize = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurface)
+                        Text("×", fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
         }
-        OutlinedTextField(input, { value ->
+        TextField(input, { value ->
             if (value.any { it in ",，;；\n" }) commit(value)
             else if ((selected.joinToString(",") + "," + value).length <= 1000) input = value
             else vm.fail("标签长度已达上限")
         }, enabled = !vm.busy, singleLine = true,
-            placeholder = { Text("添加标签，回车确认", style = MaterialTheme.typography.bodyLarge) },
-            textStyle = MaterialTheme.typography.bodyLarge,
+            placeholder = { Text("添加标签，回车确认", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+            textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { commit() }),
+            shape = RoundedCornerShape(10.dp),
+            colors = quietFillColors(),
             modifier = Modifier.fillMaxWidth().onFocusChanged { state ->
                 if (focused && !state.isFocused && input.isNotBlank()) commit()
                 focused = state.isFocused
             })
         if (common.isNotEmpty()) {
-            SectionLabel("常用标签")
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("常用标签", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 (if (expanded) common else common.take(12)).forEach { tag ->
-                    OutlinedButton(onClick = { update(parseTags((vm.draft ?: draft).tags) + tag) }, enabled = !vm.busy,
+                    TextButton(onClick = { update(parseTags((vm.draft ?: draft).tags) + tag) }, enabled = !vm.busy,
                         modifier = Modifier.heightIn(min = 48.dp)) {
-                        Text(tag, style = MaterialTheme.typography.labelMedium)
+                        Text(tag, color = MaterialTheme.colorScheme.primary)
                     }
                 }
                 if (!expanded && common.size > 12) TextButton(onClick = { expanded = true }, modifier = Modifier.heightIn(min = 48.dp)) {

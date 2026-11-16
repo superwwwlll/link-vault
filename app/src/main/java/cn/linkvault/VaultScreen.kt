@@ -172,15 +172,7 @@ fun VaultScreen(vm: VaultViewModel) {
                     }
                 }
             } else if (d != null) {
-                Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 0.dp) {
-                    Column {
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                        Button(onClick = vm::save, enabled = !vm.busy, shape = RoundedCornerShape(10.dp), modifier = Modifier
-                        .navigationBarsPadding().imePadding().padding(horizontal = 20.dp, vertical = 12.dp).fillMaxWidth().height(48.dp)) {
-                        Icon(Glyph.Check, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(if (vm.busy) "保存中…" else "保存收藏", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
-                    }
-                    }
-                }
+                Spacer(Modifier.navigationBarsPadding())
             } else if (vm.detailId == null && !vm.trashOpen) {
                 Column(Modifier.navigationBarsPadding().background(MaterialTheme.colorScheme.surface)) {
                     HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)

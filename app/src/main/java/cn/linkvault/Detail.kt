@@ -19,11 +19,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -46,17 +47,17 @@ internal fun DetailPage(
     val haptic = LocalHapticFeedback.current
     var menu by remember { mutableStateOf(false) }
     val fetching = vm.fetchingId == item.id
-    val noteColors = LocalNoteColors.current
     // 抓取和看图共用同一个联网开关：默认关闭时，一个请求都不该发出去
     val canFetch = vm.fetchEnabled && item.url.startsWith("https://", true)
 
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
     PageToolbar("收藏详情", onBack) {
         IconButton(onClick = onEdit, enabled = !vm.busy, modifier = Modifier.size(48.dp)) {
-            Icon(Glyph.Edit, "编辑收藏", Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurface)
+            Icon(Glyph.Edit, "编辑收藏", Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
         }
         Box {
             IconButton(onClick = { menu = true }, enabled = !vm.busy, modifier = Modifier.size(48.dp)) {
-                Icon(Glyph.More, "更多操作", Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurface)
+                Icon(Glyph.More, "更多操作", Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
             }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 DropdownMenuItem(
@@ -107,44 +108,41 @@ internal fun DetailPage(
 
     Column(
         Modifier
-            .fillMaxSize()
+            .weight(1f)
+            .fillMaxWidth()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp)
-            .padding(bottom = 36.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp)
+            .padding(horizontal = 16.dp)
+            .padding(top = 8.dp, bottom = 28.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         SelectionContainer {
             Text(
                 Links.displayTitle(item.url, item.title),
-                style = MaterialTheme.typography.titleLarge,
+                fontSize = 22.sp,
+                lineHeight = 28.sp,
                 fontWeight = FontWeight.Medium,
-                letterSpacing = (-0.3).sp,
-                color = MaterialTheme.colorScheme.onBackground
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SourceMark(item.url, size = MarkSize.Tiny)
-            val site = Links.siteName(item.url)
-            val stamp = buildString {
-                if (site.isNotEmpty()) append(site).append(" · ")
-                append(Stamp.date(item.createdAt))
-                if (item.updatedAt / 60_000L > item.createdAt / 60_000L) append(" · 更新 ").append(Stamp.date(item.updatedAt))
-            }
-            Text(stamp, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        val site = Links.siteName(item.url)
+        val stamp = buildString {
+            if (site.isNotEmpty()) append(site).append("  ·  ")
+            append(Stamp.date(item.createdAt))
+            if (item.updatedAt / 60_000L > item.createdAt / 60_000L) append("  ·  更新 ").append(Stamp.date(item.updatedAt))
         }
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(item.url, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { clipboard.setText(AnnotatedString(item.url)); vm.toast("已复制原链接") }, modifier = Modifier.size(48.dp)) {
-                    Icon(Glyph.Copy, "复制原链接", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                TextButton(onClick = onOpen, modifier = Modifier.heightIn(min = 48.dp)) {
-                    Text("打开", style = MaterialTheme.typography.bodyMedium)
-                    Spacer(Modifier.width(4.dp))
-                    Icon(Glyph.External, null, Modifier.size(14.dp))
-                }
+        Text(stamp, fontSize = 13.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(item.url, fontSize = 13.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = { clipboard.setText(AnnotatedString(item.url)); vm.toast("已复制原链接") }, modifier = Modifier.size(48.dp)) {
+                Icon(Glyph.Copy, "复制原链接", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+            }
+            TextButton(onClick = onOpen, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text("打开", color = MaterialTheme.colorScheme.primary, fontSize = 17.sp)
+                Spacer(Modifier.width(4.dp))
+                Icon(Glyph.External, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
             }
         }
+        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
 
         // 封面图：库里只有 URL，每次进页面现取；取不到就一行都不占，不画灰块也不画破图。
         val cover = if (canFetch) rememberLoadedImage(item.image) else null
@@ -155,66 +153,58 @@ internal fun DetailPage(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio((cover.width.toFloat() / cover.height).coerceIn(0.8f, 2.2f))
-                    .clip(RoundedCornerShape(14.dp)),
+                    .clip(RoundedCornerShape(10.dp)),
                 contentScale = ContentScale.Crop
             )
         }
 
         // 我的手记：有内容才铺便签，空着的时候只留一行入口
         if (item.notes.isNotBlank()) {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                SectionLabel("我的备注")
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("我的备注", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 SelectionContainer {
                     Text(
                         item.notes,
                         Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(onClick = onEdit),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = noteColors.onContainer
+                        fontSize = 17.sp,
+                        lineHeight = 24.sp,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
         } else {
-            DetailActionRow(Glyph.Note, "添加备注", onClick = onEdit)
+            DetailActionRow("添加备注", onClick = onEdit)
         }
 
-        // 标签栏
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            SectionLabel("标签")
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("标签", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (item.tags.isEmpty()) {
-                Text("尚未添加标签", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("尚未添加标签", fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    parseTags(item.tags).forEach { tag -> TagPill(tag, onClick = { vm.tag(tag) }) }
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    parseTags(item.tags).forEach { tag ->
+                        TextButton(onClick = { vm.tag(tag) }, modifier = Modifier.heightIn(min = 48.dp)) {
+                            Text(tag, color = MaterialTheme.colorScheme.primary, fontSize = 17.sp)
+                        }
+                    }
                 }
             }
         }
 
         // 页面描述：抓不到就不占一整张卡片，只留抓取入口
         if (item.summary.isNotBlank()) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionLabel("页面描述", trailing = if (item.fetchedAt > 0) "抓取于 ${Stamp.date(item.fetchedAt)}" else "")
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        SelectionContainer {
-                            Text(item.summary, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-                        }
-                        if (canFetch) {
-                            OutlinedButton(
-                                onClick = { vm.fetch(item) },
-                                enabled = !vm.busy,
-                                shape = RoundedCornerShape(9.dp),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                                modifier = Modifier.heightIn(min = 48.dp)
-                            ) {
-                                if (fetching) CircularProgressIndicator(Modifier.size(13.dp), strokeWidth = 1.8.dp)
-                                else Icon(Glyph.Search, null, Modifier.size(14.dp))
-                                Spacer(Modifier.width(6.dp))
-                                Text(if (fetching) "抓取中…" else if (item.fetchedAt > 0) "重新抓取" else "抓取页面信息", style = MaterialTheme.typography.labelMedium)
-                            }
-                        }
-                    }
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    if (item.fetchedAt > 0) "页面描述 · 抓取于 ${Stamp.date(item.fetchedAt)}" else "页面描述",
+                    fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                SelectionContainer {
+                    Text(item.summary, fontSize = 17.sp, lineHeight = 24.sp, color = MaterialTheme.colorScheme.onSurface)
                 }
+                if (canFetch) DetailActionRow(if (fetching) "抓取中…" else if (item.fetchedAt > 0) "重新抓取" else "抓取页面信息", busy = fetching) { vm.fetch(item) }
+            }
         } else if (canFetch) {
-            DetailActionRow(Glyph.Search, if (fetching) "抓取中…" else "抓取页面信息", busy = fetching) { vm.fetch(item) }
+            DetailActionRow(if (fetching) "抓取中…" else "抓取页面信息", busy = fetching) { vm.fetch(item) }
         }
 
         // 离线正文快照 / 本地阅读模式
@@ -228,104 +218,59 @@ internal fun DetailPage(
             // 译文没生成过时不摆切换：一个点不动的开关比没有开关更糟
             val readerText = if (showTranslated && translation != null) translation else snapshot
             if (translation != null) {
-                SegmentedPills(
+                QuietChoice(
                     items = listOf("原文", "译文"),
-                    selectedItem = if (showTranslated) "译文" else "原文",
-                    onSelect = { showTranslated = it == "译文" },
-                    label = { it }
+                    selected = if (showTranslated) "译文" else "原文",
+                    onSelect = { showTranslated = it == "译文" }
                 )
             }
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionLabel(
-                    if (showTranslated && translation != null) "正文译文" else "离线正文快照",
-                    trailing = when {
-                        showTranslated && translation != null -> "译文 ${translation.length} 字"
-                        else -> "已缓存 Markdown · ${snapshot.length} 字"
-                    }
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    buildString {
+                        append(if (showTranslated && translation != null) "正文译文" else "离线正文快照")
+                        append("  ·  ")
+                        append(when {
+                            showTranslated && translation != null -> "译文 ${translation.length} 字"
+                            else -> "已缓存 Markdown · ${snapshot.length} 字"
+                        })
+                    },
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        SelectionContainer {
-                            SnapshotMarkdownViewer(
-                                markdown = readerText,
-                                expanded = expandedReader,
-                                showImages = canFetch && !(showTranslated && translation != null)
-                            )
-                        }
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            if (snapshot.length > 200) {
-                                TextButton(
-                                    onClick = { expandedReader = !expandedReader },
-                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                                    modifier = Modifier.heightIn(min = 48.dp)
-                                ) {
-                                    Text(if (expandedReader) "收起阅读模式" else "展开全文阅读", style = MaterialTheme.typography.labelMedium)
-                                }
-                            }
-                            OutlinedButton(
-                                onClick = {
-                                    clipboard.setText(AnnotatedString(snapshot))
-                                    vm.toast("已复制 Markdown 正文")
-                                },
-                                shape = RoundedCornerShape(8.dp),
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
-                                modifier = Modifier.heightIn(min = 48.dp)
-                            ) {
-                                Icon(Glyph.Markdown, null, Modifier.size(13.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text("复制正文", style = MaterialTheme.typography.labelMedium)
-                            }
-                            // 只有没配好接口时灰掉。已经翻过的直接走缓存，不重复花钱。
-                            OutlinedButton(
-                                onClick = { if (translation == null) vm.translate(item) else showTranslated = true },
-                                enabled = !vm.busy && !vm.translating,
-                                shape = RoundedCornerShape(8.dp),
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
-                                modifier = Modifier.heightIn(min = 48.dp)
-                            ) {
-                                if (vm.translating) {
-                                    CircularProgressIndicator(Modifier.size(11.dp), strokeWidth = 1.6.dp)
-                                    Spacer(Modifier.width(4.dp))
-                                    val (done, total) = vm.translateStep
-                                    Text(if (total > 0) "翻译中 $done/$total 段" else "翻译中…", style = MaterialTheme.typography.labelMedium)
-                                } else {
-                                    Icon(Glyph.Translate, null, Modifier.size(12.dp))
-                                    Spacer(Modifier.width(4.dp))
-                                    Text(if (translation == null) "译成中文" else "看译文", style = MaterialTheme.typography.labelMedium)
-                                }
-                            }
-                            if (canFetch) {
-                                OutlinedButton(
-                                    onClick = { vm.captureSnapshot(item) },
-                                    enabled = !vm.busy && !fetchingSnapshot,
-                                    shape = RoundedCornerShape(8.dp),
-                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
-                                    modifier = Modifier.heightIn(min = 48.dp)
-                                ) {
-                                    if (fetchingSnapshot) CircularProgressIndicator(Modifier.size(11.dp), strokeWidth = 1.6.dp)
-                                    else Icon(Glyph.Book, null, Modifier.size(12.dp))
-                                    Spacer(Modifier.width(4.dp))
-                                    Text(if (fetchingSnapshot) "抓取中…" else "更新快照", style = MaterialTheme.typography.labelMedium)
-                                }
-                            }
-                            TextButton(
-                                onClick = { vm.removeSnapshot(item.id) },
-                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
-                                modifier = Modifier.heightIn(min = 48.dp)
-                            ) {
-                                Text("删除快照", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
-                            }
-                        }
+                SelectionContainer {
+                    SnapshotMarkdownViewer(
+                        markdown = readerText,
+                        expanded = expandedReader,
+                        showImages = canFetch && !(showTranslated && translation != null)
+                    )
+                }
+                if (snapshot.length > 200) {
+                    DetailActionRow(if (expandedReader) "收起阅读模式" else "展开全文阅读") { expandedReader = !expandedReader }
+                }
+                DetailActionRow("复制正文") {
+                    clipboard.setText(AnnotatedString(snapshot))
+                    vm.toast("已复制 Markdown 正文")
+                }
+                val translateLabel = when {
+                    vm.translating -> {
+                        val (done, total) = vm.translateStep
+                        if (total > 0) "翻译中 $done/$total 段" else "翻译中…"
+                    }
+                    translation == null -> "译成中文"
+                    else -> "看译文"
+                }
+                DetailActionRow(translateLabel, busy = vm.translating, enabled = !vm.busy && !vm.translating) {
+                    if (translation == null) vm.translate(item) else showTranslated = true
+                }
+                if (canFetch) {
+                    DetailActionRow(if (fetchingSnapshot) "抓取中…" else "更新快照", busy = fetchingSnapshot, enabled = !vm.busy && !fetchingSnapshot) {
+                        vm.captureSnapshot(item)
                     }
                 }
+                DetailActionRow("删除快照", destructive = true) { vm.removeSnapshot(item.id) }
+            }
         } else if (canFetch) {
-            DetailActionRow(
-                Glyph.Book,
-                if (fetchingSnapshot) "正文提取与重排中…" else "提取正文快照 · 离线可读",
-                busy = fetchingSnapshot
-            ) { vm.captureSnapshot(item) }
+            DetailActionRow(if (fetchingSnapshot) "正文提取与重排中…" else "提取正文快照 · 离线可读", busy = fetchingSnapshot) { vm.captureSnapshot(item) }
         } else if (vm.aiEnabled) {
             // 翻译按钮长在正文卡片里：没快照就没卡片，密钥配好了也找不到入口，这里必须把原因说破。
             Text(
@@ -337,30 +282,52 @@ internal fun DetailPage(
 
         AnalysisPanel(vm, "b-${item.id}")
 
-        Spacer(Modifier.height(4.dp))
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f))
-        TextButton(
-            onClick = onDelete,
-            enabled = !vm.busy,
-            modifier = Modifier.align(Alignment.Start).heightIn(min = 48.dp)
-        ) {
-            Icon(Glyph.Delete, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.error)
-            Spacer(Modifier.width(6.dp))
-            Text("删除这条收藏", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
-        }
+        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+        DetailActionRow("删除这条收藏", destructive = true, enabled = !vm.busy, onClick = onDelete)
+    }
     }
 }
 
 @Composable
-private fun DetailActionRow(icon: ImageVector, text: String, busy: Boolean = false, onClick: () -> Unit) {
+private fun DetailActionRow(
+    text: String,
+    busy: Boolean = false,
+    enabled: Boolean = !busy,
+    destructive: Boolean = false,
+    onClick: () -> Unit
+) {
     Row(
-        Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(enabled = !busy, onClick = onClick),
+        Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(enabled = enabled, onClick = onClick),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         if (busy) CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 1.8.dp)
-        else Icon(icon, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+        Text(
+            text,
+            fontSize = 17.sp,
+            color = if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+        )
+    }
+}
+
+@Composable
+private fun QuietChoice(items: List<String>, selected: String, onSelect: (String) -> Unit) {
+    val dark = LocalVaultDark.current
+    val track = if (dark) Color(0xFF1A1A19) else Color(0xFFE9E8E4)
+    val selectedFill = if (dark) Color(0xFF3A3936) else Color.White
+    Row(
+        Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(10.dp)).background(track)
+    ) {
+        items.forEach { label ->
+            val chosen = label == selected
+            Box(
+                Modifier.weight(1f).fillMaxHeight().semantics { this.selected = chosen }.clickable { onSelect(label) },
+                contentAlignment = Alignment.Center
+            ) {
+                Box(Modifier.padding(2.dp).fillMaxSize().background(if (chosen) selectedFill else Color.Transparent, RoundedCornerShape(8.dp)))
+                Text(label, fontSize = 15.sp, fontWeight = if (chosen) FontWeight.SemiBold else FontWeight.Medium, color = if (chosen) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
     }
 }
 
