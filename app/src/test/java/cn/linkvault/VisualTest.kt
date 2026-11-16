@@ -201,7 +201,8 @@ class VisualTest {
         rule.onNode(hasText("切换开关只有一段译文存在时才出现", substring = true), useUnmergedTree = true).performScrollTo()
         capture("02e-detail-translated-light")
         rule.onNodeWithText("原文").performClick()
-        rule.onNodeWithText("离线正文快照").performScrollTo().assertExists()
+        // 快照标题和缓存说明现在是同一行，切回原文后两段都得在。
+        rule.onNode(hasText("离线正文快照", substring = true) and hasText("已缓存 Markdown", substring = true)).performScrollTo().assertExists()
         // 造出来的封面图和快照只为了拍这两张图，必须还原：后面的列表与深色截图不能带上测试文案。
         runBlocking {
             val dao = VaultDb.get(rule.activity).bookmarks()
