@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -143,14 +144,14 @@ internal fun TagsPage(vm: VaultViewModel) {
             Column(Modifier.fillMaxWidth()) {
                 Row(
                     Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable { vm.tag(tag) }.padding(start = 20.dp, end = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalAlignment = Alignment.Top,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        tag, Modifier.weight(1f), fontWeight = FontWeight.Medium, style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface
+                        tag, Modifier.weight(1f).padding(top = 14.dp), fontWeight = FontWeight.Medium, style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis
                     )
-                    Text("$count 条", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("$count 条", Modifier.padding(top = 16.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Box {
                         IconButton(onClick = { menu = true }, modifier = Modifier.size(48.dp), enabled = !vm.busy) {
                             Icon(Glyph.More, "标签操作：$tag", Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)

@@ -24,7 +24,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -74,7 +73,7 @@ internal fun SettingsPage(
                     SettingsDivider()
                     SettingsValueRow(Glyph.Translate, "翻译", settingsTranslationStatus(vm.aiEnabled, vm.canTranslate)) { page = "翻译" }
                     SettingsDivider()
-                    SettingsValueRow(Glyph.Archive, "备份与更新", "当前 ${vm.installedVersionName}") { page = "备份与更新" }
+                    SettingsValueRow(Glyph.Archive, "备份与更新", "更新、备份、回收站\n当前 ${vm.installedVersionName}") { page = "备份与更新" }
                 }
             }
             Text("收藏与笔记仅存本机，无云同步。AI 会发送内容给服务商，可能计费；请勿发送敏感内容。", Modifier.padding(horizontal = 4.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -238,13 +237,15 @@ internal fun SettingsPage(
                 SectionLabel("本地备份")
                 SettingsGroup {
                     Column {
+                        SettingRow(Glyph.Delete, "回收站", "删除后 30 天内可恢复", !vm.busy, vm::openTrash)
+                        HorizontalDivider(Modifier.padding(start = 58.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
                         SettingRow(Glyph.Export, "导出收藏", "将 ${vm.items.size} 条收藏保存为 JSON", !vm.busy && !vm.readFailed && !vm.loading, onExport)
                         HorizontalDivider(Modifier.padding(start = 58.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-                        SettingRow(Glyph.LinkChain, "导出 HTML 书签", "通用格式 · 兼容各大浏览器", !vm.busy && !vm.readFailed && !vm.loading, onExportHtml)
+                        SettingRow(Glyph.LinkChain, "导出 HTML 书签", "HTML", !vm.busy && !vm.readFailed && !vm.loading, onExportHtml)
                         HorizontalDivider(Modifier.padding(start = 58.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-                        SettingRow(Glyph.Globe, "导出独立导航网页", "单文件精美网页 · 内置即时搜索与标签", !vm.busy && !vm.readFailed && !vm.loading, onExportPortalHtml)
+                        SettingRow(Glyph.Globe, "导出独立导航网页", "导航页", !vm.busy && !vm.readFailed && !vm.loading, onExportPortalHtml)
                         HorizontalDivider(Modifier.padding(start = 58.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-                        SettingRow(Glyph.Markdown, "导出 Markdown 合辑", "知识库清单 · 兼容 Obsidian/Notion", !vm.busy && !vm.readFailed && !vm.loading, onExportMarkdown)
+                        SettingRow(Glyph.Markdown, "导出 Markdown 合辑", "Markdown", !vm.busy && !vm.readFailed && !vm.loading, onExportMarkdown)
                         HorizontalDivider(Modifier.padding(start = 58.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
                         SettingRow(Glyph.Import, "导入备份", "支持 JSON 与浏览器 HTML 书签", !vm.busy, onImport)
                         HorizontalDivider(Modifier.padding(start = 58.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
@@ -257,8 +258,6 @@ internal fun SettingsPage(
                             HorizontalDivider(Modifier.padding(start = 58.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
                             SettingRow(Glyph.Check, "立即备份到文件夹", "保存到已设文件夹", !vm.busy, vm::backupNow)
                         }
-                        HorizontalDivider(Modifier.padding(start = 58.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-                        SettingRow(Glyph.Delete, "回收站", "删除后 30 天内可恢复", !vm.busy, vm::openTrash)
                     }
                 }
                 if (vm.lastBackupAt > 0L) {
@@ -348,8 +347,10 @@ internal fun SettingsValueRow(icon: ImageVector, title: String, value: String, o
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Icon(icon, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(title, Modifier.weight(0.43f), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
-        Text(value, Modifier.weight(0.57f), style = MaterialTheme.typography.labelMedium, textAlign = TextAlign.End, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+            Text(value, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         Icon(Glyph.Next, null, Modifier.size(15.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
@@ -397,7 +398,7 @@ private fun SettingRow(icon: ImageVector, title: String, subtitle: String, enabl
             Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
             Text(subtitle, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Icon(Glyph.Next, null, Modifier.size(15.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
+        Icon(Glyph.Next, null, Modifier.size(15.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

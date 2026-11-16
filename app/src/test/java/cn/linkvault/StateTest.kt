@@ -122,6 +122,10 @@ class StateTest {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         try {
             val app = ApplicationProvider.getApplicationContext<Application>()
+            runBlocking {
+                val dao = VaultDb.get(app).bookmarks()
+                dao.all().forEach { dao.delete(it.id) }
+            }
             val vm = VaultViewModel(app, SavedStateHandle())
             vm.randomRead()
             assertEquals("暂无收藏可供温故", vm.message)

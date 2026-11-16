@@ -23,6 +23,7 @@ internal fun AiConnectionSettings(vm: VaultViewModel) {
     val provider = AiProviders.presets.firstOrNull { it.id == vm.aiProvider } ?: AiProviders.presets.last()
     var showKey by remember { mutableStateOf(false) }
     var advanced by rememberSaveable { mutableStateOf(false) }
+    var billing by rememberSaveable { mutableStateOf(false) }
     var confirmClearKey by remember { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         SectionLabel("连接配置", trailing = if (vm.aiVerified) "验证通过" else "待验证")
@@ -31,7 +32,6 @@ internal fun AiConnectionSettings(vm: VaultViewModel) {
             showKey = false
             vm.selectAiProvider(AiProviders.presets.first { it.id == id })
         }
-        Text("选择服务商会填好地址与模型；跨服务商切换会清除旧密钥，避免误发。地址和模型都可修改。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         OutlinedTextField(vm.aiModel, { vm.aiModel(it) }, label = { Text("模型名") }, modifier = Modifier.fillMaxWidth(), singleLine = true, enabled = !vm.aiTesting)
         OutlinedTextField(vm.aiKey, { vm.aiKey(it.take(400)) }, label = { Text("你的 API Key") }, modifier = Modifier.fillMaxWidth(), singleLine = true, enabled = !vm.aiTesting,
             visualTransformation = if (showKey) VisualTransformation.None else PasswordVisualTransformation(),
@@ -39,7 +39,13 @@ internal fun AiConnectionSettings(vm: VaultViewModel) {
         OutlinedButton(onClick = vm::testAiConnection, enabled = !vm.aiTesting && vm.aiKey.isNotBlank(), modifier = Modifier.heightIn(min = 48.dp)) { Text(if (vm.aiTesting) "测试中…" else "测试连接") }
         if (vm.aiTestResult.isNotEmpty() && (vm.aiTesting || !vm.aiTestResult.startsWith("连接验证通过") || vm.aiVerified))
             Text(vm.aiTestResult, style = MaterialTheme.typography.labelMedium, color = if (vm.aiVerified) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
-        Text("测试可能计费，不发送收藏。密钥仅存本机私有目录（明文），不进备份；阅读助手和翻译会向此接口发送内容。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("测试可能计费，不发送收藏。密钥仅存本机。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        TextButton(onClick = { billing = !billing }, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (billing) "收起计费与隐私说明" else "详细计费与隐私说明") }
+        if (billing) {
+            Text("选择服务商会填好地址与模型；跨服务商切换会清除旧密钥，避免误发。地址和模型都可修改。测试可能计费，不发送收藏。密钥仅存本机私有目录（明文），不进备份；阅读助手和翻译会向此接口发送内容。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (provider.note.isNotEmpty()) Text(provider.note, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("聊天会员、编码订阅通常不等于通用 API 额度。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         TextButton(onClick = { advanced = !advanced }, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (advanced) "收起高级配置" else "高级配置（API 地址）") }
         if (advanced) {
             OutlinedTextField(vm.aiEndpoint, vm::aiEndpoint, label = { Text("API 地址（完整 chat/completions 地址）") }, modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 5, enabled = !vm.aiTesting)
@@ -51,8 +57,6 @@ internal fun AiConnectionSettings(vm: VaultViewModel) {
                 runCatching { uri.openUri(provider.console) }.onFailure { vm.fail("没有可用浏览器") }
             }, modifier = Modifier.heightIn(min = 48.dp)) { Text("官方开通 / 充值") }
         }
-        if (provider.note.isNotEmpty()) Text(provider.note, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text("聊天会员、编码订阅通常不等于通用 API 额度。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
     if (confirmClearKey) AlertDialog(onDismissRequest = { confirmClearKey = false }, title = { Text("清除密钥？") },
         text = { Text("清除后需重新填写并测试连接，不删除已有总结与对话。") },
@@ -83,6 +87,7 @@ internal fun AnalysisSettings(vm: VaultViewModel) {
     var confirmEnable by remember { mutableStateOf(false) }
     var confirmRemove by remember { mutableStateOf(false) }
     var editTemplate by rememberSaveable { mutableStateOf(false) }
+    var assistantDetails by rememberSaveable { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         SectionLabel("AI 阅读助手")
         OutlinedTextField(ai.profile, ai::profile, label = { Text("我的工作、兴趣与关注方向") }, placeholder = { Text("例如：我做生命科学产品销售，关注新研究方法、客户需求和可行动的机会") }, modifier = Modifier.fillMaxWidth(), minLines = 3, maxLines = 8)
@@ -104,8 +109,9 @@ internal fun AnalysisSettings(vm: VaultViewModel) {
             }
             Switch(checked = ai.auto, onCheckedChange = { if (it) confirmEnable = true else ai.auto(false) })
         }
-        Text("开启后，新保存的链接和普通笔记会发送到你配置的 AI；批量保存也会逐条分析并计费。私密笔记绝不发送。链接需要正文，首次抓取受「页面信息抓取」开关控制。不会自动扫描旧收藏。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text("新分析使用当前模板；已有对话沿用生成总结时的框架。更换框架后可重新分析。总结与对话仅存本机，目前不进入备份，卸载后会丢失。应用进程退出会中断请求，可回到条目手动重试。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("开启后，新保存的链接和普通笔记会发到已配置的 AI，可能计费。私密笔记绝不发送。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        TextButton(onClick = { assistantDetails = !assistantDetails }, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (assistantDetails) "收起阅读助手说明" else "详细阅读助手说明") }
+        if (assistantDetails) Text("批量保存也会逐条分析并计费。链接需要正文，首次抓取受「页面信息抓取」开关控制。不会自动扫描旧收藏。新分析使用当前模板；已有对话沿用生成总结时的框架。更换框架后可重新分析。总结与对话仅存本机，目前不进入备份，卸载后会丢失。应用进程退出会中断请求，可回到条目手动重试。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
     if (confirmEnable) AlertDialog(onDismissRequest = { confirmEnable = false }, title = { Text("开启自动分析？") },
         text = { Text("保存后，正文、标题、备注、关注方向及提示词会发送到你填写的 AI 服务，可能产生费用。私密笔记不发送。请先测试连接并确认信任该接口。") },

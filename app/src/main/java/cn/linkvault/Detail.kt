@@ -4,7 +4,6 @@
 )
 package cn.linkvault
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -76,9 +75,31 @@ internal fun DetailPage(
                     onClick = { menu = false; onCopyMarkdown() }
                 )
                 DropdownMenuItem(
-                    text = { Text("删除收藏", color = MaterialTheme.colorScheme.error) },
-                    leadingIcon = { Icon(Glyph.Delete, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error) },
-                    onClick = { menu = false; onDelete() }
+                    text = { Text(if (item.read) "标为未读" else "标为已读") },
+                    leadingIcon = { Icon(Glyph.Check, null, Modifier.size(18.dp)) },
+                    onClick = {
+                        menu = false
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        vm.toggleRead(item)
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text(if (item.pinned) "取消置顶" else "置顶") },
+                    leadingIcon = { Icon(Glyph.Pin, null, Modifier.size(18.dp)) },
+                    onClick = {
+                        menu = false
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        vm.togglePin(item)
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text(if (item.archived) "移出归档" else "归档") },
+                    leadingIcon = { Icon(Glyph.Archive, null, Modifier.size(18.dp)) },
+                    onClick = {
+                        menu = false
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        vm.toggleArchived(item)
+                    }
                 )
             }
         }
@@ -111,28 +132,11 @@ internal fun DetailPage(
             }
             Text(stamp, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            DetailStatusPill("标为已读", "已读", item.read, !vm.busy) {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                vm.toggleRead(item)
-            }
-            DetailStatusPill("置顶", "已置顶", item.pinned, !vm.busy) {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                vm.togglePin(item)
-            }
-            DetailStatusPill("归档", "已归档", item.archived, !vm.busy) {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                vm.toggleArchived(item)
-            }
-        }
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(item.url, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { clipboard.setText(AnnotatedString(item.url)); vm.toast("已复制原链接") }, modifier = Modifier.size(48.dp)) {
                     Icon(Glyph.Copy, "复制原链接", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                IconButton(onClick = onCopyMarkdown, modifier = Modifier.size(48.dp)) {
-                    Icon(Glyph.Markdown, "复制 Markdown", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 TextButton(onClick = onOpen, modifier = Modifier.heightIn(min = 48.dp)) {
                     Text("打开", style = MaterialTheme.typography.bodyMedium)
@@ -271,7 +275,7 @@ internal fun DetailPage(
                             ) {
                                 Icon(Glyph.Markdown, null, Modifier.size(13.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text("复制 Markdown", style = MaterialTheme.typography.labelMedium)
+                                Text("复制正文", style = MaterialTheme.typography.labelMedium)
                             }
                             // 只有没配好接口时灰掉。已经翻过的直接走缓存，不重复花钱。
                             OutlinedButton(
@@ -311,7 +315,7 @@ internal fun DetailPage(
                                 contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
                                 modifier = Modifier.heightIn(min = 48.dp)
                             ) {
-                                Text("删除快照", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline)
+                                Text("删除快照", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
                             }
                         }
                     }
@@ -357,18 +361,6 @@ private fun DetailActionRow(icon: ImageVector, text: String, busy: Boolean = fal
         if (busy) CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 1.8.dp)
         else Icon(icon, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-    }
-}
-
-@Composable
-private fun DetailStatusPill(off: String, on: String, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
-    TextButton(onClick = onClick, enabled = enabled, modifier = Modifier.heightIn(min = 48.dp), contentPadding = PaddingValues(horizontal = 10.dp)) {
-        Text(
-            if (selected) on else off,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
-            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 

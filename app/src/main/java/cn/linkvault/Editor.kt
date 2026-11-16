@@ -64,7 +64,7 @@ private fun EditorField(value: String, onChange: (String) -> Unit, placeholder: 
         value = value,
         onValueChange = onChange,
         enabled = enabled,
-        placeholder = { Text(placeholder, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)) },
+        placeholder = { Text(placeholder, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) },
         modifier = Modifier.fillMaxWidth(),
         minLines = minLines,
         maxLines = maxLines,

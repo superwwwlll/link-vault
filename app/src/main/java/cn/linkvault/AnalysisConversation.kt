@@ -73,7 +73,6 @@ internal fun AnalysisConversationPage(vm: VaultViewModel, key: String, onBack: (
                     }
                     Text("AI 回答不等于事实核验，请结合原文判断。发送原文、总结及最近最多 6 轮；全部历史仅存本机。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (record == null) Text("尚无可用总结，请返回原内容先完成分析。", style = MaterialTheme.typography.bodyMedium)
-                    else if (history.isEmpty()) Text("围绕这篇内容继续追问", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             itemsIndexed(history, key = { index, _ -> "message-$index" }) { _, message -> AnalysisConversationMessage(message) }

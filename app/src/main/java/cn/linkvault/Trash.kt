@@ -1,5 +1,6 @@
 package cn.linkvault
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,7 +15,7 @@ import androidx.compose.ui.unit.sp
 @Composable
 internal fun TrashPage(vm: VaultViewModel, onBack: () -> Unit) {
     var deleteForever by remember { mutableStateOf<Bookmark?>(null) }
-    Column(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         PageToolbar("回收站", onBack)
         if (vm.trashItems.isEmpty()) {
             EmptyState(Glyph.Delete, "回收站为空")

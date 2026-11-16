@@ -13,6 +13,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 /** Committed tags stay in Draft; only unfinished input is local state. */
@@ -48,10 +49,10 @@ internal fun TagInput(vm: VaultViewModel, draft: Draft) {
             selected.forEach { tag ->
                 Surface(onClick = { update(selected.filter { Links.tagKey(it) != Links.tagKey(tag) }) }, enabled = !vm.busy,
                     color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.medium,
-                    modifier = Modifier.heightIn(min = 48.dp).widthIn(min = 48.dp).semantics { contentDescription = "移除标签 $tag" }) {
+                    modifier = Modifier.heightIn(min = 48.dp).widthIn(min = 48.dp, max = 280.dp).semantics { contentDescription = "移除标签 $tag" }) {
                     Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(tag, style = MaterialTheme.typography.labelMedium)
+                        Text(tag, Modifier.weight(1f, fill = false), style = MaterialTheme.typography.labelMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         Text("×", style = MaterialTheme.typography.bodyMedium)
                     }
                 }

@@ -225,7 +225,7 @@ internal fun NotesEditorPage(vm: VaultViewModel, draft: NoteDraft, onBack: () ->
             value = draft.text,
             onValueChange = { notes.change(draft.copy(text = it)) },
             enabled = !notes.busy,
-            placeholder = { Text("记下来：账号、地址、验证码、一段想法…", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)) },
+            placeholder = { Text("记下来：账号、地址、验证码、一段想法…", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) },
             modifier = Modifier.fillMaxWidth(),
             minLines = 8,
             maxLines = 16,
