@@ -1,6 +1,6 @@
 package cn.linkvault
 
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -54,11 +55,8 @@ internal fun AnalysisConversationPage(vm: VaultViewModel, key: String, onBack: (
         else if (history.isNotEmpty()) listState.animateScrollToItem(history.size)
     }
 
-    Column(Modifier.fillMaxSize().imePadding()) {
-        Column {
-            PageToolbar("AI 对话", onBack, subtitle = title?.takeIf { it.isNotBlank() } ?: "这篇内容")
-            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
-        }
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).imePadding()) {
+        PageToolbar("AI 对话", onBack, subtitle = title?.takeIf { it.isNotBlank() } ?: "这篇内容")
         LazyColumn(state = listState, modifier = Modifier.weight(1f).fillMaxWidth().testTag("analysis-conversation-history"),
             contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             item(key = "summary") {
@@ -80,8 +78,7 @@ internal fun AnalysisConversationPage(vm: VaultViewModel, key: String, onBack: (
                 AnalysisConversationMessage(AnalysisMessage("user", pendingQuestion!!), pending = true)
             }
         }
-        Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 0.dp, modifier = Modifier.testTag("analysis-conversation-composer")) {
-            Column(Modifier.fillMaxWidth()) {
+        Column(Modifier.fillMaxWidth().testTag("analysis-conversation-composer")) {
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
             Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (state != null) {
@@ -97,17 +94,17 @@ internal fun AnalysisConversationPage(vm: VaultViewModel, key: String, onBack: (
                     TextButton(onClick = { vm.openSettings("AI 接口") }, modifier = Modifier.heightIn(min = 48.dp)) { Text("去设置") }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(question, { vm.conversationQuestion(key, it) }, placeholder = { Text("围绕这篇内容继续追问", style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        textStyle = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.weight(1f).testTag("analysis-conversation-input"), minLines = 1, maxLines = 4, enabled = state == null)
-                    FilledIconButton(onClick = {
+                    TextField(question, { vm.conversationQuestion(key, it) }, placeholder = { Text("围绕这篇内容继续追问", style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+                        modifier = Modifier.weight(1f).testTag("analysis-conversation-input"), minLines = 1, maxLines = 4, enabled = state == null,
+                        shape = RoundedCornerShape(10.dp), colors = quietFillColors())
+                    IconButton(onClick = {
                         val sent = question.trim()
                         vm.beginConversationQuestion(key, sent, messages.size)
                         ai.run(key, sent)
                     }, enabled = record != null && state == null && question.isNotBlank() && vm.aiVerified,
-                        modifier = Modifier.size(48.dp)) { Icon(Glyph.Next, "发送追问", Modifier.size(24.dp)) }
+                        modifier = Modifier.size(48.dp)) { Icon(Glyph.Next, "发送追问", Modifier.size(22.dp), tint = MaterialTheme.colorScheme.primary) }
                 }
-            }
             }
         }
     }
@@ -127,8 +124,9 @@ private fun AnalysisConversationMessage(message: AnalysisMessage, pending: Boole
         Text(if (user) if (pending) "我 · 等待回答" else "我" else "AI", style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (user) {
-            Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
-                SelectionContainer { Text(message.text, Modifier.padding(12.dp), style = MaterialTheme.typography.bodyLarge, lineHeight = 23.sp) }
+            val fill = if (LocalVaultDark.current) Color(0xFF1A1A19) else Color(0xFFE9E8E4)
+            SelectionContainer {
+                Text(message.text, Modifier.background(fill, RoundedCornerShape(10.dp)).padding(horizontal = 12.dp, vertical = 8.dp), fontSize = 17.sp, lineHeight = 24.sp, color = MaterialTheme.colorScheme.onSurface)
             }
         } else {
             // 长回答采用文章宽度，不挤进狭窄气泡；Markdown 与详情总结使用同一渲染器。

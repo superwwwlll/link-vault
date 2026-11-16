@@ -166,9 +166,9 @@ internal fun AnalysisPanel(vm: VaultViewModel, key: String) {
                         TextButton(onClick = { confirmApply = true }, enabled = state == null) { Text("应用标题与标签") }
                 }
             }
-            OutlinedButton(onClick = { vm.openAnalysisConversation(key) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                Text("继续对话")
-                if (record.messages.size > 1) Text(" · ${(record.messages.size - 1) / 2}轮")
+            TextButton(onClick = { vm.openAnalysisConversation(key) }, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text("继续对话", fontSize = 17.sp)
+                if (record.messages.size > 1) Text(" · ${(record.messages.size - 1) / 2}轮", fontSize = 17.sp)
             }
             Text("围绕这篇内容继续追问，在独立聊天页查看全部历史。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -178,11 +178,13 @@ internal fun AnalysisPanel(vm: VaultViewModel, key: String) {
         }
         if (error != null) Text(error, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
         if (!vm.aiVerified) Text("先到设置填写自己的 API Key 并测试连接，验证通过后即可分析。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { if (record == null) ai.run(key) else confirmReplace = true }, enabled = state == null && vm.aiVerified) { Text(if (record == null) "分析这篇内容" else "按当前模板重新分析") }
+        Column {
+            TextButton(onClick = { if (record == null) ai.run(key) else confirmReplace = true }, enabled = state == null && vm.aiVerified, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(if (record == null) "分析这篇内容" else "按当前模板重新分析", fontSize = 17.sp)
+            }
             if (record != null) {
-                TextButton(onClick = { clipboard.setText(AnnotatedString(record.messages.joinToString("\n\n") { if (it.role == "user") "我：${it.text}" else it.text })); vm.toast("已复制总结与对话") }) { Text("复制") }
-                TextButton(onClick = { confirmClear = true }) { Text("清除 AI 记录") }
+                TextButton(onClick = { clipboard.setText(AnnotatedString(record.messages.joinToString("\n\n") { if (it.role == "user") "我：${it.text}" else it.text })); vm.toast("已复制总结与对话") }, modifier = Modifier.heightIn(min = 48.dp)) { Text("复制", fontSize = 17.sp) }
+                TextButton(onClick = { confirmClear = true }, modifier = Modifier.heightIn(min = 48.dp)) { Text("清除 AI 记录", fontSize = 17.sp) }
             }
         }
     }
