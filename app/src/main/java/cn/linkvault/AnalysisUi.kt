@@ -1,6 +1,7 @@
 @file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 package cn.linkvault
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -32,11 +33,12 @@ internal fun AiConnectionSettings(vm: VaultViewModel) {
             showKey = false
             vm.selectAiProvider(AiProviders.presets.first { it.id == id })
         }
-        OutlinedTextField(vm.aiModel, { vm.aiModel(it) }, label = { Text("模型名") }, modifier = Modifier.fillMaxWidth(), singleLine = true, enabled = !vm.aiTesting)
-        OutlinedTextField(vm.aiKey, { vm.aiKey(it.take(400)) }, label = { Text("你的 API Key") }, modifier = Modifier.fillMaxWidth(), singleLine = true, enabled = !vm.aiTesting,
+        TextField(vm.aiModel, { vm.aiModel(it) }, label = { Text("模型名") }, modifier = Modifier.fillMaxWidth(), singleLine = true, enabled = !vm.aiTesting, shape = RoundedCornerShape(10.dp), colors = quietFillColors())
+        TextField(vm.aiKey, { vm.aiKey(it.take(400)) }, label = { Text("你的 API Key") }, modifier = Modifier.fillMaxWidth(), singleLine = true, enabled = !vm.aiTesting,
             visualTransformation = if (showKey) VisualTransformation.None else PasswordVisualTransformation(),
+            shape = RoundedCornerShape(10.dp), colors = quietFillColors(),
             trailingIcon = { TextButton(onClick = { showKey = !showKey }, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (showKey) "隐藏" else "显示") } })
-        OutlinedButton(onClick = vm::testAiConnection, enabled = !vm.aiTesting && vm.aiKey.isNotBlank(), modifier = Modifier.heightIn(min = 48.dp)) { Text(if (vm.aiTesting) "测试中…" else "测试连接") }
+        TextButton(onClick = vm::testAiConnection, enabled = !vm.aiTesting && vm.aiKey.isNotBlank(), modifier = Modifier.heightIn(min = 48.dp)) { Text(if (vm.aiTesting) "测试中…" else "测试连接", fontSize = 17.sp) }
         if (vm.aiTestResult.isNotEmpty() && (vm.aiTesting || !vm.aiTestResult.startsWith("连接验证通过") || vm.aiVerified))
             Text(vm.aiTestResult, style = MaterialTheme.typography.labelMedium, color = if (vm.aiVerified) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
         Text("测试可能计费，不发送收藏。密钥仅存本机。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -48,7 +50,7 @@ internal fun AiConnectionSettings(vm: VaultViewModel) {
         }
         TextButton(onClick = { advanced = !advanced }, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (advanced) "收起高级配置" else "高级配置（API 地址）") }
         if (advanced) {
-            OutlinedTextField(vm.aiEndpoint, vm::aiEndpoint, label = { Text("API 地址（完整 chat/completions 地址）") }, modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 5, enabled = !vm.aiTesting)
+            TextField(vm.aiEndpoint, vm::aiEndpoint, label = { Text("API 地址（完整 chat/completions 地址）") }, modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 5, enabled = !vm.aiTesting, shape = RoundedCornerShape(10.dp), colors = quietFillColors())
             Text("填写完整地址；修改后需重新测试。跨域跳转会停止，避免向其他域名发送密钥。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -69,9 +71,12 @@ internal fun AiConnectionSettings(vm: VaultViewModel) {
 private fun SettingsChoice(label: String, selected: String, options: List<Pair<String, String>>, enabled: Boolean = true, onSelect: (String) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     Box(Modifier.fillMaxWidth()) {
-        OutlinedButton(onClick = { expanded = true }, enabled = enabled, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-            Text("$label：$selected", Modifier.weight(1f))
-            Text(" ▾")
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(enabled = enabled) { expanded = true },
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+        ) {
+            Text("$label：$selected", Modifier.weight(1f), fontSize = 17.sp, lineHeight = 22.sp, color = MaterialTheme.colorScheme.onSurface)
+            Icon(Glyph.Next, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         DropdownMenu(expanded = expanded && enabled, onDismissRequest = { expanded = false }) {
             options.forEach { (id, name) ->
@@ -90,13 +95,13 @@ internal fun AnalysisSettings(vm: VaultViewModel) {
     var assistantDetails by rememberSaveable { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         SectionLabel("AI 阅读助手")
-        OutlinedTextField(ai.profile, ai::profile, label = { Text("我的工作、兴趣与关注方向") }, placeholder = { Text("例如：我做生命科学产品销售，关注新研究方法、客户需求和可行动的机会") }, modifier = Modifier.fillMaxWidth(), minLines = 3, maxLines = 8)
+        TextField(ai.profile, ai::profile, label = { Text("我的工作、兴趣与关注方向") }, placeholder = { Text("例如：我做生命科学产品销售，关注新研究方法、客户需求和可行动的机会") }, modifier = Modifier.fillMaxWidth(), minLines = 3, maxLines = 8, shape = RoundedCornerShape(10.dp), colors = quietFillColors())
         if (ai.profile.isBlank()) Text("未填写关注方向也可以分析；填写后，结果会更贴近你的需求。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         SettingsChoice("分析模板", ai.active.name.ifBlank { "未命名" }, ai.templates.map { it.id to it.name.ifBlank { "未命名" } }, onSelect = ai::select)
         TextButton(onClick = { editTemplate = !editTemplate }, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (editTemplate) "收起模板编辑" else "编辑模板") }
         if (editTemplate) {
-            OutlinedTextField(ai.active.name, { ai.updateTemplate(it, ai.active.prompt) }, label = { Text("模板名称") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-            OutlinedTextField(ai.active.prompt, { ai.updateTemplate(ai.active.name, it) }, label = { Text("提示词框架（可直接编辑）") }, modifier = Modifier.fillMaxWidth(), minLines = 4, maxLines = 12)
+            TextField(ai.active.name, { ai.updateTemplate(it, ai.active.prompt) }, label = { Text("模板名称") }, modifier = Modifier.fillMaxWidth(), singleLine = true, shape = RoundedCornerShape(10.dp), colors = quietFillColors())
+            TextField(ai.active.prompt, { ai.updateTemplate(ai.active.name, it) }, label = { Text("提示词框架（可直接编辑）") }, modifier = Modifier.fillMaxWidth(), minLines = 4, maxLines = 12, shape = RoundedCornerShape(10.dp), colors = quietFillColors())
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = ai::addTemplate, modifier = Modifier.heightIn(min = 48.dp)) { Text("新增模板") }
                 TextButton(onClick = { confirmRemove = true }, enabled = ai.templates.size > 1, modifier = Modifier.heightIn(min = 48.dp)) { Text("删除当前模板") }
