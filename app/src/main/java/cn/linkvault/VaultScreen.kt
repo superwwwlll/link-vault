@@ -17,7 +17,9 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListState
@@ -34,6 +36,8 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -178,29 +182,29 @@ fun VaultScreen(vm: VaultViewModel) {
                     }
                 }
             } else if (vm.detailId == null && !vm.trashOpen) {
-                Column {
+                Column(Modifier.navigationBarsPadding().background(MaterialTheme.colorScheme.surface)) {
                     HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
-                    NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
-                        val labels = listOf("收藏", "笔记", "标签", "设置")
-                        val icons = listOf(Glyph.Bookmark, Glyph.Note, Glyph.Tag, Glyph.Settings)
-                        val colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.primary,
-                            selectedTextColor = MaterialTheme.colorScheme.primary,
-                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            indicatorColor = MaterialTheme.colorScheme.surfaceVariant
-                        )
+                    val labels = listOf("收藏", "笔记", "标签", "设置")
+                    val icons = listOf(Glyph.Bookmark, Glyph.Note, Glyph.Tag, Glyph.Settings)
+                    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                         labels.forEachIndexed { index, label ->
-                            NavigationBarItem(selected = vm.tab == index, onClick = { vm.tab(index) }, colors = colors,
-                                icon = { Icon(icons[index], null, Modifier.size(22.dp)) },
-                                label = { Text(label, style = MaterialTheme.typography.labelMedium, fontWeight = if (vm.tab == index) FontWeight.Medium else FontWeight.Normal, maxLines = 1, overflow = TextOverflow.Ellipsis) })
+                            val selected = vm.tab == index
+                            val tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            Column(
+                                Modifier.weight(1f).heightIn(min = 48.dp).clickable { vm.tab(index) }.semantics { this.selected = selected }.padding(vertical = 4.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Icon(icons[index], null, Modifier.size(22.dp), tint = tint)
+                                Text(label, fontSize = 10.sp, lineHeight = 12.sp, fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal, color = tint, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
                         }
                     }
                 }
             }
         },
         floatingActionButton = {
-            if (conversationKey == null && !collectionSelection && !editing && vm.detailId == null && !vm.trashOpen && (vm.tab == 0 || vm.tab == 1)) AnimatedVisibility(
+            if (vm.tab == 1 && conversationKey == null && !collectionSelection && !editing && vm.detailId == null && !vm.trashOpen) AnimatedVisibility(
                 visible = fabShown,
                 enter = fadeIn(tween(180)) + scaleIn(tween(180), initialScale = 0.86f),
                 exit = fadeOut(tween(130)) + scaleOut(tween(130), targetScale = 0.86f)
@@ -208,8 +212,7 @@ fun VaultScreen(vm: VaultViewModel) {
                 FloatingActionButton(
                     onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        // 笔记页的 + 建笔记，收藏页的 + 建收藏：同一个位置，两种意图。
-                        if (vm.tab == 1) vm.notes.create() else vm.edit(Draft())
+                        vm.notes.create()
                     },
                     shape = RoundedCornerShape(50),
                     containerColor = MaterialTheme.colorScheme.surface,
@@ -217,7 +220,7 @@ fun VaultScreen(vm: VaultViewModel) {
                     elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 0.dp, pressedElevation = 0.dp),
                     modifier = Modifier.size(52.dp).border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(50))
                 ) {
-                    Icon(Glyph.Add, contentDescription = if (vm.tab == 1) "新建笔记" else "收藏链接", modifier = Modifier.size(22.dp))
+                    Icon(Glyph.Add, contentDescription = "新建笔记", modifier = Modifier.size(22.dp))
                 }
             }
         }
@@ -276,7 +279,12 @@ fun VaultScreen(vm: VaultViewModel) {
                 vm.tab == 2 -> TagsPage(vm)
                 vm.tab == 3 -> SettingsPage(vm, ::launchExport, ::launchExportHtml, ::launchExportPortalHtml, ::launchExportMarkdown, ::launchImport, ::launchFolder, ::launchSecureExport, ::launchSecureImport)
                 else -> CollectionPage(vm, onShare = ::share, onDelete = { deleteId = it.id }, onCopy = ::copyLink, onCopyMarkdown = ::copyMarkdown, onOpen = ::openLink, listState = collectionListState,
-                    onSelectionChange = { collectionSelection = it })
+                    onSelectionChange = { collectionSelection = it },
+                    showAdd = fabShown && !collectionSelection,
+                    onAdd = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        vm.edit(Draft())
+                    })
             }
         }
     }
@@ -333,10 +341,7 @@ private fun ClipboardSuggestion(
 }
 
 /**
- * 向下滚动时收起添加按钮。
- *
- * 它停在右下角，正好压住列表第三张卡片的来源与时间；列表越长，被挡住的那张越靠不上前。
- * 回到列表顶部时必须显示，否则首屏会没有添加入口。
+ * 向下滚动时收起收藏页导航栏里的添加按钮。回到列表顶部时必须显示。
  */
 @Composable
 private fun rememberFabShown(listState: LazyListState): Boolean {
