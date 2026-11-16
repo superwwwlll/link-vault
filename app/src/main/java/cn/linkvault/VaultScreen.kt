@@ -9,23 +9,13 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.browser.customtabs.CustomTabColorSchemeParams
 import androidx.browser.customtabs.CustomTabsIntent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -160,18 +150,7 @@ fun VaultScreen(vm: VaultViewModel) {
         bottomBar = {
             if (conversationKey != null) {
                 // 独立对话页自己提供随输入法抬升的输入栏。
-            } else if (nd != null) {
-                Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 0.dp) {
-                    Column {
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                        Button(onClick = vm.notes::save, enabled = !vm.notes.busy, shape = RoundedCornerShape(10.dp), modifier = Modifier
-                        .navigationBarsPadding().imePadding().padding(horizontal = 20.dp, vertical = 12.dp).fillMaxWidth().height(48.dp)) {
-                        Icon(Glyph.Check, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp))
-                        Text(if (vm.notes.busy) "保存中…" else if (nd.secret) "加密保存" else "保存笔记", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
-                    }
-                    }
-                }
-            } else if (d != null) {
+            } else if (nd != null || d != null) {
                 Spacer(Modifier.navigationBarsPadding())
             } else if (vm.detailId == null && !vm.trashOpen) {
                 Column(Modifier.navigationBarsPadding().background(MaterialTheme.colorScheme.surface)) {
@@ -195,27 +174,7 @@ fun VaultScreen(vm: VaultViewModel) {
                 }
             }
         },
-        floatingActionButton = {
-            if (vm.tab == 1 && conversationKey == null && !collectionSelection && !editing && vm.detailId == null && !vm.trashOpen) AnimatedVisibility(
-                visible = fabShown,
-                enter = fadeIn(tween(180)) + scaleIn(tween(180), initialScale = 0.86f),
-                exit = fadeOut(tween(130)) + scaleOut(tween(130), targetScale = 0.86f)
-            ) {
-                FloatingActionButton(
-                    onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        vm.notes.create()
-                    },
-                    shape = RoundedCornerShape(50),
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                    elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 0.dp, pressedElevation = 0.dp),
-                    modifier = Modifier.size(52.dp).border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(50))
-                ) {
-                    Icon(Glyph.Add, contentDescription = "新建笔记", modifier = Modifier.size(22.dp))
-                }
-            }
-        }
+        floatingActionButton = {}
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
             if (vm.busy || vm.notes.busy) LinearProgressIndicator(Modifier.fillMaxWidth())

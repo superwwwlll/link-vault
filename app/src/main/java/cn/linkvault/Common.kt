@@ -65,11 +65,12 @@ internal fun SearchBox(value: String, onChange: (String) -> Unit, placeholder: S
         return
     }
     LaunchedEffect(expanded) { if (expanded) focus.requestFocus() }
-    OutlinedTextField(
+    TextField(
         value = value,
         onValueChange = { onChange(it.replace("\n", "").replace("\r", "")) },
         singleLine = true,
         maxLines = 1,
+        textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
         placeholder = {
             Text(
@@ -88,7 +89,7 @@ internal fun SearchBox(value: String, onChange: (String) -> Unit, placeholder: S
             }
         },
         shape = RoundedCornerShape(10.dp),
-        colors = quietFieldColors(),
+        colors = quietFillColors(),
         modifier = modifier.fillMaxWidth().focusRequester(focus)
     )
 }
