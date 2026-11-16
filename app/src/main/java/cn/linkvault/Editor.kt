@@ -68,12 +68,7 @@ private fun EditorField(value: String, onChange: (String) -> Unit, placeholder: 
         modifier = Modifier.fillMaxWidth(),
         minLines = minLines,
         maxLines = maxLines,
-        shape = RoundedCornerShape(14.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-            focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-            focusedContainerColor = MaterialTheme.colorScheme.surface
-        )
+        shape = RoundedCornerShape(10.dp),
+        colors = quietFieldColors()
     )
 }

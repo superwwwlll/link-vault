@@ -55,8 +55,9 @@ internal fun AnalysisConversationPage(vm: VaultViewModel, key: String, onBack: (
     }
 
     Column(Modifier.fillMaxSize().imePadding()) {
-        Surface(tonalElevation = 2.dp) {
+        Column {
             PageToolbar("AI 对话", onBack, subtitle = title?.takeIf { it.isNotBlank() } ?: "这篇内容")
+            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
         }
         LazyColumn(state = listState, modifier = Modifier.weight(1f).fillMaxWidth().testTag("analysis-conversation-history"),
             contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -80,7 +81,9 @@ internal fun AnalysisConversationPage(vm: VaultViewModel, key: String, onBack: (
                 AnalysisConversationMessage(AnalysisMessage("user", pendingQuestion!!), pending = true)
             }
         }
-        Surface(tonalElevation = 3.dp, modifier = Modifier.testTag("analysis-conversation-composer")) {
+        Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 0.dp, modifier = Modifier.testTag("analysis-conversation-composer")) {
+            Column(Modifier.fillMaxWidth()) {
+            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
             Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (state != null) {
                     LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -106,6 +109,7 @@ internal fun AnalysisConversationPage(vm: VaultViewModel, key: String, onBack: (
                         modifier = Modifier.size(48.dp)) { Icon(Glyph.Next, "发送追问", Modifier.size(24.dp)) }
                 }
             }
+            }
         }
     }
 }
@@ -124,9 +128,8 @@ private fun AnalysisConversationMessage(message: AnalysisMessage, pending: Boole
         Text(if (user) if (pending) "我 · 等待回答" else "我" else "AI", style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (user) {
-            Surface(shape = RoundedCornerShape(16.dp, 16.dp, 4.dp, 16.dp), color = MaterialTheme.colorScheme.primaryContainer,
-                border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)) {
-                SelectionContainer { Text(message.text, Modifier.padding(14.dp), style = MaterialTheme.typography.bodyLarge, lineHeight = 23.sp) }
+            Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+                SelectionContainer { Text(message.text, Modifier.padding(12.dp), style = MaterialTheme.typography.bodyLarge, lineHeight = 23.sp) }
             }
         } else {
             // 长回答采用文章宽度，不挤进狭窄气泡；Markdown 与详情总结使用同一渲染器。

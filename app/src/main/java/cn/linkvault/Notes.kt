@@ -1,7 +1,6 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package cn.linkvault
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
@@ -41,8 +41,8 @@ internal fun NotesPage(vm: VaultViewModel, listState: LazyListState = rememberLa
     LazyColumn(
         state = listState,
         modifier = Modifier.testTag("notes-list"),
-        contentPadding = PaddingValues(bottom = 100.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        contentPadding = PaddingValues(bottom = 88.dp),
+        verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
         item {
             Column(Modifier.padding(horizontal = 24.dp)) {
@@ -87,8 +87,7 @@ internal fun NotesPage(vm: VaultViewModel, listState: LazyListState = rememberLa
                             clipboard.setText(AnnotatedString(it))
                             vm.toast("已复制 · 这段文字会留在系统剪贴板里，直到你复制或清空")
                         } ?: vm.fail("锁着的内容复制不出来，先解锁这条笔记")
-                    },
-                    modifier = Modifier.padding(horizontal = 24.dp)
+                    }
                 )
             }
         }
@@ -127,29 +126,16 @@ private fun NotesKeyRow(vm: VaultViewModel) {
 }
 
 @Composable
-private fun NoteCard(row: NoteRow, onClick: () -> Unit, onCopy: () -> Unit, modifier: Modifier = Modifier) {
+private fun NoteCard(row: NoteRow, onClick: () -> Unit, onCopy: () -> Unit) {
     // 「显示」是逐条的：列表常常在解锁期间一直开着，全局展开等于把全部口令摊在屏幕上。
     // key 带上 unlocked —— 切后台自动锁定再解锁后回到掩码，不继承上一次"我展开过"。
     var revealed by rememberSaveable(row.id, row.locked) { mutableStateOf(false) }
     val masked = row.secret && !row.locked && !row.unreadable && !revealed
-    val shape = RoundedCornerShape(16.dp)
-    Surface(
-        shape = shape,
-        color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(0.7.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)),
-        shadowElevation = 0.dp,
-        modifier = modifier.fillMaxWidth().clickable(onClick = onClick)
-    ) {
-        Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Icon(
-                if (row.secret) Glyph.Shield else Glyph.Note,
-                contentDescription = if (row.secret) "私密笔记" else null,
-                modifier = Modifier.size(15.dp).padding(top = 2.dp),
-                tint = if (row.secret) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-            )
+    Column(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+        Row(Modifier.padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 if (!masked && row.heading.isNotEmpty()) Text(
-                    row.heading, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold,
+                    row.heading, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium,
                     maxLines = 2, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurface
                 )
                 val preview = when {
@@ -161,9 +147,9 @@ private fun NoteCard(row: NoteRow, onClick: () -> Unit, onCopy: () -> Unit, modi
                 if (preview.isNotEmpty()) Text(
                     preview,
                     style = MaterialTheme.typography.bodyMedium,
-                    maxLines = if (row.locked || row.unreadable || masked) 1 else 3,
+                    maxLines = if (row.locked || row.unreadable || masked) 1 else 2,
                     overflow = TextOverflow.Ellipsis,
-                    color = if (row.locked || row.unreadable) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 if (masked) TextButton(
                     onClick = { revealed = true },
@@ -176,6 +162,7 @@ private fun NoteCard(row: NoteRow, onClick: () -> Unit, onCopy: () -> Unit, modi
                 }
                 Text(
                     buildString {
+                        append(if (row.secret) "私密 · " else "")
                         append(Stamp.date(row.updatedAt)).append(" 改")
                         // 锁着的时候字数本身就是没说出来的内容，显示 0 字更像出错。
                         if (!row.locked && !row.unreadable && !masked) append(" · ${row.text.length} 字")
@@ -187,6 +174,7 @@ private fun NoteCard(row: NoteRow, onClick: () -> Unit, onCopy: () -> Unit, modi
                 Icon(Glyph.Copy, "复制全文", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
+        HorizontalDivider(Modifier.padding(start = 20.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
     }
 }
 
@@ -241,13 +229,8 @@ internal fun NotesEditorPage(vm: VaultViewModel, draft: NoteDraft, onBack: () ->
             modifier = Modifier.fillMaxWidth(),
             minLines = 8,
             maxLines = 16,
-            shape = RoundedCornerShape(14.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                focusedContainerColor = MaterialTheme.colorScheme.surface
-            )
+            shape = RoundedCornerShape(10.dp),
+            colors = quietFieldColors()
         )
         Text(
             "${draft.text.length} / ${NoteCrypto.MAX_TEXT} 字",
@@ -268,9 +251,8 @@ internal fun NotesEditorPage(vm: VaultViewModel, draft: NoteDraft, onBack: () ->
                 !vm.aiVerified -> "配置 AI 后可用"
                 else -> "未分析"
             }
-            Surface(onClick = { aiExpanded = !aiExpanded }, shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
-                Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Surface(onClick = { aiExpanded = !aiExpanded }, color = Color.Transparent, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
+                Row(Modifier.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text("AI 总结与对话", style = MaterialTheme.typography.bodyMedium)
                         Text(status, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -305,14 +287,10 @@ internal fun NotesEditorPage(vm: VaultViewModel, draft: NoteDraft, onBack: () ->
 @Composable
 private fun NoteSecretSwitch(vm: VaultViewModel, draft: NoteDraft) {
     val notes = vm.notes
-    Surface(
-        shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
-        border = BorderStroke(0.6.dp, MaterialTheme.colorScheme.outlineVariant)
-    ) {
-        Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("私密", Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text("私密", Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
                 Switch(
                     checked = draft.secret,
                     onCheckedChange = { notes.change(draft.copy(secret = it)) },

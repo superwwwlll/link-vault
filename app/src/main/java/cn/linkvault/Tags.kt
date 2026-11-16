@@ -2,7 +2,7 @@
 package cn.linkvault
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -135,20 +135,14 @@ internal fun TagsPage(vm: VaultViewModel) {
         EmptyState(Glyph.Tag, if (totals.isEmpty()) "暂无标签" else "没有匹配的标签")
     } else LazyColumn(
         modifier = Modifier.fillMaxWidth().testTag("tags-list"),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        contentPadding = PaddingValues(bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
         items(visible, key = { Links.tagKey(it.first) }) { (tag, count) ->
             var menu by remember { mutableStateOf(false) }
-            Surface(
-                onClick = { vm.tag(tag) },
-                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
-                color = MaterialTheme.colorScheme.surface,
-                shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(0.6.dp, MaterialTheme.colorScheme.outlineVariant)
-            ) {
+            Column(Modifier.fillMaxWidth()) {
                 Row(
-                    Modifier.padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+                    Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable { vm.tag(tag) }.padding(start = 20.dp, end = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -178,6 +172,7 @@ internal fun TagsPage(vm: VaultViewModel) {
                         }
                     }
                 }
+                HorizontalDivider(Modifier.padding(start = 20.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
             }
         }
     }

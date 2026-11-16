@@ -55,32 +55,32 @@ object Glyph {
     val Translate = line("Translate", "M5 8L11 14 M4 14L10 8L12 5 M2 5H14 M8 2H1 M22 22L17 12L12 22 M14 18H20")
 }
 
-// 克制的蓝色操作色，借鉴即时通讯界面的清晰层级，不使用品牌标识。
-// 笔记仍使用独立中性色，来源色仍承担辨识功能。
+// 操作色仍是蓝色（对比度测试要求蓝通道高于红通道），但压暗、少铺底。
+// 选中、提示和分组用中性纸色，避免整屏被色块切开。来源色继续承担辨识。
 internal val DayColors = lightColorScheme(
-    primary = Color(0xFF236A9F), onPrimary = Color.White,
-    primaryContainer = Color(0xFFE2EFF9), onPrimaryContainer = Color(0xFF163F60),
+    primary = Color(0xFF1F5578), onPrimary = Color.White,
+    primaryContainer = Color(0xFFECEAE4), onPrimaryContainer = Color(0xFF292824),
     secondary = Color(0xFF65635D), onSecondary = Color.White,
-    secondaryContainer = Color(0xFFE2EFF9), onSecondaryContainer = Color(0xFF163F60),
+    secondaryContainer = Color(0xFFECEAE4), onSecondaryContainer = Color(0xFF292824),
     tertiary = Color(0xFF65635D), onTertiary = Color.White,
     tertiaryContainer = Color(0xFFF0EFEB), onTertiaryContainer = Color(0xFF292824),
-    background = Color(0xFFF8F7F4), onBackground = Color(0xFF292824),
+    background = Color(0xFFF6F5F2), onBackground = Color(0xFF292824),
     surface = Color(0xFFFFFFFF), onSurface = Color(0xFF292824),
     surfaceVariant = Color(0xFFF1F0EC), onSurfaceVariant = Color(0xFF6C6A64),
-    surfaceTint = Color(0xFF236A9F), inverseSurface = Color(0xFF292824), inverseOnSurface = Color(0xFFF8F7F4),
-    outline = Color(0xFFAAA79F), outlineVariant = Color(0xFFE5E3DD)
+    surfaceTint = Color(0xFF1F5578), inverseSurface = Color(0xFF292824), inverseOnSurface = Color(0xFFF6F5F2),
+    outline = Color(0xFFAAA79F), outlineVariant = Color(0xFFE4E2DC)
 )
 internal val NightColors = darkColorScheme(
-    primary = Color(0xFF8CC9F4), onPrimary = Color(0xFF102F45),
-    primaryContainer = Color(0xFF203F56), onPrimaryContainer = Color(0xFFD3EBFF),
+    primary = Color(0xFFB7D4E6), onPrimary = Color(0xFF0E2433),
+    primaryContainer = Color(0xFF302F2B), onPrimaryContainer = Color(0xFFF0EFEB),
     secondary = Color(0xFFB9B6AD), onSecondary = Color(0xFF242320),
-    secondaryContainer = Color(0xFF203F56), onSecondaryContainer = Color(0xFFD3EBFF),
+    secondaryContainer = Color(0xFF302F2B), onSecondaryContainer = Color(0xFFF0EFEB),
     tertiary = Color(0xFFB9B6AD), onTertiary = Color(0xFF242320),
     tertiaryContainer = Color(0xFF302F2B), onTertiaryContainer = Color(0xFFF0EFEB),
-    background = Color(0xFF191918), onBackground = Color(0xFFF0EFEB),
+    background = Color(0xFF161615), onBackground = Color(0xFFF0EFEB),
     surface = Color(0xFF232322), onSurface = Color(0xFFF0EFEB),
     surfaceVariant = Color(0xFF2D2D2A), onSurfaceVariant = Color(0xFFB2B0A8),
-    surfaceTint = Color(0xFF8CC9F4), inverseSurface = Color(0xFFF0EFEB), inverseOnSurface = Color(0xFF242320),
+    surfaceTint = Color(0xFFB7D4E6), inverseSurface = Color(0xFFF0EFEB), inverseOnSurface = Color(0xFF242320),
     outline = Color(0xFF77756D), outlineVariant = Color(0xFF3C3B36)
 )
 
@@ -96,8 +96,8 @@ private val VaultTypography = Typography(
 )
 
 private val VaultShapes = Shapes(
-    small = RoundedCornerShape(10.dp), medium = RoundedCornerShape(14.dp),
-    large = RoundedCornerShape(18.dp), extraLarge = RoundedCornerShape(24.dp)
+    small = RoundedCornerShape(6.dp), medium = RoundedCornerShape(10.dp),
+    large = RoundedCornerShape(14.dp), extraLarge = RoundedCornerShape(18.dp)
 )
 
 data class NoteThemeColors(

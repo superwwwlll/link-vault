@@ -130,18 +130,11 @@ internal fun AnalysisPanel(vm: VaultViewModel, key: String) {
     var confirmClear by remember { mutableStateOf(false) }
     var confirmApply by remember { mutableStateOf(false) }
     if (!vm.aiVerified && record == null && state == null && error == null) {
-        Surface(onClick = { vm.openSettings("AI 接口") }, color = MaterialTheme.colorScheme.surfaceVariant,
-            shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
-            Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(Glyph.LinkChain, null, Modifier.size(20.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("AI 总结与对话", style = MaterialTheme.typography.bodyMedium)
-                    Text("配置 AI 接口后可分析这篇内容", style = MaterialTheme.typography.labelMedium)
-                }
-                TextButton(onClick = { vm.openSettings("AI 接口") }, modifier = Modifier.heightIn(min = 48.dp)) {
-                    Text("去设置"); Icon(Glyph.Next, null, Modifier.size(18.dp))
-                }
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("AI 总结与对话", style = MaterialTheme.typography.bodyMedium)
+            Text("配置 AI 接口后可分析这篇内容", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            TextButton(onClick = { vm.openSettings("AI 接口") }, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text("去设置"); Icon(Glyph.Next, null, Modifier.size(16.dp))
             }
         }
         return
@@ -154,14 +147,12 @@ internal fun AnalysisPanel(vm: VaultViewModel, key: String) {
             if (record.sourceChars > Analysis.MAX_SOURCE) Text("材料 ${record.sourceChars} 字，仅分析前 ${Analysis.MAX_SOURCE} 字；后续对话也只能参考这部分。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
             SelectionContainer { SnapshotMarkdownViewer(record.messages.first().text, expanded = true, showImages = false) }
             if (key.startsWith("b-") && record.suggestedTitle.isNotEmpty()) {
-                Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("标题与标签建议", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
                         SelectionContainer { Text(record.suggestedTitle, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold) }
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) { record.suggestedTags.forEach { TagPill(it) } }
                         Text("确认后替换收藏标题，标签追加到现有标签；原文和备注不变。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         TextButton(onClick = { confirmApply = true }, enabled = state == null) { Text("应用标题与标签") }
-                    }
                 }
             }
             OutlinedButton(onClick = { vm.openAnalysisConversation(key) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {

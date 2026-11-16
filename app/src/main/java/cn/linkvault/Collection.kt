@@ -6,7 +6,6 @@
 package cn.linkvault
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -25,7 +24,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.focus.FocusRequester
@@ -63,14 +61,6 @@ internal fun CollectionPage(
     val tagNames = remember(tagTotals, vm.filter) {
         (tagTotals.map { it.first } + listOf(vm.filter).filter { it.isNotEmpty() && tagTotals.none { t -> t.first == it } }).distinct()
     }
-    val counts = remember(vm.items) {
-        listOf(
-            vm.items.count { !it.archived },
-            vm.items.count { !it.archived && !it.read },
-            vm.items.count { !it.archived && it.read },
-            vm.items.count { it.archived }
-        )
-    }
     var selectedIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
     val selectionMode = selectedIds.isNotEmpty()
     var confirmBulkDelete by remember { mutableStateOf(false) }
@@ -91,8 +81,8 @@ internal fun CollectionPage(
 
     Column(Modifier.fillMaxSize()) {
         if (selectionMode) {
-            Surface(color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.fillMaxWidth()) {
-                FlowRow(Modifier.padding(start = 18.dp, end = 8.dp), verticalArrangement = Arrangement.Center) {
+            Surface(color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth()) {
+                FlowRow(Modifier.padding(start = 20.dp, end = 8.dp), verticalArrangement = Arrangement.Center) {
                     Text("已选择 ${selectedIds.size} 条", Modifier.align(Alignment.CenterVertically), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                     TextButton(onClick = { vm.bulkMarkRead(selectedIds); selectedIds = emptySet() }, enabled = !vm.busy, modifier = Modifier.heightIn(min = 48.dp)) { Text("标已读") }
                     TextButton(onClick = { vm.bulkArchive(selectedIds); selectedIds = emptySet() }, enabled = !vm.busy, modifier = Modifier.heightIn(min = 48.dp)) { Text("归档") }
@@ -101,9 +91,9 @@ internal fun CollectionPage(
                 }
             }
         }
-            Column(Modifier.padding(horizontal = 16.dp).testTag("collection-toolbar")) {
+            Column(Modifier.padding(horizontal = 20.dp).testTag("collection-toolbar")) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text("我的收藏", Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold,
+                    Text("我的收藏", Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall,
                         color = MaterialTheme.colorScheme.onBackground)
                     IconButton(onClick = { if (searchExpanded || vm.search.isNotEmpty()) { vm.search(""); searchExpanded = false } else searchExpanded = true }, modifier = Modifier.size(48.dp).testTag("collection-search-toggle")) {
                         Icon(if (searchExpanded || vm.search.isNotEmpty()) Glyph.Close else Glyph.Search,
@@ -115,16 +105,16 @@ internal fun CollectionPage(
                 }
                 Row(Modifier.fillMaxWidth()) {
                     scopeLabels.forEachIndexed { index, label ->
+                        val selected = vm.scope == index
                         Column(Modifier.weight(1f).heightIn(min = 48.dp)
-                            .testTag("collection-scope-$index").semantics { selected = vm.scope == index; contentDescription = label }
-                            .clickable { vm.scope(index) }, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceBetween) {
-                            Text(label, style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = if (vm.scope == index) FontWeight.SemiBold else FontWeight.Normal,
-                                color = if (vm.scope == index) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            .testTag("collection-scope-$index").semantics { this.selected = selected; contentDescription = label }
+                            .clickable { vm.scope(index) }, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Bottom) {
+                            Text(label, Modifier.padding(top = 12.dp, bottom = 8.dp), style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
+                                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1, softWrap = false, overflow = TextOverflow.Clip,
                                  letterSpacing = if (LocalDensity.current.fontScale >= 2f) (-2).sp else 0.sp)
-                            Text("${counts[index]}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Box(Modifier.fillMaxWidth().height(3.dp).background(if (vm.scope == index) MaterialTheme.colorScheme.primary else Color.Transparent))
+                            Box(Modifier.fillMaxWidth().height(2.dp).background(if (selected) MaterialTheme.colorScheme.primary else Color.Transparent))
                         }
                     }
                 }
@@ -135,25 +125,22 @@ internal fun CollectionPage(
                     ) {
                         tagNames.forEach { tag ->
                             val selected = vm.filter == tag
-                            val shape = RoundedCornerShape(50)
-                            Surface(
-                                shape = shape,
-                                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
-                                border = if (selected) null else BorderStroke(0.6.dp, MaterialTheme.colorScheme.outlineVariant),
-                                modifier = Modifier
-                                    .clip(shape)
+                            Box(
+                                Modifier
                                     .clickable { vm.filter(if (selected) "" else tag) }
                                     .heightIn(min = 48.dp)
                                     .widthIn(min = 48.dp)
                                     .semantics { this.selected = selected }
+                                    .padding(horizontal = 2.dp),
+                                contentAlignment = Alignment.Center
                             ) {
-                                Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 9.dp)) { Text(
+                                Text(
                                     tag,
                                     style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                                    color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
+                                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1
-                                ) }
+                                )
                             }
                         }
                     }
@@ -180,12 +167,13 @@ internal fun CollectionPage(
                         }, onSelectAll = { selectedIds = visible.map { it.id }.toSet() },
                         onClearFilter = if (vm.filter.isNotBlank()) ({ vm.filter("") }) else null)
                 }
+                HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
             }
         LazyColumn(
             state = listState,
             modifier = Modifier.weight(1f).fillMaxWidth().testTag("collection-list"),
             contentPadding = PaddingValues(bottom = 100.dp),
-            verticalArrangement = Arrangement.spacedBy(if (vm.compactCollection) 0.dp else 10.dp)
+            verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
         if (vm.loading) item(contentType = "progress") { LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 24.dp)) }
         if (vm.readFailed) item(contentType = "retry") { TextButton(onClick = vm::reload, modifier = Modifier.padding(horizontal = 24.dp)) { Text("读取失败，点击重试") } }
@@ -223,7 +211,7 @@ internal fun CollectionPage(
                     onCopyMarkdown = { onCopyMarkdown(item) },
                     onTag = vm::tag,
                     modifier = Modifier
-                        .padding(horizontal = if (vm.compactCollection) 0.dp else 24.dp)
+                        .padding(horizontal = 0.dp)
                         .animateItem(fadeInSpec = null, fadeOutSpec = null)
                 )
             }
@@ -256,7 +244,7 @@ private fun CollectionSearch(value: String, onChange: (String) -> Unit, onClose:
         leadingIcon = { Icon(Glyph.Search, null, Modifier.size(18.dp)) },
         trailingIcon = { IconButton(onClick = { if (value.isNotEmpty()) onChange("") else onClose() }, modifier = Modifier.size(48.dp)) {
             Icon(Glyph.Close, if (value.isNotEmpty()) "清空搜索" else "关闭搜索", Modifier.size(16.dp))
-        } }, shape = RoundedCornerShape(16.dp),
+        } }, shape = RoundedCornerShape(10.dp), colors = quietFieldColors(),
         modifier = Modifier.fillMaxWidth().focusRequester(focus).testTag("collection-search"))
 }
 
@@ -298,8 +286,6 @@ private fun CollectionMoreMenu(sortOrder: Int, onSelectSort: (Int) -> Unit, hasR
         }
     }
 }
-
-private val CardShape = RoundedCornerShape(16.dp)
 
 /** 首条 assistant 消息才是总结；追问答案不能冒充摘要。 */
 internal fun collectionAiExcerpt(summary: String): String = summary.lineSequence()
@@ -354,12 +340,22 @@ private fun CollectionCardTags(tags: List<String>, onTag: (String) -> Unit) {
         fun width(text: String) = (measurer.measure(text, style, maxLines = 1).size.width + padding).coerceAtLeast(minimum)
         val widths = tags.map { width(it) }
         val count = collectionVisibleTagCount(widths, constraints.maxWidth, gap) { width("+$it") }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-            tags.take(count).forEachIndexed { index, tag ->
-                CollectionTagButton(tag, Modifier.width(with(density) { widths[index].toDp() })) { onTag(tag) }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (count > 0) Text(
+                tags.take(count).joinToString("  ·  "),
+                Modifier.weight(1f, fill = false),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (count < tags.size) Box(
+                Modifier.heightIn(min = 48.dp).widthIn(min = 48.dp).clickable { showAll = true }
+                    .semantics { contentDescription = "查看全部 ${tags.size} 个标签" },
+                contentAlignment = Alignment.Center
+            ) {
+                Text("+${tags.size - count}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            if (count < tags.size) CollectionTagButton("+${tags.size - count}",
-                Modifier.widthIn(min = 48.dp).semantics { contentDescription = "查看全部 ${tags.size} 个标签" }) { showAll = true }
         }
     }
     if (showAll) AlertDialog(onDismissRequest = { showAll = false }, title = { Text("全部标签（${tags.size}）") },
@@ -373,19 +369,6 @@ private fun CollectionCardTags(tags: List<String>, onTag: (String) -> Unit) {
                 }
             }
         }, confirmButton = { TextButton(onClick = { showAll = false }) { Text("关闭") } })
-}
-
-@Composable
-private fun CollectionTagButton(text: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Box(modifier.heightIn(min = 48.dp).widthIn(min = 48.dp).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
-        Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
-            border = BorderStroke(0.6.dp, MaterialTheme.colorScheme.outlineVariant)) {
-            Text(text, Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-    }
 }
 
 @Composable
@@ -452,7 +435,6 @@ private fun SwipeableBookmarkCard(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .clip(CardShape)
                         .background(bgColor)
                         .padding(horizontal = 20.dp),
                     contentAlignment = alignment
@@ -524,11 +506,9 @@ private fun BookmarkCard(
 
     Box {
         Surface(
-            shape = if (compact) RoundedCornerShape(0.dp) else CardShape,
-            color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
-            border = if (compact) null else BorderStroke(0.6.dp, if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant),
+            color = if (selected) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f) else MaterialTheme.colorScheme.surface,
             shadowElevation = 0.dp,
-            modifier = Modifier.fillMaxWidth().testTag("collection-bookmark-${item.id}").semantics { this.selected = selected }.clip(if (compact) RoundedCornerShape(0.dp) else CardShape).combinedClickable(
+            modifier = Modifier.fillMaxWidth().testTag("collection-bookmark-${item.id}").semantics { this.selected = selected }.combinedClickable(
                 onClick = if (selectionMode) onToggleSelection else onClick,
                 onLongClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -536,48 +516,54 @@ private fun BookmarkCard(
                 }
             )
         ) {
-            // 紧凑模式来源与标题同排；舒适模式保留两行标题、备注和底部来源。
-            Column(Modifier.fillMaxWidth().padding(horizontal = if (compact) 16.dp else 14.dp, vertical = if (compact) 10.dp else 14.dp), verticalArrangement = Arrangement.spacedBy(if (compact) 3.dp else 6.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (selectionMode) Icon(if (selected) Glyph.Check else Glyph.Bookmark, if (selected) "已选择" else "未选择", Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
-                    else if (compact) SourceMark(item.url, size = MarkSize.Tiny, muted = item.read)
-                    Text(
-                        displayTitle,
-                        modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = titleColor,
-                        maxLines = if (compact) 1 else 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    if (!selectionMode) IconButton(onClick = { menu = true }, modifier = Modifier.size(48.dp).testTag("collection-item-menu-${item.id}")) {
-                        Icon(Glyph.More, "收藏操作", Modifier.size(18.dp))
+            Row(Modifier.height(IntrinsicSize.Min)) {
+                Box(Modifier.width(2.dp).fillMaxHeight().background(if (selected) MaterialTheme.colorScheme.primary else Color.Transparent))
+                Column(
+                    Modifier.weight(1f).padding(horizontal = 20.dp, vertical = if (compact) 12.dp else 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 8.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (selectionMode) Icon(if (selected) Glyph.Check else Glyph.Bookmark, if (selected) "已选择" else "未选择", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                        Text(
+                            displayTitle,
+                            modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = if (item.read) FontWeight.Normal else FontWeight.Medium,
+                            color = titleColor,
+                            maxLines = if (compact) 1 else 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
-                }
-                if (summary.isNotBlank()) {
-                    Text(
-                        summary,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                if (!compact && item.notes.isNotBlank()) {
-                    NoteSnippetCard(text = item.notes, maxLines = 2)
-                }
-                if (tags.isNotEmpty()) CollectionCardTags(tags) { if (selectionMode) onToggleSelection() else onTag(it) }
-                if (record != null || vm.analysis.auto || vm.analysis.states[aiKey] != null || vm.analysis.errors[aiKey] != null) Surface(
-                    shape = RoundedCornerShape(6.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                ) { Text(aiStatus, style = MaterialTheme.typography.labelMedium,
-                    color = if (vm.analysis.errors[aiKey] != null && vm.analysis.states[aiKey] == null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp).testTag("collection-ai-status-${item.id}")) }
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                    if (!compact) SourceMark(item.url, size = MarkSize.Tiny, muted = item.read)
-                    Text(site, Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    if (item.pinned) Icon(Glyph.Pin, "已置顶", Modifier.size(11.dp), tint = MaterialTheme.colorScheme.primary)
-                    Text(stamp, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f))
+                    if (summary.isNotBlank()) {
+                        Text(
+                            summary,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = if (compact) 1 else 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    if (!compact && item.notes.isNotBlank()) NoteSnippetCard(text = item.notes, maxLines = 2)
+                    if (tags.isNotEmpty()) CollectionCardTags(tags) { if (selectionMode) onToggleSelection() else onTag(it) }
+                    if (record != null || vm.analysis.auto || vm.analysis.states[aiKey] != null || vm.analysis.errors[aiKey] != null) {
+                        Text(
+                            aiStatus,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (vm.analysis.errors[aiKey] != null && vm.analysis.states[aiKey] == null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.testTag("collection-ai-status-${item.id}")
+                        )
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SourceMark(item.url, size = MarkSize.Tiny, muted = item.read)
+                        Text(site, Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        if (item.pinned) Icon(Glyph.Pin, "已置顶", Modifier.size(12.dp), tint = MaterialTheme.colorScheme.primary)
+                        Text(stamp, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (!selectionMode) IconButton(onClick = { menu = true }, modifier = Modifier.size(48.dp).testTag("collection-item-menu-${item.id}")) {
+                            Icon(Glyph.More, "收藏操作", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
                 }
             }
         }
