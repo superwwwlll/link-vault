@@ -57,20 +57,30 @@ object Glyph {
     val Translate = line("Translate", "M5 8L11 14 M4 14L10 8L12 5 M2 5H14 M8 2H1 M22 22L17 12L12 22 M14 18H20")
 }
 
-// 书刊方案：暖纸为底，朱红只用于下划线、来源和少量文字动作。
-// 次要文字比效果图略深，好让小字在纸色上仍达到 WCAG AA。
+// 浅色用 iPhone 浅色主题的白：白底、中性浅灰分组和分隔、黑色正文、中性灰次要字。
+// 朱红只留在下划线、来源和少量文字动作。surfaceTint 与底色相同，避免 Material 把表面染暖。
+private val DayWhite = Color(0xFFFFFFFF)
+private val DayGroup = Color(0xFFF2F2F7)
+private val DayInk = Color(0xFF000000)
+private val DaySecondaryText = Color(0xFF636366)
+private val DayLine = Color(0xFFE5E5EA)
 internal val DayColors = lightColorScheme(
     primary = Color(0xFF9C3B2E), onPrimary = Color.White,
-    primaryContainer = Color(0xFFE7DFD2), onPrimaryContainer = Color(0xFF2A241C),
-    secondary = Color(0xFF6F6254), onSecondary = Color.White,
-    secondaryContainer = Color(0xFFE7DFD2), onSecondaryContainer = Color(0xFF2A241C),
-    tertiary = Color(0xFF6F6254), onTertiary = Color.White,
-    tertiaryContainer = Color(0xFFEBE3D6), onTertiaryContainer = Color(0xFF2A241C),
-    background = Color(0xFFF4EFE6), onBackground = Color(0xFF2A241C),
-    surface = Color(0xFFF4EFE6), onSurface = Color(0xFF2A241C),
-    surfaceVariant = Color(0xFFEBE3D6), onSurfaceVariant = Color(0xFF6F6254),
-    surfaceTint = Color(0xFF9C3B2E), inverseSurface = Color(0xFF2A241C), inverseOnSurface = Color(0xFFF4EFE6),
-    outline = Color(0xFF8A7B68), outlineVariant = Color(0xFFE3D8C8)
+    primaryContainer = DayGroup, onPrimaryContainer = DayInk,
+    secondary = DaySecondaryText, onSecondary = Color.White,
+    secondaryContainer = DayGroup, onSecondaryContainer = DayInk,
+    tertiary = DaySecondaryText, onTertiary = Color.White,
+    tertiaryContainer = DayGroup, onTertiaryContainer = DayInk,
+    background = DayWhite, onBackground = DayInk,
+    surface = DayWhite, onSurface = DayInk,
+    surfaceVariant = DayGroup, onSurfaceVariant = DaySecondaryText,
+    surfaceTint = DayWhite,
+    inverseSurface = Color(0xFF1C1C1E), inverseOnSurface = DayWhite,
+    outline = Color(0xFFC7C7CC), outlineVariant = DayLine,
+    surfaceBright = DayWhite, surfaceDim = DayGroup,
+    surfaceContainerLowest = DayWhite, surfaceContainerLow = DayWhite,
+    surfaceContainer = DayWhite, surfaceContainerHigh = DayGroup,
+    surfaceContainerHighest = DayGroup
 )
 internal val NightColors = darkColorScheme(
     primary = Color(0xFFE07A64), onPrimary = Color(0xFF2A120C),
@@ -82,12 +92,16 @@ internal val NightColors = darkColorScheme(
     background = Color(0xFF221C16), onBackground = Color(0xFFF6F0E6),
     surface = Color(0xFF221C16), onSurface = Color(0xFFF6F0E6),
     surfaceVariant = Color(0xFF2C261F), onSurfaceVariant = Color(0xFFC4B6A4),
-    surfaceTint = Color(0xFFE07A64), inverseSurface = Color(0xFFF6F0E6), inverseOnSurface = Color(0xFF221C16),
-    outline = Color(0xFF8A7B68), outlineVariant = Color(0xFF3A3128)
+    surfaceTint = Color(0xFF221C16), inverseSurface = Color(0xFFF6F0E6), inverseOnSurface = Color(0xFF221C16),
+    outline = Color(0xFF8A7B68), outlineVariant = Color(0xFF3A3128),
+    surfaceBright = Color(0xFF221C16), surfaceDim = Color(0xFF221C16),
+    surfaceContainerLowest = Color(0xFF221C16), surfaceContainerLow = Color(0xFF221C16),
+    surfaceContainer = Color(0xFF221C16), surfaceContainerHigh = Color(0xFF2C261F),
+    surfaceContainerHighest = Color(0xFF2C261F)
 )
 
-/** 输入底色，比纸面深一档，避免再使用冷灰。 */
-internal val DayFill = Color(0xFFE7DFD2)
+/** 浅色分组和输入用中性浅灰；深色仍用原来的深色填充。 */
+internal val DayFill = Color(0xFFF2F2F7)
 internal val NightFill = Color(0xFF2C241C)
 
 /**
@@ -124,10 +138,10 @@ data class NoteThemeColors(
 )
 
 private val DayNoteColors = NoteThemeColors(
-    container = Color(0xFFEBE3D6),
-    onContainer = Color(0xFF2A241C),
-    border = Color(0xFFE3D8C8),
-    icon = Color(0xFF6F6254)
+    container = Color(0xFFF2F2F7),
+    onContainer = Color(0xFF000000),
+    border = Color(0xFFE5E5EA),
+    icon = Color(0xFF636366)
 )
 
 private val NightNoteColors = NoteThemeColors(
@@ -181,7 +195,7 @@ internal fun sourceColorFor(hue: Float, deep: Boolean, dark: Boolean): Pair<Colo
     val tint = Color.hsl(hue, 0.85f, 0.60f)
     NightSourceBase.blend(tint, if (deep) 0.34f else 0.22f) to Color.hsl(hue, 0.62f, 0.86f)
 } else {
-    // 暖纸底会吞掉近白的浅色块。浅档提高饱和、深档压暗，两档和纸面都分得开。
+    // 白底上浅档靠饱和度分开，深档再压暗，避免色块贴进白色。
     Color.hsl(hue, if (deep) 0.58f else 0.78f, if (deep) 0.74f else 0.90f) to Color.hsl(hue, 0.62f, 0.22f)
 }
 

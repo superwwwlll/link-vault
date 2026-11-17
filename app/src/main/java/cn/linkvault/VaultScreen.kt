@@ -103,7 +103,7 @@ fun VaultScreen(vm: VaultViewModel) {
                 .setColorScheme(if (isDark) CustomTabsIntent.COLOR_SCHEME_DARK else CustomTabsIntent.COLOR_SCHEME_LIGHT)
                 .setDefaultColorSchemeParams(
                     CustomTabColorSchemeParams.Builder()
-                        .setToolbarColor(if (isDark) 0xFF161615.toInt() else 0xFFF6F5F2.toInt())
+                        .setToolbarColor(if (isDark) 0xFF221C16.toInt() else 0xFFFFFFFF.toInt())
                         .build()
                 )
                 .build()
