@@ -181,11 +181,9 @@ internal fun DetailPage(
 
         if (item.tags.isNotEmpty()) Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("标签", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(0.dp), verticalArrangement = Arrangement.spacedBy(0.dp)) {
                 parseTags(item.tags).forEach { tag ->
-                    TextButton(onClick = { vm.tag(tag) }, modifier = Modifier.heightIn(min = 48.dp)) {
-                        Text(tag, color = MaterialTheme.colorScheme.primary, fontSize = 17.sp)
-                    }
+                    TagChip(tag, onClick = { vm.tag(tag) }, maxLines = Int.MAX_VALUE)
                 }
             }
         }

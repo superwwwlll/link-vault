@@ -25,9 +25,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -94,21 +96,78 @@ internal fun SearchBox(value: String, onChange: (String) -> Unit, placeholder: S
     )
 }
 
+/** 比列表上原来的 12sp 标签再小一档，仍随系统字号缩放。 */
+internal val TagLabelStyle = TextStyle(fontSize = 11.sp, lineHeight = 14.sp, fontWeight = FontWeight.Medium)
+internal val TagChipBorder = 0.7.dp
+internal val TagChipPadH = 6.dp
+internal val TagChipPadV = 2.dp
+
+/**
+ * 贴合文字的细框。可点时外层至少 48dp，框本身不拉开；相邻项的可点区域互不重叠。
+ */
 @Composable
-internal fun TagPill(text: String, trailing: String = "", onClick: (() -> Unit)? = null) {
-    Surface(
-        shape = RoundedCornerShape(6.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
-        modifier = if (onClick != null) Modifier.heightIn(min = 48.dp).widthIn(min = 48.dp).clickable(onClick = onClick) else Modifier
-    ) {
-        Row(Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(text, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+internal fun TagChip(
+    text: String,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    selected: Boolean = false,
+    toggle: Boolean = false,
+    trailing: String = "",
+    maxLines: Int = 1,
+    description: String? = null,
+    enabled: Boolean = true
+) {
+    val borderColor = when {
+        !enabled -> MaterialTheme.colorScheme.outlineVariant
+        selected -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.outline
+    }
+    val textColor = when {
+        !enabled -> MaterialTheme.colorScheme.onSurfaceVariant
+        selected -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.onSurface
+    }
+    val frame = @Composable {
+        Row(
+            Modifier
+                .border(TagChipBorder, borderColor, RoundedCornerShape(3.dp))
+                .padding(horizontal = TagChipPadH, vertical = TagChipPadV),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text,
+                style = TagLabelStyle,
+                color = textColor,
+                maxLines = maxLines,
+                softWrap = maxLines != 1,
+                overflow = TextOverflow.Ellipsis
+            )
             if (trailing.isNotEmpty()) {
                 Spacer(Modifier.width(4.dp))
-                Text(trailing, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(trailing, style = TagLabelStyle, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, softWrap = false)
             }
         }
     }
+    if (onClick == null) {
+        Box(modifier) { frame() }
+    } else {
+        Box(
+            modifier
+                .heightIn(min = 48.dp)
+                .widthIn(min = 48.dp)
+                .semantics {
+                    if (description != null) contentDescription = description
+                    if (toggle) this.selected = selected
+                }
+                .clickable(enabled = enabled, onClick = onClick),
+            contentAlignment = Alignment.Center
+        ) { frame() }
+    }
+}
+
+@Composable
+internal fun TagPill(text: String, trailing: String = "", onClick: (() -> Unit)? = null) {
+    TagChip(text, onClick = onClick, trailing = trailing)
 }
 
 /**

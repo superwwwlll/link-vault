@@ -35,7 +35,6 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -121,23 +120,13 @@ internal fun CollectionPage(
                 ) {
                     tagNames.forEach { tag ->
                         val selected = vm.filter == tag
-                        Box(
-                            Modifier
-                                .clickable { vm.filter(if (selected) "" else tag) }
-                                .heightIn(min = 48.dp)
-                                .widthIn(min = 48.dp)
-                                .semantics { this.selected = selected }
-                                .padding(horizontal = 2.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                tag,
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
-                                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1
-                            )
-                        }
+                        TagChip(
+                            tag,
+                            selected = selected,
+                            toggle = true,
+                            onClick = { vm.filter(if (selected) "" else tag) },
+                            modifier = Modifier.testTag("collection-filter-$tag")
+                        )
                     }
                 }
             }
@@ -385,42 +374,35 @@ private fun CollectionCardTags(tags: List<String>, onTag: (String) -> Unit) {
     var showAll by remember { mutableStateOf(false) }
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
-    val style = MaterialTheme.typography.labelMedium
     BoxWithConstraints(Modifier.fillMaxWidth().testTag("collection-card-tags")) {
-        val padding = with(density) { 18.dp.roundToPx() }
+        val padding = with(density) { (TagChipPadH * 2 + TagChipBorder * 2).roundToPx() }
         val minimum = with(density) { 48.dp.roundToPx() }
-        val gap = with(density) { 6.dp.roundToPx() }
-        fun width(text: String) = (measurer.measure(text, style, maxLines = 1).size.width + padding).coerceAtLeast(minimum)
+        val gap = with(density) { 4.dp.roundToPx() }
+        fun width(text: String) = measurer.measure(text, TagLabelStyle, maxLines = 1, softWrap = false).size.width + padding
         val widths = tags.map { width(it) }
-        val count = collectionVisibleTagCount(widths, constraints.maxWidth, gap) { width("+$it") }
+        val available = constraints.maxWidth
+        val count = collectionVisibleTagCount(widths, available, gap) { hidden -> width("+$hidden").coerceAtLeast(minimum) }
         // 第一枚超宽时计数仍是 0，但卡片上要留下它的开头和省略号，全名从 +N 进入。
         val preview = if (count == 0 && tags.isNotEmpty()) 1 else count
+        val hidden = tags.size - count
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (preview > 0) Text(
-                tags.take(preview).joinToString("  ·  "),
-                Modifier.weight(1f),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            if (count < tags.size) Box(
-                Modifier.heightIn(min = 48.dp).widthIn(min = 48.dp).clickable { showAll = true }
-                    .semantics { contentDescription = "查看全部 ${tags.size} 个标签" },
-                contentAlignment = Alignment.Center
-            ) {
-                Text("+${tags.size - count}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            tags.take(preview).forEach { tag ->
+                val cap = if (count == 0) (available - width("+$hidden").coerceAtLeast(minimum) - gap).coerceAtLeast(1) else null
+                TagChip(tag, modifier = if (cap == null) Modifier else Modifier.widthIn(max = with(density) { cap.toDp() }))
             }
+            if (hidden > 0) TagChip(
+                "+${tags.size - count}",
+                onClick = { showAll = true },
+                description = "查看全部 ${tags.size} 个标签"
+            )
         }
     }
     if (showAll) AlertDialog(onDismissRequest = { showAll = false }, title = { Text("全部标签（${tags.size}）") },
         text = {
             FlowRow(Modifier.fillMaxWidth().heightIn(max = 360.dp).verticalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                horizontalArrangement = Arrangement.spacedBy(0.dp), verticalArrangement = Arrangement.spacedBy(0.dp)) {
                 tags.forEach { tag ->
-                    TextButton(onClick = { showAll = false; onTag(tag) }, modifier = Modifier.heightIn(min = 48.dp)) {
-                        Text(tag, style = MaterialTheme.typography.labelMedium)
-                    }
+                    TagChip(tag, onClick = { showAll = false; onTag(tag) }, maxLines = Int.MAX_VALUE, modifier = Modifier.testTag("collection-tag-choice-$tag"))
                 }
             }
         }, confirmButton = { TextButton(onClick = { showAll = false }) { Text("关闭") } })
