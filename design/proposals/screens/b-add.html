@@ -1,0 +1,47 @@
+<!doctype html><html><head><meta charset='utf-8'><style>
+@font-face { font-family: "Sans"; src: url("file:///tmp/fonts/NotoSansSC.ttf") format("truetype"); font-weight: 100 900; font-display: block; }
+@font-face { font-family: "Serif"; src: url("file:///tmp/fonts/NotoSerifSC.ttf") format("truetype"); font-weight: 100 900; font-display: block; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 390px; height: 844px; overflow: hidden; background: transparent; }
+body { font-family: "Sans", sans-serif; -webkit-font-smoothing: antialiased; }
+button { background: none; border: 0; font: inherit; color: inherit; }
+.phone { width: 390px; height: 844px; position: relative; overflow: hidden; }
+.status { height: 54px; padding: 18px 22px 0; display: flex; justify-content: space-between; align-items: flex-end; font-size: 15px; font-weight: 600; letter-spacing: 0.2px; }
+.sig { display: flex; gap: 3px; align-items: flex-end; height: 12px; }
+.sig i, .sig b { display: block; width: 3px; border-radius: 1px; background: currentColor; }
+.sig i:nth-child(1) { height: 5px; opacity: .45; }
+.sig i:nth-child(2) { height: 8px; opacity: .7; }
+.sig i:nth-child(3) { height: 11px; }
+.sig b { width: 16px; height: 8px; border-radius: 2px; opacity: .9; margin-left: 4px; }
+.nav { height: 48px; display: flex; align-items: center; padding: 0 8px 0 20px; }
+.nav h1 { font-size: 17px; font-weight: 600; flex: 1; }
+.nav .icons { display: flex; }
+.nav .icons span, .nav .back { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; }
+.nav .action { font-size: 17px; font-weight: 600; padding: 0 14px; height: 44px; }
+.scopes { display: flex; gap: 22px; padding: 2px 20px 0; height: 44px; align-items: flex-end; }
+.scopes button { font-size: 16px; line-height: 22px; padding-bottom: 8px; position: relative; }
+.scopes i { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; border-radius: 1px; }
+.dock { position: absolute; left: 0; right: 0; bottom: 0; height: 78px; display: flex; padding: 8px 8px 22px; }
+.dock .tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.dock em { font-style: normal; font-size: 10px; line-height: 12px; letter-spacing: 0.2px; }
+.list { padding: 6px 0 90px; }
+.row { padding: 13px 20px 14px; }
+.row h2 { font-size: 17px; line-height: 24px; font-weight: 500; }
+.row p { margin-top: 3px; font-size: 13px; line-height: 18px; }
+.count { padding: 10px 20px 2px; font-size: 13px; line-height: 18px; }
+
+      .ask { font-family: "Serif", serif; font-size: 28px; line-height: 38px; padding: 8px 28px 12px; }
+      label { display: block; padding: 12px 28px 0; }
+      label span { font-family: "Serif", serif; font-size: 13px; letter-spacing: 0.12em; }
+      label div { font-size: 17px; line-height: 26px; padding: 6px 0 8px; word-break: break-all; }
+      label u { display: block; height: 0.5px; text-decoration: none; }
+    </style></head><body><div class="phone" style="background:#F4EFE6">
+      <div class="status" style="color:#2A241C">
+      <span>08:30</span>
+      <span class="sig"><i></i><i></i><i></i><b></b></span>
+    </div>
+      <div class="nav"><span class="back"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5" stroke="#2A241C" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span><h1></h1><span class="action" style="color:#9C3B2E;font-family:Serif,serif">收好</span></div>
+      <div class="ask" style="color:#2A241C">把这一篇留在书架上</div>
+      <label><span style="color:#8A7B68">链接</span><div style="color:#2A241C">https://sspai.com/post/reading-shelf</div><u style="background:#E3D8C8"></u></label><label><span style="color:#8A7B68">标题</span><div style="color:#2A241C">把读过的长文留在自己的书架上</div><u style="background:#E3D8C8"></u></label><label><span style="color:#8A7B68">一句</span><div style="color:#2A241C">先看结构，再决定要不要翻译。</div><u style="background:#E3D8C8"></u></label><label><span style="color:#8A7B68">标签</span><div style="color:#2A241C">阅读</div><u style="background:#E3D8C8"></u></label>
+      <div class="dock" style="background:#F4EFE6"><div class="tab"><span style="color:#2A241C"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M7 4.8h10v14.4l-5-3.1-5 3.1V4.8z" stroke="#2A241C" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span><em style="color:#2A241C;font-weight:600">收藏</em></div><div class="tab"><span style="color:#8A7B68"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M14.2 5.2l4.2 4.2L9.2 18.6H5v-4.2L14.2 5.2z" stroke="#8A7B68" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span><em style="color:#8A7B68;font-weight:430">笔记</em></div><div class="tab"><span style="color:#8A7B68"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4.8 12.2L12 5h6.2v6.2l-7.2 7.2-6.2-6.2z" stroke="#8A7B68" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="15.2" cy="8.6" r="0.9" fill="#8A7B68" stroke="none"/></svg></span><em style="color:#8A7B68;font-weight:430">标签</em></div><div class="tab"><span style="color:#8A7B68"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M5 8h14M5 12h14M5 16h14" stroke="#8A7B68" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="8" r="1.7" fill="#8A7B68" stroke="none"/><circle cx="15" cy="12" r="1.7" fill="#8A7B68" stroke="none"/><circle cx="11" cy="16" r="1.7" fill="#8A7B68" stroke="none"/></svg></span><em style="color:#8A7B68;font-weight:430">设置</em></div></div>
+    </div></body></html>
