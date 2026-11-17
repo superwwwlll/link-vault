@@ -5,11 +5,8 @@ import android.graphics.Canvas
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onAllNodesWithContentDescription
-import androidx.compose.ui.test.onNodeWithContentDescription
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.Density
@@ -93,11 +90,8 @@ class CatchupVisualTest {
         rule.runOnIdle { vm.show(vm.items.first { it.id == id }); vm.clearMessage() }
         rule.waitUntil(20_000) { rule.runOnIdle { vm.currentSnapshot != null && vm.currentTranslation != null } }
         show(vm)
-        rule.waitUntil(15_000) {
-            runCatching { rule.onAllNodesWithContentDescription("封面图").fetchSemanticsNodes().isNotEmpty() }.getOrDefault(false)
-        }
-        rule.onNodeWithContentDescription("封面图").assertIsDisplayed()
-        capture("gap-cover")
+        rule.onNode(hasText("第一段把读过的话留下来", substring = true)).assertExists()
+        capture("gap-body")
         rule.onNodeWithText("展开全文阅读").performScrollTo().assertIsDisplayed()
         rule.onNodeWithText("原文").assertIsDisplayed()
         rule.onNodeWithText("译文").assertIsDisplayed()

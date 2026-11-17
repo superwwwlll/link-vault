@@ -120,8 +120,22 @@ internal fun TagsPage(vm: VaultViewModel) {
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
     Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
-        if (!searchExpanded) Text("标签", Modifier.padding(start = 28.dp, top = 8.dp, bottom = 4.dp), fontFamily = ReadingSerif, fontSize = 34.sp, lineHeight = 42.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
-        SearchBox(query, { query = it.take(1000) }, "查找标签", Modifier.weight(1f).padding(end = 8.dp), onExpandedChange = { searchExpanded = it }, initiallyExpanded = searchExpanded)
+        if (!searchExpanded) {
+            IconButton(onClick = { vm.tab(0) }, modifier = Modifier.size(48.dp)) {
+                Icon(Glyph.Back, "返回", Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurface)
+            }
+            Text("标签", Modifier.weight(1f), fontFamily = ReadingSerif, fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+        }
+        SearchBox(
+            query, { query = it.take(1000) }, "查找标签",
+            if (searchExpanded) Modifier.weight(1f).padding(horizontal = 8.dp) else Modifier.width(48.dp),
+            onExpandedChange = { searchExpanded = it }, initiallyExpanded = searchExpanded
+        )
+        if (!searchExpanded) {
+            IconButton(onClick = { vm.tab(3) }, modifier = Modifier.size(48.dp)) {
+                Icon(Glyph.Settings, "设置", Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurface)
+            }
+        }
     }
     val tagCount = if (query.isEmpty()) "${totals.size} 个标签" else "${visible.size} / ${totals.size} 个标签"
     val stackSort = LocalDensity.current.fontScale >= 1.7f

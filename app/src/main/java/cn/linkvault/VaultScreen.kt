@@ -140,6 +140,7 @@ fun VaultScreen(vm: VaultViewModel) {
             else if (d != null) cancelConfirm = true
             else if (vm.detailId != null) vm.closeDetail()
             else if (vm.trashOpen) vm.closeTrash()
+            else if (vm.tab == 3) vm.closeSettings()
             else vm.tab(0)
         }
     }
@@ -155,8 +156,8 @@ fun VaultScreen(vm: VaultViewModel) {
             } else if (vm.detailId == null && !vm.trashOpen) {
                 Column(Modifier.navigationBarsPadding().background(MaterialTheme.colorScheme.surface)) {
                     HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
-                    val labels = listOf("收藏", "笔记", "标签", "设置")
-                    val icons = listOf(Glyph.Bookmark, Glyph.Note, Glyph.Tag, Glyph.Settings)
+                    val labels = listOf("收藏", "笔记")
+                    val icons = listOf(Glyph.Bookmark, Glyph.Note)
                     Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                         labels.forEachIndexed { index, label ->
                             val selected = vm.tab == index

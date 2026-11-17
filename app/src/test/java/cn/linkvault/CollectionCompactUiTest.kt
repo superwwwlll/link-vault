@@ -57,7 +57,7 @@ class CollectionCompactUiTest {
         rule.onNodeWithText("多选当前结果").performClick()
         rule.onNodeWithText("已选择 16 条").assertIsDisplayed()
         rule.onNodeWithContentDescription("取消多选").performClick()
-        rule.onAllNodesWithText("X").onFirst().assertIsDisplayed()
+        rule.onAllNodes(hasText("X ·", substring = true)).onFirst().assertIsDisplayed()
         rule.onAllNodesWithContentDescription("查看全部 6 个标签").onFirst().performClick()
         rule.onNodeWithText("全部标签（6）").assertIsDisplayed()
         rule.onNodeWithTag("collection-tag-choice-很长的研究方法标签补充说明").performClick()

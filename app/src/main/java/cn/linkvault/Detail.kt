@@ -49,6 +49,7 @@ internal fun DetailPage(
     val clipboard = LocalClipboardManager.current
     val haptic = LocalHapticFeedback.current
     var menu by remember { mutableStateOf(false) }
+    var showCover by rememberSaveable(item.id) { mutableStateOf(false) }
     val fetching = vm.fetchingId == item.id
     // 抓取和看图共用同一个联网开关：默认关闭时，一个请求都不该发出去
     val canFetch = vm.fetchEnabled && item.url.startsWith("https://", true)
@@ -56,7 +57,7 @@ internal fun DetailPage(
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
     PageToolbar("", onBack) {
         TextButton(onClick = onOpen, modifier = Modifier.heightIn(min = 48.dp)) {
-            Text("打开", fontFamily = ReadingSerif, color = MaterialTheme.colorScheme.primary, fontSize = 17.sp)
+            Text("打开原文", fontFamily = ReadingSerif, color = MaterialTheme.colorScheme.primary, fontSize = 17.sp)
         }
         IconButton(onClick = onEdit, enabled = !vm.busy, modifier = Modifier.size(48.dp)) {
             Icon(Glyph.Edit, "编辑收藏", Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurface)
@@ -125,29 +126,113 @@ internal fun DetailPage(
             Text(
                 Links.displayTitle(item.url, item.title),
                 fontFamily = ReadingSerif,
-                fontSize = 32.sp,
-                lineHeight = 44.sp,
+                fontSize = 26.sp,
+                lineHeight = 36.sp,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface
             )
         }
-        val site = Links.siteName(item.url)
+        val source = Links.listSource(item.url, item.title)
         val stamp = buildString {
-            if (site.isNotEmpty()) append(site).append("  ·  ")
+            if (source.isNotEmpty()) append(source).append("  ·  ")
             append(Stamp.date(item.createdAt))
             if (item.updatedAt / 60_000L > item.createdAt / 60_000L) append("  ·  更新 ").append(Stamp.date(item.updatedAt))
         }
         Text(stamp, fontSize = 13.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+
+        val snapshot = vm.currentSnapshot
+        val translation = vm.currentTranslation
+        val fetchingSnapshot = vm.fetchingSnapshot
+        var expandedReader by remember { mutableStateOf(false) }
+        var showTranslated by rememberSaveable { mutableStateOf(false) }
+        if (snapshot != null) {
+            val readerText = if (showTranslated && translation != null) translation else snapshot
+            if (translation != null) {
+                QuietChoice(
+                    items = listOf("原文", "译文"),
+                    selected = if (showTranslated) "译文" else "原文",
+                    onSelect = { showTranslated = it == "译文" }
+                )
+            }
+            SelectionContainer {
+                SnapshotMarkdownViewer(
+                    markdown = readerText,
+                    expanded = expandedReader,
+                    showImages = expandedReader && canFetch && !(showTranslated && translation != null)
+                )
+            }
+            Text(
+                buildString {
+                    append(if (showTranslated && translation != null) "正文译文" else "离线正文快照")
+                    append("  ·  ")
+                    append(when {
+                        showTranslated && translation != null -> "译文 ${translation.length} 字"
+                        else -> "已缓存 Markdown · ${snapshot.length} 字"
+                    })
+                },
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (snapshot.length > 200) {
+                DetailActionRow(if (expandedReader) "收起阅读模式" else "展开全文阅读") { expandedReader = !expandedReader }
+            }
+            DetailActionRow("复制正文") {
+                clipboard.setText(AnnotatedString(snapshot))
+                vm.toast("已复制 Markdown 正文")
+            }
+            val translateLabel = when {
+                vm.translating -> {
+                    val (done, total) = vm.translateStep
+                    if (total > 0) "翻译中 $done/$total 段" else "翻译中…"
+                }
+                translation == null -> "译成中文"
+                else -> "看译文"
+            }
+            DetailActionRow(translateLabel, busy = vm.translating, enabled = !vm.busy && !vm.translating) {
+                if (translation == null) vm.translate(item) else showTranslated = true
+            }
+            if (canFetch) {
+                DetailActionRow(if (fetchingSnapshot) "抓取中…" else "更新快照", busy = fetchingSnapshot, enabled = !vm.busy && !fetchingSnapshot) {
+                    vm.captureSnapshot(item)
+                }
+            }
+            DetailActionRow("删除快照", destructive = true) { vm.removeSnapshot(item.id) }
+        }
+
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(item.url, Modifier.weight(1f), fontSize = 13.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
             IconButton(onClick = { clipboard.setText(AnnotatedString(item.url)); vm.toast("已复制原链接") }, modifier = Modifier.size(48.dp)) {
                 Icon(Glyph.Copy, "复制原链接", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
 
-        // 封面图：库里只有 URL，每次进页面现取；取不到就一行都不占，不画灰块也不画破图。
-        val cover = if (canFetch) rememberLoadedImage(item.image) else null
+        if (item.notes.isNotBlank()) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("我的一句", fontFamily = ReadingSerif, fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
+                SelectionContainer {
+                    Text(
+                        item.notes,
+                        Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(onClick = onEdit),
+                        fontFamily = ReadingSerif,
+                        fontSize = 17.sp,
+                        lineHeight = 28.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+        } else {
+            DetailActionRow("添加备注", onClick = onEdit)
+        }
+
+        if (item.tags.isNotEmpty()) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(0.dp), verticalArrangement = Arrangement.spacedBy(0.dp)) {
+                parseTags(item.tags).forEach { tag ->
+                    TagChip(tag, onClick = { vm.tag(tag) }, maxLines = Int.MAX_VALUE)
+                }
+            }
+        }
+
+        val cover = rememberLoadedImage(item.image, enabled = showCover && canFetch)
         if (cover != null) {
             Image(
                 bitmap = cover,
@@ -160,35 +245,6 @@ internal fun DetailPage(
             )
         }
 
-        // 我的手记：有内容才铺便签，空着的时候只留一行入口
-        if (item.notes.isNotBlank()) {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("我的一句", fontFamily = ReadingSerif, fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
-                SelectionContainer {
-                    Text(
-                        item.notes,
-                        Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(onClick = onEdit),
-                        fontFamily = ReadingSerif,
-                        fontSize = 20.sp,
-                        lineHeight = 32.sp,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-        } else {
-            DetailActionRow("添加备注", onClick = onEdit)
-        }
-
-        if (item.tags.isNotEmpty()) Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("标签", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(0.dp), verticalArrangement = Arrangement.spacedBy(0.dp)) {
-                parseTags(item.tags).forEach { tag ->
-                    TagChip(tag, onClick = { vm.tag(tag) }, maxLines = Int.MAX_VALUE)
-                }
-            }
-        }
-
-        // 页面描述：抓不到就不占一整张卡片，只留抓取入口
         if (item.summary.isNotBlank()) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
@@ -198,75 +254,18 @@ internal fun DetailPage(
                 SelectionContainer {
                     Text(item.summary, fontFamily = ReadingSerif, fontSize = 17.sp, lineHeight = 30.sp, color = MaterialTheme.colorScheme.onSurface)
                 }
-                if (canFetch) DetailActionRow(if (fetching) "抓取中…" else if (item.fetchedAt > 0) "重新抓取" else "抓取页面信息", busy = fetching) { vm.fetch(item) }
+                if (canFetch) DetailActionRow(if (fetching) "抓取中…" else if (item.fetchedAt > 0) "重新抓取" else "抓取页面信息", busy = fetching) {
+                    showCover = true
+                    vm.fetch(item)
+                }
             }
         } else if (canFetch) {
-            DetailActionRow(if (fetching) "抓取中…" else "抓取页面信息", busy = fetching) { vm.fetch(item) }
+            DetailActionRow(if (fetching) "抓取中…" else "抓取页面信息", busy = fetching) {
+                showCover = true
+                vm.fetch(item)
+            }
         }
-
-        // 离线正文快照 / 本地阅读模式
-        val snapshot = vm.currentSnapshot
-        val translation = vm.currentTranslation
-        val fetchingSnapshot = vm.fetchingSnapshot
-        var expandedReader by remember { mutableStateOf(false) }
-        var showTranslated by rememberSaveable { mutableStateOf(false) }
-
-        if (snapshot != null) {
-            // 译文没生成过时不摆切换：一个点不动的开关比没有开关更糟
-            val readerText = if (showTranslated && translation != null) translation else snapshot
-            if (translation != null) {
-                QuietChoice(
-                    items = listOf("原文", "译文"),
-                    selected = if (showTranslated) "译文" else "原文",
-                    onSelect = { showTranslated = it == "译文" }
-                )
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(
-                    buildString {
-                        append(if (showTranslated && translation != null) "正文译文" else "离线正文快照")
-                        append("  ·  ")
-                        append(when {
-                            showTranslated && translation != null -> "译文 ${translation.length} 字"
-                            else -> "已缓存 Markdown · ${snapshot.length} 字"
-                        })
-                    },
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                SelectionContainer {
-                    SnapshotMarkdownViewer(
-                        markdown = readerText,
-                        expanded = expandedReader,
-                        showImages = canFetch && !(showTranslated && translation != null)
-                    )
-                }
-                if (snapshot.length > 200) {
-                    DetailActionRow(if (expandedReader) "收起阅读模式" else "展开全文阅读") { expandedReader = !expandedReader }
-                }
-                DetailActionRow("复制正文") {
-                    clipboard.setText(AnnotatedString(snapshot))
-                    vm.toast("已复制 Markdown 正文")
-                }
-                val translateLabel = when {
-                    vm.translating -> {
-                        val (done, total) = vm.translateStep
-                        if (total > 0) "翻译中 $done/$total 段" else "翻译中…"
-                    }
-                    translation == null -> "译成中文"
-                    else -> "看译文"
-                }
-                DetailActionRow(translateLabel, busy = vm.translating, enabled = !vm.busy && !vm.translating) {
-                    if (translation == null) vm.translate(item) else showTranslated = true
-                }
-                if (canFetch) {
-                    DetailActionRow(if (fetchingSnapshot) "抓取中…" else "更新快照", busy = fetchingSnapshot, enabled = !vm.busy && !fetchingSnapshot) {
-                        vm.captureSnapshot(item)
-                    }
-                }
-                DetailActionRow("删除快照", destructive = true) { vm.removeSnapshot(item.id) }
-            }
-        } else if (canFetch) {
+        if (snapshot == null && canFetch) {
             DetailActionRow(if (fetchingSnapshot) "正文提取与重排中…" else "提取正文快照", busy = fetchingSnapshot) { vm.captureSnapshot(item) }
         }
 

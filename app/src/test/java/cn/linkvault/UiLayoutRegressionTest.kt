@@ -77,10 +77,11 @@ class UiLayoutRegressionTest {
         rule.onNodeWithContentDescription("清空搜索").performClick()
         rule.onNodeWithContentDescription("关闭搜索").performClick()
         capture("ui-161-collection-narrow")
-        rule.onNodeWithText("标签", substring = false).performClick()
+        rule.onNodeWithContentDescription("展开标签筛选").performClick()
+        rule.onNodeWithText("管理标签").performClick()
         rule.onNodeWithText("多 Agent 管理").assertIsDisplayed()
         capture("ui-161-tags-narrow")
-        rule.onNodeWithText("设置", substring = false).performClick()
+        rule.onNodeWithContentDescription("设置").performClick()
         capture("ui-161-settings-narrow")
     }
 
@@ -89,11 +90,12 @@ class UiLayoutRegressionTest {
         rule.onNodeWithContentDescription("展开搜索").assertIsDisplayed()
         rule.onNodeWithText(title).assertIsDisplayed()
         capture("ui-161-collection-large-text")
-        rule.onNodeWithText("标签", substring = false).performClick()
+        rule.onNodeWithContentDescription("展开标签筛选").performClick()
+        rule.onNodeWithText("管理标签").performClick()
         rule.onNodeWithText("多 Agent 管理").assertIsDisplayed().performClick()
         rule.runOnIdle { check(ViewModelProvider(rule.activity)[VaultViewModel::class.java].filter == "多 Agent 管理") }
         rule.onNodeWithText(title).assertIsDisplayed()
-        rule.onNodeWithText("设置", substring = false).performClick()
+        rule.onNodeWithContentDescription("设置").performClick()
         capture("ui-161-settings-large-text")
         rule.onNodeWithText("AI 接口").performScrollTo().performClick()
         rule.onNodeWithText("你的 API Key").performScrollTo().assertIsDisplayed()

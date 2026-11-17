@@ -92,11 +92,11 @@ internal object Images {
  * 而失败时那块灰会一直留着，比没有图更难看。
  */
 @Composable
-internal fun rememberLoadedImage(url: String): ImageBitmap? {
+internal fun rememberLoadedImage(url: String, enabled: Boolean = true): ImageBitmap? {
     if (url.isBlank()) return null
     var bitmap by remember(url) { mutableStateOf(Images.cached(url)?.asImageBitmap()) }
-    LaunchedEffect(url) {
-        if (bitmap == null) Images.load(url)?.let { bitmap = it.asImageBitmap() }
+    LaunchedEffect(url, enabled) {
+        if (enabled && bitmap == null) Images.load(url)?.let { bitmap = it.asImageBitmap() }
     }
     return bitmap
 }

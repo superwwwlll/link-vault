@@ -44,10 +44,13 @@ internal fun NotesPage(vm: VaultViewModel, listState: LazyListState = rememberLa
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
         Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("笔记", Modifier.weight(1f).padding(start = 28.dp, top = 8.dp, bottom = 4.dp), fontFamily = ReadingSerif, fontSize = 34.sp, lineHeight = 42.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+            Text("笔记", Modifier.weight(1f).padding(start = 20.dp), fontFamily = ReadingSerif, fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
             IconButton(onClick = { searchExpanded = !searchExpanded; if (!searchExpanded) notes.search("") }, modifier = Modifier.size(48.dp)) {
                 Icon(if (searchExpanded || notes.search.isNotEmpty()) Glyph.Close else Glyph.Search,
                     if (searchExpanded || notes.search.isNotEmpty()) "收起搜索" else "展开搜索", Modifier.size(21.dp), tint = MaterialTheme.colorScheme.onSurface)
+            }
+            IconButton(onClick = { vm.tab(3) }, modifier = Modifier.size(48.dp)) {
+                Icon(Glyph.Settings, "设置", Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurface)
             }
             IconButton(onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); notes.create() }, modifier = Modifier.size(48.dp)) {
                 Icon(Glyph.Add, "新建笔记", Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurface)
