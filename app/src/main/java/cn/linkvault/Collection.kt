@@ -24,7 +24,8 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.focus.FocusRequester
@@ -226,48 +227,41 @@ internal fun CollectionPage(
 
 @Composable
 private fun CollectionScopes(scope: Int, onScope: (Int) -> Unit) {
-    val dark = LocalVaultDark.current
-    val scale = LocalDensity.current.fontScale
-    val pad = if (scale >= 1.7f) 4.dp else 16.dp
-    val track = if (dark) Color(0xFF1A1A19) else Color(0xFFE9E8E4)
-    val selectedFill = if (dark) Color(0xFF3A3936) else Color.White
-    BoxWithConstraints(Modifier.fillMaxWidth().padding(start = pad, end = pad, bottom = 4.dp)) {
-        val glyph = (((maxWidth / 4) - 8.dp).value / 3f / scale).coerceIn(11f, 13f)
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .height(48.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(track)
-        ) {
-            scopeLabels.forEachIndexed { index, label ->
-                val selected = scope == index
-                Box(
-                    Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .testTag("collection-scope-$index")
-                        .semantics { this.selected = selected; contentDescription = label }
-                        .clickable { onScope(index) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Box(
-                        Modifier
-                            .padding(2.dp)
-                            .fillMaxSize()
-                            .background(if (selected) selectedFill else Color.Transparent, RoundedCornerShape(8.dp))
-                    )
-                    Text(
-                        label,
-                        fontSize = glyph.sp,
-                        lineHeight = (glyph * 1.2f).sp,
-                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-                        color = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        softWrap = false,
-                        overflow = TextOverflow.Clip
-                    )
-                }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(start = 4.dp, end = 4.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        scopeLabels.forEachIndexed { index, label ->
+            val selected = scope == index
+            Column(
+                Modifier
+                    .testTag("collection-scope-$index")
+                    .semantics { this.selected = selected }
+                    .clickable { onScope(index) }
+                    .padding(horizontal = 12.dp)
+                    .heightIn(min = 48.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                val line = if (selected) MaterialTheme.colorScheme.onSurface else Color.Transparent
+                Text(
+                    label,
+                    Modifier.drawBehind {
+                        val stroke = 2.dp.toPx()
+                        val y = size.height - stroke / 2f
+                        drawLine(line, Offset(0f, y), Offset(size.width, y), stroke)
+                    },
+                    fontSize = 17.sp,
+                    lineHeight = 22.sp,
+                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                    color = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Visible
+                )
             }
         }
     }

@@ -69,8 +69,10 @@ class UiPolishTest {
     }
 
     private fun scopes() {
-        (0..3).forEach { index -> rule.onNodeWithTag("collection-scope-$index").assertIsDisplayed().performClick().assertIsSelected() }
-        rule.onNodeWithTag("collection-scope-0").performClick()
+        (0..3).forEach { index ->
+            rule.onNodeWithTag("collection-scope-$index").performScrollTo().assertIsDisplayed().performClick().assertIsSelected()
+        }
+        rule.onNodeWithTag("collection-scope-0").performScrollTo().performClick()
     }
 
     @Test fun allFourScopesRemainReachableAtDoubleFont() {

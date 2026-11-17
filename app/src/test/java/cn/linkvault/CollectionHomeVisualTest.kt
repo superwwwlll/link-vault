@@ -10,9 +10,12 @@ import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.Density
 import androidx.lifecycle.ViewModelProvider
 import java.io.File
@@ -100,24 +103,32 @@ class CollectionHomeVisualTest {
         assertTrue("新增盖住了菜单 add=$add menu=$menu", menu.top >= add.bottom - 1f)
         rule.onNodeWithText("我的收藏").assertIsDisplayed()
         rule.onNodeWithTag("collection-result-count").assertIsDisplayed()
+        listOf("未归档", "未读", "已读", "归档").forEachIndexed { index, label ->
+            rule.onNodeWithTag("collection-scope-$index").performScrollTo().assertIsDisplayed().performClick().assertIsSelected()
+            val again = rule.onNodeWithTag("collection-scope-$index").fetchSemanticsNode().boundsInRoot
+            val textAgain = rule.onNode(hasText(label) and hasAnyAncestor(hasTestTag("collection-scope-$index")), useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+            assertTrue("$label 点选后被裁切 text=$textAgain scope=$again", textAgain.left >= again.left - 1f && textAgain.right <= again.right + 1f && textAgain.top >= again.top - 1f && textAgain.bottom <= again.bottom + 1f)
+        }
     }
 
     @Test fun regularHome() {
         val vm = seed()
-        assertHomeChrome(vm)
         capture("home-v2-regular")
+        assertHomeChrome(vm)
+        capture("home-v2-scope-archived")
     }
 
     @Test @Config(qualifiers = "w320dp-h740dp-xxhdpi")
     fun narrowLargeTypeHome() {
         val vm = seed(scale = 2f)
-        assertHomeChrome(vm)
         capture("home-v2-narrow-large")
+        assertHomeChrome(vm)
+        capture("home-v2-narrow-large-archived")
     }
 
     @Test fun darkHome() {
         val vm = seed(dark = true)
-        assertHomeChrome(vm)
         capture("home-v2-dark")
+        assertHomeChrome(vm)
     }
 }

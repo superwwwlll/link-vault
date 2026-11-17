@@ -7,6 +7,7 @@ package cn.linkvault
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,6 +19,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
@@ -312,20 +315,36 @@ private fun DetailActionRow(
 
 @Composable
 private fun QuietChoice(items: List<String>, selected: String, onSelect: (String) -> Unit) {
-    val dark = LocalVaultDark.current
-    val track = if (dark) Color(0xFF1A1A19) else Color(0xFFE9E8E4)
-    val selectedFill = if (dark) Color(0xFF3A3936) else Color.White
     Row(
-        Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(10.dp)).background(track)
+        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         items.forEach { label ->
             val chosen = label == selected
-            Box(
-                Modifier.weight(1f).fillMaxHeight().semantics { this.selected = chosen }.clickable { onSelect(label) },
-                contentAlignment = Alignment.Center
+            Column(
+                Modifier
+                    .semantics { this.selected = chosen }
+                    .clickable { onSelect(label) }
+                    .padding(end = 20.dp)
+                    .heightIn(min = 48.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
-                Box(Modifier.padding(2.dp).fillMaxSize().background(if (chosen) selectedFill else Color.Transparent, RoundedCornerShape(8.dp)))
-                Text(label, fontSize = 15.sp, fontWeight = if (chosen) FontWeight.SemiBold else FontWeight.Medium, color = if (chosen) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
+                val line = if (chosen) MaterialTheme.colorScheme.onSurface else Color.Transparent
+                Text(
+                    label,
+                    Modifier.drawBehind {
+                        val stroke = 2.dp.toPx()
+                        val y = size.height - stroke / 2f
+                        drawLine(line, Offset(0f, y), Offset(size.width, y), stroke)
+                    },
+                    fontSize = 17.sp,
+                    lineHeight = 22.sp,
+                    fontWeight = if (chosen) FontWeight.SemiBold else FontWeight.Normal,
+                    color = if (chosen) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    softWrap = false
+                )
             }
         }
     }
