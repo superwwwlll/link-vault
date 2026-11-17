@@ -11,8 +11,8 @@ android {
         applicationId = "cn.linkvault"
         minSdk = 26
         targetSdk = 35
-        versionCode = 27
-        versionName = "1.6.3"
+        versionCode = 28
+        versionName = "1.6.4"
     }
     buildFeatures { compose = true }
     // 迁移测试直接读取已版本化的历史 schema，避免遗漏或维护两份副本。
