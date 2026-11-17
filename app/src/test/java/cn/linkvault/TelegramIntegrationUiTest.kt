@@ -104,7 +104,7 @@ class TelegramIntegrationUiTest {
         rule.onNodeWithText("AI 对话").assertIsDisplayed()
         rule.runOnIdle { check(vm.draft == null); check(vm.pending != null) }
         rule.runOnIdle { rule.activity.onBackPressedDispatcher.onBackPressed() }
-        rule.onNodeWithText("收藏详情").assertIsDisplayed()
+        rule.onNodeWithText("打开").assertIsDisplayed()
         rule.runOnIdle { check(vm.detailId == item.id); check(vm.analysisConversationKey == null) }
         rule.runOnIdle { vm.openAnalysisConversation(key) }
         rule.onNode(hasTestTag("analysis-conversation-input")).assertTextContains("保留尚未发送的问题")

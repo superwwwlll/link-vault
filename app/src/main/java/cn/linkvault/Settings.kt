@@ -51,7 +51,7 @@ internal fun SettingsPage(
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
         if (page.isEmpty()) {
             Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("设置", Modifier.padding(start = 16.dp), fontSize = 17.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                Text("设置", Modifier.padding(start = 28.dp, top = 8.dp, bottom = 4.dp), fontFamily = ReadingSerif, fontSize = 34.sp, lineHeight = 42.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
             }
         } else {
             PageToolbar(page, goBack)

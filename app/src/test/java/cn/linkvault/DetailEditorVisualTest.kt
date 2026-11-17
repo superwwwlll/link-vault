@@ -77,9 +77,9 @@ class DetailEditorVisualTest {
     @Test fun regularDetailAndEditor() {
         val (vm, item) = seed()
         rule.runOnIdle { vm.show(item); vm.clearMessage() }
-        rule.onNodeWithText("收藏详情").assertIsDisplayed()
+        rule.onNodeWithText("打开").assertIsDisplayed()
         rule.onNodeWithContentDescription("复制原链接").assertIsDisplayed()
-        rule.onNodeWithText("我的备注").assertIsDisplayed()
+        rule.onNodeWithText("我的一句").assertIsDisplayed()
         capture("detail-v2-regular")
         rule.runOnIdle { vm.open(item); vm.clearMessage() }
         rule.onNodeWithText("编辑收藏").assertIsDisplayed()
@@ -93,7 +93,7 @@ class DetailEditorVisualTest {
     @Test fun darkDetailAndEditor() {
         val (vm, item) = seed(dark = true)
         rule.runOnIdle { vm.show(item); vm.clearMessage() }
-        rule.onNodeWithText("收藏详情").assertIsDisplayed()
+        rule.onNodeWithText("打开").assertIsDisplayed()
         capture("detail-v2-dark")
         rule.runOnIdle { vm.open(item); vm.clearMessage() }
         rule.onNodeWithText("保存收藏").assertIsDisplayed()
@@ -104,7 +104,7 @@ class DetailEditorVisualTest {
     fun narrowLargeDetailAndEditor() {
         val (vm, item) = seed(scale = 2f)
         rule.runOnIdle { vm.show(item); vm.clearMessage() }
-        rule.onNodeWithText("收藏详情").assertIsDisplayed()
+        rule.onNodeWithText("打开").assertIsDisplayed()
         rule.onNodeWithContentDescription("复制原链接").assertIsDisplayed()
         capture("detail-v2-narrow-large")
         rule.runOnIdle { vm.open(item); vm.clearMessage() }

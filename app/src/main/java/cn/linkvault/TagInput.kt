@@ -50,7 +50,7 @@ internal fun TagInput(vm: VaultViewModel, draft: Draft) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (selected.isNotEmpty()) FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             selected.forEach { tag ->
-                val fill = if (LocalVaultDark.current) Color(0xFF1A1A19) else Color(0xFFE9E8E4)
+                val fill = if (LocalVaultDark.current) NightFill else DayFill
                 Surface(onClick = { update(selected.filter { Links.tagKey(it) != Links.tagKey(tag) }) }, enabled = !vm.busy,
                     color = fill, shape = RoundedCornerShape(8.dp),
                     modifier = Modifier.heightIn(min = 48.dp).widthIn(min = 48.dp, max = 280.dp).semantics { contentDescription = "移除标签 $tag" }) {
@@ -68,11 +68,11 @@ internal fun TagInput(vm: VaultViewModel, draft: Draft) {
             else vm.fail("标签长度已达上限")
         }, enabled = !vm.busy, singleLine = true,
             placeholder = { Text("添加标签，回车确认", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) },
-            textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
+            textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface, fontSize = 17.sp, lineHeight = 26.sp),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { commit() }),
-            shape = RoundedCornerShape(10.dp),
-            colors = quietFillColors(),
+            shape = RoundedCornerShape(0.dp),
+            colors = readingLineColors(),
             modifier = Modifier.fillMaxWidth().onFocusChanged { state ->
                 if (focused && !state.isFocused && input.isNotBlank()) commit()
                 focused = state.isFocused

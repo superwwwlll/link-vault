@@ -62,7 +62,7 @@ class CollectionTelegramUiTest {
         rule.runOnIdle { rule.activity.onBackPressedDispatcher.onBackPressed() }
         rule.runOnIdle { assertFalse(selecting) }
         rule.onNodeWithTag("collection-list").performScrollToIndex(15)
-        rule.onNodeWithText("我的收藏").assertIsDisplayed()
+        rule.onNodeWithText("书架").assertIsDisplayed()
         rule.onNodeWithTag("collection-search-toggle").assertIsDisplayed()
         rule.onNodeWithTag("collection-scope-0").assertIsSelected()
     }

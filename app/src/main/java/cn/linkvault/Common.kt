@@ -232,9 +232,9 @@ internal fun PageToolbar(title: String, onBack: () -> Unit, subtitle: String = "
         Modifier.fillMaxWidth().heightIn(min = 48.dp).background(MaterialTheme.colorScheme.surface),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) { Icon(Glyph.Back, "返回", tint = MaterialTheme.colorScheme.primary) }
+        IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) { Icon(Glyph.Back, "返回", tint = MaterialTheme.colorScheme.onSurface) }
         Column(Modifier.weight(1f)) {
-            Text(title, fontSize = 17.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurface)
+            Text(title, fontFamily = ReadingSerif, fontSize = 17.sp, lineHeight = 22.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurface)
             if (subtitle.isNotEmpty()) Text(subtitle, fontSize = 13.sp, lineHeight = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         action?.invoke()
@@ -242,13 +242,28 @@ internal fun PageToolbar(title: String, onBack: () -> Unit, subtitle: String = "
 }
 
 @Composable
+internal fun readingLineColors() = TextFieldDefaults.colors(
+    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+    disabledTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    focusedContainerColor = Color.Transparent,
+    unfocusedContainerColor = Color.Transparent,
+    disabledContainerColor = Color.Transparent,
+    cursorColor = MaterialTheme.colorScheme.primary,
+    focusedIndicatorColor = MaterialTheme.colorScheme.outline,
+    unfocusedIndicatorColor = MaterialTheme.colorScheme.outlineVariant,
+    disabledIndicatorColor = MaterialTheme.colorScheme.outlineVariant,
+    errorIndicatorColor = MaterialTheme.colorScheme.error
+)
+
+@Composable
 internal fun quietFillColors() = TextFieldDefaults.colors(
     focusedTextColor = MaterialTheme.colorScheme.onSurface,
     unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
     disabledTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-    focusedContainerColor = if (LocalVaultDark.current) Color(0xFF1A1A19) else Color(0xFFE9E8E4),
-    unfocusedContainerColor = if (LocalVaultDark.current) Color(0xFF1A1A19) else Color(0xFFE9E8E4),
-    disabledContainerColor = if (LocalVaultDark.current) Color(0xFF1A1A19) else Color(0xFFE9E8E4),
+    focusedContainerColor = if (LocalVaultDark.current) NightFill else DayFill,
+    unfocusedContainerColor = if (LocalVaultDark.current) NightFill else DayFill,
+    disabledContainerColor = if (LocalVaultDark.current) NightFill else DayFill,
     cursorColor = MaterialTheme.colorScheme.primary,
     focusedIndicatorColor = Color.Transparent,
     unfocusedIndicatorColor = Color.Transparent,

@@ -160,7 +160,7 @@ fun VaultScreen(vm: VaultViewModel) {
                     Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                         labels.forEachIndexed { index, label ->
                             val selected = vm.tab == index
-                            val tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            val tint = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
                             Column(
                                 Modifier.weight(1f).heightIn(min = 48.dp).clickable { vm.tab(index) }.semantics { this.selected = selected }.padding(vertical = 4.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,

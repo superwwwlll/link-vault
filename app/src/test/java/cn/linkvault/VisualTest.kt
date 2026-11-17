@@ -93,7 +93,7 @@ class VisualTest {
         rule.runOnIdle { vm.reload() }
         rule.waitUntil(20000) { rule.runOnIdle { vm.items.size == 3 } }
         rule.runOnIdle { vm.theme("light"); vm.scope(0); vm.search("") }
-        rule.onNodeWithText("我的收藏").assertIsDisplayed()
+        rule.onNodeWithText("书架").assertIsDisplayed()
         // 真实点击验收：页签必须可点，搜索框必须能输入并筛选，而不是只看截图。
         rule.onNode(hasText("未读") and hasClickAction()).performClick()
         rule.onNode(hasText("未读") and hasClickAction()).assertIsSelected()
@@ -126,7 +126,7 @@ class VisualTest {
         runBlocking { scrollSamples.forEach { VaultDb.get(rule.activity).bookmarks().delete(it) } }
         rule.waitUntil(20_000) { rule.runOnIdle { vm.items.size == 3 } }
         rule.onNodeWithText("值得慢慢看的宇宙").performClick()
-        rule.onNodeWithText("收藏详情").assertIsDisplayed()
+        rule.onNodeWithText("打开").assertIsDisplayed()
         capture("02-detail-light")
         // 抓取默认关闭，详情页的「抓取页面信息 / 提取正文快照」入口在上面的图里根本不出现。
         // 空态收纳后这三行是详情页的主要入口，必须单独拍一张。
@@ -167,7 +167,7 @@ class VisualTest {
         }
         rule.onNodeWithContentDescription("返回").performClick()
         rule.onNodeWithText("值得慢慢看的宇宙").performClick()
-        rule.onNodeWithText("收藏详情").assertIsDisplayed()
+        rule.onNodeWithText("打开").assertIsDisplayed()
         // 图片在后台线程解码，等它真的进到语义树再截图，否则拍到的是「还没加载完」的空页。
         // 用未合并树查：正文快照整块包在 SelectionContainer 里，图片的描述会被合并到父节点上。
         rule.waitUntil(20_000) { rule.onAllNodes(hasContentDescription("封面图"), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }

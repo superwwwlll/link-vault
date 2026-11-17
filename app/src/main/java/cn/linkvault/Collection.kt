@@ -95,13 +95,16 @@ internal fun CollectionPage(
                 }
             } else {
                 Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("我的收藏", Modifier.weight(1f).padding(start = 16.dp), fontSize = 17.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    Column(Modifier.weight(1f).padding(start = 28.dp, top = 6.dp, bottom = 2.dp)) {
+                        Text("链藏", fontSize = 12.sp, lineHeight = 16.sp, letterSpacing = 2.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("书架", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurface)
+                    }
                     IconButton(onClick = { if (searchExpanded || vm.search.isNotEmpty()) { vm.search(""); searchExpanded = false } else searchExpanded = true }, modifier = Modifier.size(48.dp).testTag("collection-search-toggle")) {
                         Icon(if (searchExpanded || vm.search.isNotEmpty()) Glyph.Close else Glyph.Search,
-                            if (searchExpanded || vm.search.isNotEmpty()) "收起搜索" else "展开搜索", Modifier.size(21.dp), tint = MaterialTheme.colorScheme.primary)
+                            if (searchExpanded || vm.search.isNotEmpty()) "收起搜索" else "展开搜索", Modifier.size(21.dp), tint = MaterialTheme.colorScheme.onSurface)
                     }
                     if (showAdd) IconButton(onClick = onAdd, modifier = Modifier.size(48.dp)) {
-                        Icon(Glyph.Add, "收藏链接", Modifier.size(22.dp), tint = MaterialTheme.colorScheme.primary)
+                        Icon(Glyph.Add, "收藏链接", Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurface)
                     }
                 }
             }
@@ -138,7 +141,7 @@ internal fun CollectionPage(
                     }
                 }
             }
-            Row(Modifier.fillMaxWidth().padding(start = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().padding(start = 28.dp), verticalAlignment = Alignment.CenterVertically) {
                 val heading = when {
                     vm.search.isNotBlank() -> "搜索结果"
                     vm.filter.isNotBlank() -> "# ${vm.filter}"
@@ -231,7 +234,7 @@ private fun CollectionScopes(scope: Int, onScope: (Int) -> Unit) {
         Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
-            .padding(start = 4.dp, end = 4.dp, bottom = 4.dp),
+            .padding(start = 16.dp, end = 16.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         scopeLabels.forEachIndexed { index, label ->
@@ -246,7 +249,7 @@ private fun CollectionScopes(scope: Int, onScope: (Int) -> Unit) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                val line = if (selected) MaterialTheme.colorScheme.onSurface else Color.Transparent
+                val line = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent
                 Text(
                     label,
                     Modifier.drawBehind {
@@ -254,9 +257,10 @@ private fun CollectionScopes(scope: Int, onScope: (Int) -> Unit) {
                         val y = size.height - stroke / 2f
                         drawLine(line, Offset(0f, y), Offset(size.width, y), stroke)
                     },
+                    fontFamily = ReadingSerif,
                     fontSize = 17.sp,
                     lineHeight = 22.sp,
-                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                    fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
                     color = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     softWrap = false,
@@ -287,8 +291,8 @@ private fun CollectionSearch(value: String, onChange: (String) -> Unit, onClose:
         },
         shape = RoundedCornerShape(10.dp),
         colors = TextFieldDefaults.colors(
-            focusedContainerColor = if (dark) Color(0xFF1A1A19) else Color(0xFFE9E8E4),
-            unfocusedContainerColor = if (dark) Color(0xFF1A1A19) else Color(0xFFE9E8E4),
+            focusedContainerColor = if (dark) NightFill else DayFill,
+            unfocusedContainerColor = if (dark) NightFill else DayFill,
             focusedIndicatorColor = Color.Transparent,
             unfocusedIndicatorColor = Color.Transparent,
             disabledIndicatorColor = Color.Transparent,
@@ -581,31 +585,45 @@ private fun BookmarkCard(
                     tint = MaterialTheme.colorScheme.primary
                 )
             }
-            Column(Modifier.weight(1f).padding(start = if (selectionMode) 12.dp else 16.dp, top = 12.dp, bottom = 12.dp, end = 4.dp)) {
+            Column(Modifier.weight(1f).padding(start = if (selectionMode) 12.dp else 28.dp, top = 18.dp, bottom = 16.dp, end = 8.dp)) {
+                if (site.isNotEmpty()) {
+                    Text(site, fontSize = 12.sp, lineHeight = 16.sp, letterSpacing = 1.sp, color = MaterialTheme.colorScheme.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
                 Text(
                     displayTitle,
-                    fontSize = 17.sp,
-                    lineHeight = 22.sp,
-                    fontWeight = if (item.read) FontWeight.Normal else FontWeight.Medium,
+                    Modifier.padding(top = if (site.isNotEmpty()) 6.dp else 0.dp),
+                    fontFamily = ReadingSerif,
+                    fontSize = 22.sp,
+                    lineHeight = 32.sp,
+                    fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 2,
+                    maxLines = 4,
                     overflow = TextOverflow.Ellipsis
                 )
-                if (showSummary) {
+                if (item.notes.isNotBlank()) {
+                    Text(
+                        item.notes,
+                        Modifier.padding(top = 8.dp),
+                        fontFamily = ReadingSerif,
+                        fontSize = 15.sp,
+                        lineHeight = 24.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                } else if (showSummary) {
                     Text(
                         summary,
-                        Modifier.padding(top = 4.dp),
+                        Modifier.padding(top = 8.dp),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = if (compact) 1 else 2,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                if (!compact && item.notes.isNotBlank()) NoteSnippetCard(text = item.notes, maxLines = 2, modifier = Modifier.padding(top = 6.dp))
-                Row(Modifier.padding(top = 3.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(site, Modifier.weight(1f, fill = false), fontSize = 13.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    if (item.pinned) Icon(Glyph.Pin, "已置顶", Modifier.padding(start = 6.dp).size(12.dp), tint = MaterialTheme.colorScheme.primary)
-                    Text("  ·  $stamp", fontSize = 13.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (item.pinned) Icon(Glyph.Pin, "已置顶", Modifier.padding(end = 6.dp).size(12.dp), tint = MaterialTheme.colorScheme.primary)
+                    Text(stamp, fontSize = 13.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                 }
                 if (tags.isNotEmpty()) CollectionCardTags(tags) { if (selectionMode) onToggleSelection() else onTag(it) }
                 if (showAiLine) {
@@ -625,7 +643,7 @@ private fun BookmarkCard(
                 }
             }
         }
-        HorizontalDivider(Modifier.padding(start = 16.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+        HorizontalDivider(Modifier.padding(start = 28.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
         if (menu) {
             ModalBottomSheet(onDismissRequest = { menu = false }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
                 Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(bottom = 16.dp).testTag("collection-item-actions")) {

@@ -124,7 +124,7 @@ private fun AnalysisConversationMessage(message: AnalysisMessage, pending: Boole
         Text(if (user) if (pending) "我 · 等待回答" else "我" else "AI", style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (user) {
-            val fill = if (LocalVaultDark.current) Color(0xFF1A1A19) else Color(0xFFE9E8E4)
+            val fill = if (LocalVaultDark.current) NightFill else DayFill
             SelectionContainer {
                 Text(message.text, Modifier.background(fill, RoundedCornerShape(10.dp)).padding(horizontal = 12.dp, vertical = 8.dp), fontSize = 17.sp, lineHeight = 24.sp, color = MaterialTheme.colorScheme.onSurface)
             }

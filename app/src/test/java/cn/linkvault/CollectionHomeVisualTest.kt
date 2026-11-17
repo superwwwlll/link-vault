@@ -46,7 +46,7 @@ class CollectionHomeVisualTest {
             dao.allIncludingDeleted().forEach { dao.delete(it.id) }
             val samples = listOf(
                 Bookmark(url = "https://sspai.com/post/reading-shelf", canonical = "https://sspai.com/post/reading-shelf",
-                    title = "少数派：把读过的长文留在自己的书架上", tags = "阅读", pinned = true, createdAt = millis(2026, 10, 3)),
+                    title = "少数派：把读过的长文留在自己的书架上", notes = "先看结构，再决定要不要翻译。", tags = "阅读", pinned = true, createdAt = millis(2026, 10, 3)),
                 Bookmark(url = "https://www.zhihu.com/question/reading-log", canonical = "https://www.zhihu.com/question/reading-log",
                     title = "如何给十年后的自己留一份还能检索的阅读记录，而不是又一个打不开的收藏夹", tags = "笔记,方法", createdAt = millis(2026, 8, 18)),
                 Bookmark(url = "https://36kr.com/p/bookstores", canonical = "https://36kr.com/p/bookstores",
@@ -101,7 +101,7 @@ class CollectionHomeVisualTest {
         val menu = rule.onNodeWithTag("collection-item-menu-$id").fetchSemanticsNode().boundsInRoot
         assertTrue("新增盖住了收藏 add=$add row=$row", add.bottom <= row.top + 1f)
         assertTrue("新增盖住了菜单 add=$add menu=$menu", menu.top >= add.bottom - 1f)
-        rule.onNodeWithText("我的收藏").assertIsDisplayed()
+        rule.onNodeWithText("书架").assertIsDisplayed()
         rule.onNodeWithTag("collection-result-count").assertIsDisplayed()
         listOf("未归档", "未读", "已读", "归档").forEachIndexed { index, label ->
             rule.onNodeWithTag("collection-scope-$index").performScrollTo().assertIsDisplayed().performClick().assertIsSelected()

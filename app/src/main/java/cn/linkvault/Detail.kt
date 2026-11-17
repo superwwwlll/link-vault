@@ -54,13 +54,16 @@ internal fun DetailPage(
     val canFetch = vm.fetchEnabled && item.url.startsWith("https://", true)
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
-    PageToolbar("收藏详情", onBack) {
+    PageToolbar("", onBack) {
+        TextButton(onClick = onOpen, modifier = Modifier.heightIn(min = 48.dp)) {
+            Text("打开", fontFamily = ReadingSerif, color = MaterialTheme.colorScheme.primary, fontSize = 17.sp)
+        }
         IconButton(onClick = onEdit, enabled = !vm.busy, modifier = Modifier.size(48.dp)) {
-            Icon(Glyph.Edit, "编辑收藏", Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+            Icon(Glyph.Edit, "编辑收藏", Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurface)
         }
         Box {
             IconButton(onClick = { menu = true }, enabled = !vm.busy, modifier = Modifier.size(48.dp)) {
-                Icon(Glyph.More, "更多操作", Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                Icon(Glyph.More, "更多操作", Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurface)
             }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 DropdownMenuItem(
@@ -114,15 +117,16 @@ internal fun DetailPage(
             .weight(1f)
             .fillMaxWidth()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp)
-            .padding(top = 8.dp, bottom = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+            .padding(horizontal = 28.dp)
+            .padding(top = 12.dp, bottom = 28.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         SelectionContainer {
             Text(
                 Links.displayTitle(item.url, item.title),
-                fontSize = 22.sp,
-                lineHeight = 28.sp,
+                fontFamily = ReadingSerif,
+                fontSize = 32.sp,
+                lineHeight = 44.sp,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -134,15 +138,10 @@ internal fun DetailPage(
             if (item.updatedAt / 60_000L > item.createdAt / 60_000L) append("  ·  更新 ").append(Stamp.date(item.updatedAt))
         }
         Text(stamp, fontSize = 13.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        Text(item.url, fontSize = 13.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
         Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(item.url, Modifier.weight(1f), fontSize = 13.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
             IconButton(onClick = { clipboard.setText(AnnotatedString(item.url)); vm.toast("已复制原链接") }, modifier = Modifier.size(48.dp)) {
-                Icon(Glyph.Copy, "复制原链接", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
-            }
-            TextButton(onClick = onOpen, modifier = Modifier.heightIn(min = 48.dp)) {
-                Text("打开", color = MaterialTheme.colorScheme.primary, fontSize = 17.sp)
-                Spacer(Modifier.width(4.dp))
-                Icon(Glyph.External, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+                Icon(Glyph.Copy, "复制原链接", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
@@ -163,14 +162,15 @@ internal fun DetailPage(
 
         // 我的手记：有内容才铺便签，空着的时候只留一行入口
         if (item.notes.isNotBlank()) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("我的备注", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("我的一句", fontFamily = ReadingSerif, fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
                 SelectionContainer {
                     Text(
                         item.notes,
                         Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(onClick = onEdit),
-                        fontSize = 17.sp,
-                        lineHeight = 24.sp,
+                        fontFamily = ReadingSerif,
+                        fontSize = 20.sp,
+                        lineHeight = 32.sp,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }
@@ -202,7 +202,7 @@ internal fun DetailPage(
                     fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 SelectionContainer {
-                    Text(item.summary, fontSize = 17.sp, lineHeight = 24.sp, color = MaterialTheme.colorScheme.onSurface)
+                    Text(item.summary, fontFamily = ReadingSerif, fontSize = 17.sp, lineHeight = 30.sp, color = MaterialTheme.colorScheme.onSurface)
                 }
                 if (canFetch) DetailActionRow(if (fetching) "抓取中…" else if (item.fetchedAt > 0) "重新抓取" else "抓取页面信息", busy = fetching) { vm.fetch(item) }
             }
@@ -330,7 +330,7 @@ private fun QuietChoice(items: List<String>, selected: String, onSelect: (String
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                val line = if (chosen) MaterialTheme.colorScheme.onSurface else Color.Transparent
+                val line = if (chosen) MaterialTheme.colorScheme.primary else Color.Transparent
                 Text(
                     label,
                     Modifier.drawBehind {

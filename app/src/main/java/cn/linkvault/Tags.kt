@@ -122,7 +122,7 @@ internal fun TagsPage(vm: VaultViewModel) {
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
     Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
-        if (!searchExpanded) Text("标签", Modifier.padding(start = 16.dp), fontSize = 17.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+        if (!searchExpanded) Text("标签", Modifier.padding(start = 28.dp, top = 8.dp, bottom = 4.dp), fontFamily = ReadingSerif, fontSize = 34.sp, lineHeight = 42.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
         SearchBox(query, { query = it.take(1000) }, "查找标签", Modifier.weight(1f).padding(end = 8.dp), onExpandedChange = { searchExpanded = it }, initiallyExpanded = searchExpanded)
     }
     val tagCount = if (query.isEmpty()) "${totals.size} 个标签" else "${visible.size} / ${totals.size} 个标签"
@@ -167,7 +167,7 @@ internal fun TagsPage(vm: VaultViewModel) {
                     verticalAlignment = Alignment.Top
                 ) {
                     Text(
-                        tag, Modifier.weight(1f).padding(top = 14.dp, end = 8.dp), fontWeight = FontWeight.Medium, fontSize = 17.sp, lineHeight = 22.sp,
+                        tag, Modifier.weight(1f).padding(top = 14.dp, end = 8.dp), fontFamily = ReadingSerif, fontWeight = FontWeight.Medium, fontSize = 20.sp, lineHeight = 28.sp,
                         color = MaterialTheme.colorScheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis
                     )
                     Text("$count 条", Modifier.padding(top = 16.dp), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
