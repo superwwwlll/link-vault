@@ -1,10 +1,8 @@
-@file:OptIn(
-    androidx.compose.foundation.layout.ExperimentalLayoutApi::class,
-    androidx.compose.material3.ExperimentalMaterial3Api::class
-)
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package cn.linkvault
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -24,7 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -51,9 +48,14 @@ internal fun SettingsPage(
     val goBack: () -> Unit = { page = returnPage; returnPage = "" }
     BackHandler(enabled = page.isNotEmpty() && secureAction == null && !changeMaster) { goBack() }
 
-    Column(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
         if (page.isEmpty()) {
-            Box(Modifier.padding(horizontal = 20.dp)) { RootHeading("设置") }
+            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = vm::closeSettings, modifier = Modifier.size(48.dp)) {
+                    Icon(Glyph.Back, "返回", Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurface)
+                }
+                Text("设置", fontFamily = ReadingSerif, fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+            }
         } else {
             PageToolbar(page, goBack)
         }
@@ -77,7 +79,6 @@ internal fun SettingsPage(
                     SettingsValueRow(Glyph.Archive, "备份与更新", "当前 ${vm.installedVersionName}") { page = "备份与更新" }
                 }
             }
-            Text("收藏与笔记仅存本机，无云同步。AI 会发送内容给服务商，可能计费；请勿发送敏感内容。", Modifier.padding(horizontal = 4.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
             if (page == "外观") {
@@ -110,8 +111,8 @@ internal fun SettingsPage(
                 SettingsGroup {
                     Column {
                         SettingRow(Glyph.Cloud, "检查更新", "当前 ${vm.installedVersionName}（build ${vm.installedVersionCode}）", !vm.busy && !vm.updateChecking, { vm.checkUpdate(true) })
-                        HorizontalDivider(Modifier.padding(start = 58.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-                        SwitchRow(Glyph.Check, "启动时自动检查", "每次打开至多查一次", vm.autoCheckUpdates, true) { vm.autoCheckUpdates(it) }
+                        HorizontalDivider(Modifier.padding(start = 44.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                        SwitchRow(Glyph.Check, "启动时自动检查", "", vm.autoCheckUpdates, true) { vm.autoCheckUpdates(it) }
                     }
                 }
 
@@ -119,45 +120,31 @@ internal fun SettingsPage(
                 val info = vm.available
                 val allowed = vm.canInstallNow()
                 when {
-                    ready != null -> Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.primaryContainer) {
-                        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text("新版本已下载并通过校验", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-                            Text("${info?.versionName ?: ""} · ${size(ready.length())}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Button(onClick = { vm.installDownloaded() }, shape = RoundedCornerShape(13.dp)) { Text("立即安装") }
-                                OutlinedButton(onClick = { vm.openDownloadInBrowser() }, shape = RoundedCornerShape(13.dp)) { Text("用浏览器安装", style = MaterialTheme.typography.labelMedium) }
-                            }
-                            if (!allowed) {
-                                OutlinedButton(onClick = { vm.openInstallPermission() }, shape = RoundedCornerShape(12.dp)) { Text("开启应用安装权限", style = MaterialTheme.typography.labelMedium) }
-                            }
-                        }
+                    ready != null -> Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text("新版本已下载并通过校验", fontSize = 17.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+                        Text("${info?.versionName ?: ""} · ${size(ready.length())}", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        TextButton(onClick = { vm.installDownloaded() }, modifier = Modifier.heightIn(min = 48.dp)) { Text("立即安装", fontSize = 17.sp) }
+                        TextButton(onClick = { vm.openDownloadInBrowser() }, modifier = Modifier.heightIn(min = 48.dp)) { Text("用浏览器安装", fontSize = 17.sp) }
+                        if (!allowed) TextButton(onClick = { vm.openInstallPermission() }, modifier = Modifier.heightIn(min = 48.dp)) { Text("开启应用安装权限", fontSize = 17.sp) }
                     }
-                    info != null -> Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.primaryContainer) {
-                        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text("发现新版本 ${info.versionName}", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-                            Text("${size(info.size)} · ${info.releasedAt}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                            if (vm.updateDownloading) {
-                                LinearProgressIndicator(progress = { vm.updateProgress }, modifier = Modifier.fillMaxWidth())
-                                Text(downloadLabel(vm), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                            } else {
-                                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Button(onClick = { vm.downloadUpdate() }, shape = RoundedCornerShape(13.dp)) { Text("下载并安装") }
-                                    OutlinedButton(onClick = { vm.openDownloadInBrowser() }, shape = RoundedCornerShape(13.dp)) { Text("用浏览器", style = MaterialTheme.typography.labelMedium) }
-                                }
-                                if (!allowed) {
-                                    OutlinedButton(onClick = { vm.openInstallPermission() }, shape = RoundedCornerShape(12.dp)) { Text("开启应用安装权限", style = MaterialTheme.typography.labelMedium) }
-                                }
-                            }
+                    info != null -> Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text("发现新版本 ${info.versionName}", fontSize = 17.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+                        Text("${size(info.size)} · ${info.releasedAt}", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (vm.updateDownloading) {
+                            LinearProgressIndicator(progress = { vm.updateProgress }, modifier = Modifier.fillMaxWidth())
+                            Text(downloadLabel(vm), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        } else {
+                            TextButton(onClick = { vm.downloadUpdate() }, modifier = Modifier.heightIn(min = 48.dp)) { Text("下载并安装", fontSize = 17.sp) }
+                            TextButton(onClick = { vm.openDownloadInBrowser() }, modifier = Modifier.heightIn(min = 48.dp)) { Text("用浏览器", fontSize = 17.sp) }
+                            if (!allowed) TextButton(onClick = { vm.openInstallPermission() }, modifier = Modifier.heightIn(min = 48.dp)) { Text("开启应用安装权限", fontSize = 17.sp) }
                         }
                     }
                 }
 
                 vm.updateError?.let { text ->
-                    Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
-                        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text(text, Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
-                            TextButton(onClick = { vm.clearUpdateError() }) { Text("关闭", style = MaterialTheme.typography.labelMedium) }
-                        }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(text, Modifier.weight(1f), fontSize = 13.sp, color = MaterialTheme.colorScheme.error)
+                        TextButton(onClick = { vm.clearUpdateError() }, modifier = Modifier.heightIn(min = 48.dp)) { Text("关闭", fontSize = 17.sp) }
                     }
                 }
             }
@@ -167,7 +154,7 @@ internal fun SettingsPage(
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 SectionLabel("联网抓取", trailing = if (vm.fetchEnabled) "已开启" else "未开启")
                 SettingsGroup {
-                    SwitchRow(Glyph.Cloud, "页面信息抓取", "保存链接后自动补齐标题、封面与正文，详情页可手动重抓", vm.fetchEnabled, !vm.busy) { vm.fetchEnabled(it) }
+                    SwitchRow(Glyph.Cloud, "页面信息抓取", "", vm.fetchEnabled, !vm.busy) { vm.fetchEnabled(it) }
                 }
             }
 
@@ -175,11 +162,9 @@ internal fun SettingsPage(
                 SectionLabel("标题整理")
                 SettingsGroup {
                     Column {
-                        SettingRow(Glyph.Sort, "按内容整理标题", "离线：去掉换行与尾部站点名，空壳标题改用正文里的标题或首句", !vm.busy, vm::tidyTitles)
+                        SettingRow(Glyph.Sort, "按内容整理标题", "", !vm.busy, vm::tidyTitles)
                     }
                 }
-                Text("只读本机已有的正文快照，不发任何请求；改坏的标题可以在编辑页改回去。",
-                    style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             }
 
@@ -191,21 +176,11 @@ internal fun SettingsPage(
                 SectionLabel("AI 翻译", trailing = settingsTranslationStatus(vm.aiEnabled, vm.canTranslate))
                 SettingsGroup {
                     Column {
-                        SwitchRow(Glyph.Translate, "启用翻译", "详情页把离线正文快照译成简体中文；快照要「联网抓取」才会产生", vm.aiEnabled, !vm.busy) { vm.aiEnabled(it) }
+                        SwitchRow(Glyph.Translate, "启用翻译", "", vm.aiEnabled, !vm.busy) { vm.aiEnabled(it) }
                     }
                 }
-                Text("与阅读助手共用「AI 接口」。翻译会发送正文到你配置的服务商，可能计费；敏感内容请勿翻译。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("会发送正文，可能计费。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 TextButton(onClick = { returnPage = "翻译"; page = "AI 接口" }, modifier = Modifier.heightIn(min = 48.dp)) { Text("配置 AI 接口") }
-                var details by rememberSaveable { mutableStateOf(false) }
-                TextButton(onClick = { details = !details }, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (details) "收起翻译说明" else "详细隐私与用量说明") }
-                // 翻译与阅读助手共用用户配置的第三方接口。
-                if (details) Text(
-                    "翻译会把整段正文原样发给你填的那个地址，费用记在你的账号上：一篇最多 24,000 字，" +
-                        "按段发送，最多 20 段，每段等 60 秒，长文可能要等几分钟。密钥存在本机应用私有目录（明文，" +
-                        "未 root 的设备上其他应用读不到），不导入备份、不同步、不参与更新检查；" +
-                        "接口地址跨域跳转时一律停止，避免密钥被送到别的域名。不用时请关掉开关。",
-                    style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
             }
 
@@ -217,15 +192,14 @@ internal fun SettingsPage(
                         SettingRow(
                             Glyph.Shield,
                             if (vm.notes.hasMaster) "修改主密码" else "设置主密码",
-                            if (vm.notes.hasMaster) "全部私密笔记会用新密码重新加密一遍；有一条解不开就整体放弃，不改一半"
-                            else "私密笔记要先有主密码才能保存。它不记在任何地方，忘了无法找回",
+                            "忘记无法找回",
                             !vm.notes.busy
                         ) { if (vm.notes.hasMaster) changeMaster = true else vm.notes.requireKey() }
                         if (vm.notes.hasMaster) {
-                            HorizontalDivider(Modifier.padding(start = 58.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+                            HorizontalDivider(Modifier.padding(start = 44.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
                             SettingRow(
                                 Glyph.Note, "${vm.notes.secretTotal} 条私密 / 共 ${vm.notes.total} 条",
-                                if (vm.notes.unlocked) "已解锁 · 退到后台会自动锁上" else "未解锁 · 列表只显示掩码",
+                                if (vm.notes.unlocked) "已解锁" else "未解锁",
                                 true
                             ) { vm.tab(1) }
                         }
@@ -238,27 +212,27 @@ internal fun SettingsPage(
                 SectionLabel("本地备份")
                 SettingsGroup {
                     Column {
-                        SettingRow(Glyph.Export, "导出收藏", "将 ${vm.items.size} 条收藏保存为 JSON", !vm.busy && !vm.readFailed && !vm.loading, onExport)
-                        HorizontalDivider(Modifier.padding(start = 58.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-                        SettingRow(Glyph.LinkChain, "导出 HTML 书签", "通用格式 · 兼容各大浏览器", !vm.busy && !vm.readFailed && !vm.loading, onExportHtml)
-                        HorizontalDivider(Modifier.padding(start = 58.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-                        SettingRow(Glyph.Globe, "导出独立导航网页", "单文件精美网页 · 内置即时搜索与标签", !vm.busy && !vm.readFailed && !vm.loading, onExportPortalHtml)
-                        HorizontalDivider(Modifier.padding(start = 58.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-                        SettingRow(Glyph.Markdown, "导出 Markdown 合辑", "知识库清单 · 兼容 Obsidian/Notion", !vm.busy && !vm.readFailed && !vm.loading, onExportMarkdown)
-                        HorizontalDivider(Modifier.padding(start = 58.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-                        SettingRow(Glyph.Import, "导入备份", "支持 JSON 与浏览器 HTML 书签", !vm.busy, onImport)
-                        HorizontalDivider(Modifier.padding(start = 58.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-                        SettingRow(Glyph.Shield, "加密导出", "密码保护的本地备份（至少 8 位）", !vm.busy) { secureAction = "export" }
-                        HorizontalDivider(Modifier.padding(start = 58.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-                        SettingRow(Glyph.Shield, "导入加密备份", "不会上传密码或备份内容", !vm.busy) { secureAction = "import" }
-                        HorizontalDivider(Modifier.padding(start = 58.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-                        SettingRow(Glyph.Archive, "备份文件夹", if (vm.backupFolder.isEmpty()) "设置自动备份文件夹" else "已设置 · 点击更换或取消", !vm.busy, onPickFolder)
+                        SettingRow(Glyph.Delete, "回收站", "", !vm.busy, vm::openTrash)
+                        HorizontalDivider(Modifier.padding(start = 44.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                        SettingRow(Glyph.Export, "导出收藏", "${vm.items.size} 条", !vm.busy && !vm.readFailed && !vm.loading, onExport)
+                        HorizontalDivider(Modifier.padding(start = 44.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                        SettingRow(Glyph.LinkChain, "导出 HTML 书签", "", !vm.busy && !vm.readFailed && !vm.loading, onExportHtml)
+                        HorizontalDivider(Modifier.padding(start = 44.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                        SettingRow(Glyph.Globe, "导出独立导航网页", "", !vm.busy && !vm.readFailed && !vm.loading, onExportPortalHtml)
+                        HorizontalDivider(Modifier.padding(start = 44.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                        SettingRow(Glyph.Markdown, "导出 Markdown 合辑", "", !vm.busy && !vm.readFailed && !vm.loading, onExportMarkdown)
+                        HorizontalDivider(Modifier.padding(start = 44.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                        SettingRow(Glyph.Import, "导入备份", "", !vm.busy, onImport)
+                        HorizontalDivider(Modifier.padding(start = 44.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                        SettingRow(Glyph.Shield, "加密导出", "", !vm.busy) { secureAction = "export" }
+                        HorizontalDivider(Modifier.padding(start = 44.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                        SettingRow(Glyph.Shield, "导入加密备份", "", !vm.busy) { secureAction = "import" }
+                        HorizontalDivider(Modifier.padding(start = 44.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                        SettingRow(Glyph.Archive, "备份文件夹", if (vm.backupFolder.isEmpty()) "" else "已设置", !vm.busy, onPickFolder)
                         if (vm.backupFolder.isNotEmpty()) {
-                            HorizontalDivider(Modifier.padding(start = 58.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-                            SettingRow(Glyph.Check, "立即备份到文件夹", "保存到已设文件夹", !vm.busy, vm::backupNow)
+                            HorizontalDivider(Modifier.padding(start = 44.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                            SettingRow(Glyph.Check, "立即备份到文件夹", "", !vm.busy, vm::backupNow)
                         }
-                        HorizontalDivider(Modifier.padding(start = 58.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-                        SettingRow(Glyph.Delete, "回收站", "删除后 30 天内可恢复", !vm.busy, vm::openTrash)
                     }
                 }
                 if (vm.lastBackupAt > 0L) {
@@ -282,26 +256,32 @@ internal fun SettingsPage(
             icon = { Icon(Glyph.Shield, null) },
             title = { Text(if (action == "export") "设置加密备份密码" else "输入加密备份密码") },
             text = {
-                OutlinedTextField(
+                TextField(
                     value = securePassword,
                     onValueChange = { securePassword = it.take(128) },
                     label = { Text("密码") },
                     singleLine = true,
                     enabled = !vm.busy,
                     visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                    supportingText = if (securePassword.isNotEmpty() && securePassword.length < 8) {
+                        { Text("至少 8 位") }
+                    } else null,
+                    shape = RoundedCornerShape(10.dp),
+                    colors = quietFillColors(),
                     modifier = Modifier.fillMaxWidth()
                 )
             },
             confirmButton = {
-                Button(
+                TextButton(
                     enabled = !vm.busy && securePassword.length >= 8,
+                    modifier = Modifier.heightIn(min = 48.dp),
                     onClick = {
                         val password = securePassword
                         secureAction = null
                         securePassword = ""
                         if (action == "export") onSecureExport(password) else onSecureImport(password)
                     }
-                ) { Text(if (action == "export") "选择保存位置" else "选择备份文件") }
+                ) { Text(if (action == "export") "选择保存位置" else "选择备份文件", fontSize = 17.sp) }
             },
             dismissButton = { TextButton(onClick = { secureAction = null; securePassword = "" }, enabled = !vm.busy) { Text("取消") } }
         )
@@ -329,14 +309,12 @@ internal fun settingsTranslationStatus(enabled: Boolean, configured: Boolean): S
 
 @Composable
 private fun SettingsGroup(content: @Composable () -> Unit) {
-    Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth()) {
-        content()
-    }
+    Column(Modifier.fillMaxWidth()) { content() }
 }
 
 @Composable
 private fun SettingsDivider() {
-    HorizontalDivider(Modifier.padding(start = 44.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+    HorizontalDivider(Modifier.padding(start = 44.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
 }
 
 /** 当前值可以换行，窄屏和大字号下也不截掉验证状态。 */
@@ -347,9 +325,11 @@ internal fun SettingsValueRow(icon: ImageVector, title: String, value: String, o
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Icon(icon, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
-        Text(title, Modifier.weight(0.43f), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
-        Text(value, Modifier.weight(0.57f), style = MaterialTheme.typography.labelMedium, textAlign = TextAlign.End, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(icon, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, fontSize = 17.sp, lineHeight = 22.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+            Text(value, fontSize = 13.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         Icon(Glyph.Next, null, Modifier.size(15.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
@@ -360,7 +340,7 @@ private fun SettingsOptionRow(title: String, selected: Boolean, onClick: () -> U
         Modifier.fillMaxWidth().heightIn(min = 48.dp).selectable(selected = selected, role = Role.RadioButton, onClick = onClick).padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(title, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+        Text(title, Modifier.weight(1f), fontSize = 17.sp, lineHeight = 22.sp, color = MaterialTheme.colorScheme.onSurface)
         if (selected) Icon(Glyph.Check, "已选择", Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
     }
 }
@@ -392,12 +372,12 @@ private fun SettingRow(icon: ImageVector, title: String, subtitle: String, enabl
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Icon(icon, null, Modifier.size(20.dp), tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(icon, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(subtitle, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(title, fontSize = 17.sp, lineHeight = 22.sp, fontWeight = FontWeight.Medium, color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
+            if (subtitle.isNotEmpty()) Text(subtitle, fontSize = 13.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Icon(Glyph.Next, null, Modifier.size(15.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
+        Icon(Glyph.Next, null, Modifier.size(15.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -411,10 +391,10 @@ private fun SwitchRow(icon: ImageVector, title: String, subtitle: String, checke
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Icon(icon, null, Modifier.size(20.dp), tint = if (checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(icon, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
-            Text(subtitle, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(title, fontSize = 17.sp, lineHeight = 22.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+            if (subtitle.isNotEmpty()) Text(subtitle, fontSize = 13.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Switch(checked = checked, enabled = enabled, onCheckedChange = onChange)
     }

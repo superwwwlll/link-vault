@@ -110,7 +110,17 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
     var sortOrder by mutableStateOf(saved.get<Int>("sort") ?: prefs.getInt("sort", 0)); private set
 
     fun theme(value: String) { if (value in listOf("system", "light", "dark")) { theme = value; prefs.edit().putString("theme", value).apply() } }
-    fun tab(value: Int) { closeAnalysisConversation(); tab = value; saved["tab"] = value; clearMessage() }
+    private var settingsReturn = 0
+    fun tab(value: Int) {
+        if (value == 3 && tab != 3) settingsReturn = tab
+        closeAnalysisConversation(); tab = value; saved["tab"] = value; clearMessage()
+    }
+    /** 设置是从收藏、笔记或标签推进去的，返回时回到进来之前的那一页。 */
+    fun closeSettings() {
+        val back = settingsReturn
+        settingsReturn = 0
+        tab(back)
+    }
     fun scope(value: Int) { if (value in 0..3) { scope = value; saved["scope"] = value; clearMessage() } }
     fun setSort(value: Int) { if (value in 0..3) { sortOrder = value; saved["sort"] = value; prefs.edit().putInt("sort", value).apply() } }
     fun show(item: Bookmark) { closeAnalysisConversation(); detailId = item.id; saved["detail"] = item.id; loadSnapshot(item.id); clearMessage() }
@@ -294,7 +304,7 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
                 if (connection == Translate.Config(aiEndpoint, aiKey, aiModel)) {
                     aiVerifiedHash = AiProviders.fingerprint(connection)
                     settings.edit().putString("aiVerifiedHash", aiVerifiedHash).apply()
-                    aiTestResult = "连接验证通过，可以使用总结和对话"
+                    aiTestResult = "连接验证通过"
                 } else aiTestResult = "配置已变化，请重新测试"
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
@@ -646,7 +656,7 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
         saved["detected"] = ArrayList(urls)
         val old = draft ?: Draft()
         val fromHtml = if (html.isBlank()) "" else Links.titleFromHtml(html, urls.first())
-        val title = old.title.ifBlank { suggested.ifBlank { fromHtml } }
+        val title = old.title.ifBlank { suggested.ifBlank { fromHtml }.ifBlank { Links.fallbackTitle(urls.first()) } }
         edit(old.copy(url = urls.first(), title = title.take(200)))
     }
 
@@ -744,7 +754,7 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
                     return@launch
                 }
                 val now = System.currentTimeMillis()
-                val readableTitle = Links.readable(url).take(200)
+                val readableTitle = Links.fallbackTitle(url)
                 val item = Bookmark(url = url, canonical = key, title = readableTitle, createdAt = now, updatedAt = now)
                 val id = dao.insert(item)
                 toast("已收录剪贴板链接")
@@ -840,7 +850,7 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
                     urls.forEach { raw ->
                         val key = runCatching { Links.canonical(raw) }.getOrNull() ?: return@forEach
                         if (dao.byKey(key) != null) { skipped++; return@forEach }
-                        val item = Bookmark(url = raw, canonical = key, title = Links.readable(raw).take(200), createdAt = now, updatedAt = now)
+                        val item = Bookmark(url = raw, canonical = key, title = Links.fallbackTitle(raw), createdAt = now, updatedAt = now)
                         written += item.copy(id = dao.insert(item))
                         added++
                     }
@@ -898,7 +908,7 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
         }
         backupFolder = uri.toString()
         settings.edit().putString("backupFolder", backupFolder).apply()
-        toast("已设置备份文件夹，之后可以一键备份")
+        toast("已设置备份文件夹")
     }
 
     fun clearBackupFolder() { backupFolder = ""; settings.edit().remove("backupFolder").apply(); toast("已取消备份文件夹") }

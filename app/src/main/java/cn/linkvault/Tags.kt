@@ -2,7 +2,8 @@
 package cn.linkvault
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,8 +15,10 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -56,19 +59,23 @@ internal fun TagsPage(vm: VaultViewModel) {
     }
     renameTarget?.let { tag ->
         val existing = totals.firstOrNull { Links.tagKey(it.first) == Links.tagKey(renameValue) && Links.tagKey(it.first) != Links.tagKey(tag) }?.first
-        Column(Modifier.fillMaxSize()) {
-            PageToolbar(if (existing == null) "重命名标签" else "合并到已有标签", { if (!vm.busy) renameTarget = null })
-            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("原标签：$tag", fontWeight = FontWeight.Medium)
-                Text(if (existing == null) "将更新所有关联的收藏标签。" else "将把「$tag」合并到「$existing」，原标签会移除，重复标签会去重；收藏本身不会删除。", style = MaterialTheme.typography.bodyMedium)
-                OutlinedTextField(renameValue, { renameValue = it.take(1000) }, label = { Text("新标签名") },
-                    supportingText = { Text("不能包含逗号、分号或换行，且不能与原标签相同。") },
-                    enabled = !vm.busy, modifier = Modifier.fillMaxWidth(), minLines = 1, maxLines = 4)
-                Button(onClick = { vm.renameTag(tag, existing ?: renameValue); renameTarget = null },
-                    enabled = !vm.busy && validTagRename(tag, renameValue), modifier = Modifier.heightIn(min = 48.dp)) {
-                    Text(if (existing == null) "重命名" else "确认合并")
+        Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+            PageToolbar(if (existing == null) "重命名标签" else "合并到已有标签", { if (!vm.busy) renameTarget = null }) {
+                TextButton(
+                    onClick = { vm.renameTag(tag, existing ?: renameValue); renameTarget = null },
+                    enabled = !vm.busy && validTagRename(tag, renameValue),
+                    modifier = Modifier.heightIn(min = 48.dp)
+                ) { Text(if (existing == null) "重命名" else "确认合并", fontSize = 17.sp) }
+            }
+            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("原标签：$tag", fontSize = 17.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+                if (existing != null) Text("不删除收藏。", fontSize = 15.sp, lineHeight = 22.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                TextField(renameValue, { renameValue = it.take(1000) }, label = { Text("新标签名") },
+                    enabled = !vm.busy, modifier = Modifier.fillMaxWidth(), minLines = 1, maxLines = 4,
+                    shape = RoundedCornerShape(10.dp), colors = quietFillColors())
+                TextButton(onClick = { renameTarget = null }, enabled = !vm.busy, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text("取消", color = MaterialTheme.colorScheme.primary, fontSize = 17.sp)
                 }
-                TextButton(onClick = { renameTarget = null }, enabled = !vm.busy, modifier = Modifier.heightIn(min = 48.dp)) { Text("取消") }
             }
         }
         return
@@ -76,52 +83,79 @@ internal fun TagsPage(vm: VaultViewModel) {
     mergeSource?.let { source ->
         val candidates = visibleTags(totals.filterNot { Links.tagKey(it.first) == Links.tagKey(source) }, mergeQuery, TagSort.NAME)
         val destination = mergeDestination?.takeIf { chosen -> totals.any { Links.tagKey(it.first) == Links.tagKey(chosen) } }
-        Column(Modifier.fillMaxSize()) {
-            PageToolbar("合并标签", { if (!vm.busy) mergeSource = null })
-            LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+            PageToolbar("合并标签", { if (!vm.busy) mergeSource = null }) {
+                TextButton(
+                    onClick = { destination?.let { vm.renameTag(source, it); mergeSource = null } },
+                    enabled = !vm.busy && destination != null,
+                    modifier = Modifier.heightIn(min = 48.dp)
+                ) { Text("确认合并", fontSize = 17.sp) }
+            }
+            LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 item {
-                    Text("原标签：$source", fontWeight = FontWeight.Medium)
-                    Text("选择要保留的已有标签。合并会更新所有关联收藏（含归档），移除原标签并去重，不会删除收藏。", style = MaterialTheme.typography.bodyMedium)
-                    OutlinedTextField(mergeQuery, { mergeQuery = it.take(1000) }, label = { Text("查找目标标签") }, singleLine = true,
-                        enabled = !vm.busy, modifier = Modifier.fillMaxWidth())
+                    Text("原标签：$source", fontSize = 17.sp, fontWeight = FontWeight.Medium)
+                    TextField(mergeQuery, { mergeQuery = it.take(1000) }, label = { Text("查找目标标签") }, singleLine = true,
+                        enabled = !vm.busy, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp), colors = quietFillColors())
                 }
-                if (candidates.isEmpty()) item { Text("没有匹配的标签") }
+                if (candidates.isEmpty()) item { Text("没有匹配的标签", color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 items(candidates, key = { Links.tagKey(it.first) }) { (target, count) ->
-                    TextButton(onClick = { mergeDestination = target }, enabled = !vm.busy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                        Text(target, Modifier.weight(1f), fontWeight = if (destination == target) FontWeight.Bold else FontWeight.Normal)
-                        Spacer(Modifier.width(8.dp)); Text("$count 条")
+                    Row(
+                        Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(enabled = !vm.busy) { mergeDestination = target },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(target, Modifier.weight(1f), fontSize = 17.sp, fontWeight = if (destination == target) FontWeight.SemiBold else FontWeight.Normal, color = if (destination == target) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Text("$count 条", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
                 item {
-                    Text(if (destination == null) "尚未选择目标标签" else "将「$source」合并到「$destination」", fontWeight = FontWeight.Medium)
-                    Button(onClick = { destination?.let { vm.renameTag(source, it); mergeSource = null } }, enabled = !vm.busy && destination != null,
-                        modifier = Modifier.heightIn(min = 48.dp)) { Text("确认合并") }
-                    TextButton(onClick = { mergeSource = null }, enabled = !vm.busy, modifier = Modifier.heightIn(min = 48.dp)) { Text("取消") }
+                    Text(if (destination == null) "尚未选择" else "将「$source」合并到「$destination」", fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                    TextButton(onClick = { mergeSource = null }, enabled = !vm.busy, modifier = Modifier.heightIn(min = 48.dp)) {
+                        Text("取消", color = MaterialTheme.colorScheme.primary, fontSize = 17.sp)
+                    }
                 }
             }
         }
         return
     }
 
-    Row(
-        Modifier.fillMaxWidth().padding(start = 24.dp, end = 16.dp, top = 12.dp, bottom = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        if (!searchExpanded) Text("标签", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground)
-        SearchBox(query, { query = it.take(1000) }, "查找标签", Modifier.weight(1f), onExpandedChange = { searchExpanded = it }, initiallyExpanded = searchExpanded)
-    }
-    Row(
-        Modifier.fillMaxWidth().padding(start = 24.dp, end = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            if (query.isEmpty()) "${totals.size} 个标签" else "${visible.size} / ${totals.size} 个标签",
-            Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (!searchExpanded) {
+            IconButton(onClick = { vm.tab(0) }, modifier = Modifier.size(48.dp)) {
+                Icon(Glyph.Back, "返回", Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurface)
+            }
+            Text("标签", Modifier.weight(1f), fontFamily = ReadingSerif, fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+        }
+        SearchBox(
+            query, { query = it.take(1000) }, "查找标签",
+            if (searchExpanded) Modifier.weight(1f).padding(horizontal = 8.dp) else Modifier.width(48.dp),
+            onExpandedChange = { searchExpanded = it }, initiallyExpanded = searchExpanded
         )
+        if (!searchExpanded) {
+            IconButton(onClick = { vm.tab(3) }, modifier = Modifier.size(48.dp)) {
+                Icon(Glyph.Settings, "设置", Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurface)
+            }
+        }
+    }
+    val tagCount = if (query.isEmpty()) "${totals.size} 个标签" else "${visible.size} / ${totals.size} 个标签"
+    val stackSort = LocalDensity.current.fontScale >= 1.7f
+    if (stackSort) Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp)) {
+        Text(tagCount, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Box(Modifier.align(Alignment.End)) {
+            TextButton(onClick = { sortMenu = true }, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text("排序：${sort.label}", color = MaterialTheme.colorScheme.primary, fontSize = 15.sp)
+            }
+            DropdownMenu(expanded = sortMenu, onDismissRequest = { sortMenu = false }) {
+                TagSort.entries.forEach { option ->
+                    DropdownMenuItem(text = { Text(option.label) }, onClick = { sort = option; sortMenu = false })
+                }
+            }
+        }
+    } else Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(tagCount, Modifier.weight(1f), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Box {
             TextButton(onClick = { sortMenu = true }, modifier = Modifier.heightIn(min = 48.dp)) {
-                Text("排序：${sort.label}")
+                Text("排序：${sort.label}", color = MaterialTheme.colorScheme.primary, fontSize = 15.sp)
             }
             DropdownMenu(expanded = sortMenu, onDismissRequest = { sortMenu = false }) {
                 TagSort.entries.forEach { option ->
@@ -134,29 +168,21 @@ internal fun TagsPage(vm: VaultViewModel) {
     if (visible.isEmpty()) {
         EmptyState(Glyph.Tag, if (totals.isEmpty()) "暂无标签" else "没有匹配的标签")
     } else LazyColumn(
-        modifier = Modifier.fillMaxWidth().testTag("tags-list"),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        modifier = Modifier.weight(1f).fillMaxWidth().testTag("tags-list"),
+        contentPadding = PaddingValues(bottom = 16.dp)
     ) {
         items(visible, key = { Links.tagKey(it.first) }) { (tag, count) ->
             var menu by remember { mutableStateOf(false) }
-            Surface(
-                onClick = { vm.tag(tag) },
-                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
-                color = MaterialTheme.colorScheme.surface,
-                shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(0.6.dp, MaterialTheme.colorScheme.outlineVariant)
-            ) {
+            Column(Modifier.fillMaxWidth()) {
                 Row(
-                    Modifier.padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable { vm.tag(tag) }.padding(start = 16.dp, end = 4.dp),
+                    verticalAlignment = Alignment.Top
                 ) {
                     Text(
-                        tag, Modifier.weight(1f), fontWeight = FontWeight.Medium, style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface
+                        tag, Modifier.weight(1f).padding(top = 14.dp, end = 8.dp), fontFamily = ReadingSerif, fontWeight = FontWeight.Medium, fontSize = 20.sp, lineHeight = 28.sp,
+                        color = MaterialTheme.colorScheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis
                     )
-                    Text("$count 条", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("$count 条", Modifier.padding(top = 16.dp), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Box {
                         IconButton(onClick = { menu = true }, modifier = Modifier.size(48.dp), enabled = !vm.busy) {
                             Icon(Glyph.More, "标签操作：$tag", Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -178,8 +204,10 @@ internal fun TagsPage(vm: VaultViewModel) {
                         }
                     }
                 }
+                HorizontalDivider(Modifier.padding(start = 16.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
             }
         }
+    }
     }
 
     deleteTarget?.let { tag ->
@@ -187,7 +215,7 @@ internal fun TagsPage(vm: VaultViewModel) {
             onDismissRequest = { if (!vm.busy) deleteTarget = null },
             icon = { Icon(Glyph.Tag, null) },
             title = { Text("删除标签「$tag」？") },
-            text = { Text("将从所有收藏中移除此标签，收藏本身不会被删除。", style = MaterialTheme.typography.bodyMedium) },
+            text = { Text("不删除收藏。", style = MaterialTheme.typography.bodyMedium) },
             confirmButton = { TextButton(onClick = { vm.deleteTag(tag); deleteTarget = null }, enabled = !vm.busy) { Text("删除标签", color = MaterialTheme.colorScheme.error) } },
             dismissButton = { TextButton(onClick = { deleteTarget = null }, enabled = !vm.busy) { Text("取消") } }
         )

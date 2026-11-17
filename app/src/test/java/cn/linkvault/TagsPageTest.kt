@@ -84,12 +84,12 @@ class TagsPageTest {
     @Test fun mergeRequiresDestinationAndConfirmationAndIncludesArchivedItems() {
         rule.onNodeWithContentDescription("标签操作：zebra").performClick()
         rule.onNodeWithText("合并到…").performClick()
-        rule.onNodeWithText("确认合并").performScrollTo().assertIsNotEnabled()
+        rule.onNodeWithText("确认合并").assertIsDisplayed().assertIsNotEnabled()
         rule.onNodeWithText("Alpha").performScrollTo().performClick()
         rule.onNodeWithText("将「zebra」合并到「Alpha」").assertIsDisplayed()
         // Selecting a destination must not mutate any data before confirmation.
         assertTrue(runBlocking { VaultDb.get(rule.activity).bookmarks().all() }.all { parseTags(it.tags).contains("zebra") })
-        rule.onNodeWithText("确认合并").performScrollTo().performClick()
+        rule.onNodeWithText("确认合并").assertIsDisplayed().performClick()
         rule.waitUntil(20_000) { rule.runOnIdle { !vm.busy && vm.items.all { "zebra" !in parseTags(it.tags) } } }
         val rows = runBlocking { VaultDb.get(rule.activity).bookmarks().all() }
         assertEquals(2, rows.size)

@@ -93,7 +93,7 @@ class VisualTest {
         rule.runOnIdle { vm.reload() }
         rule.waitUntil(20000) { rule.runOnIdle { vm.items.size == 3 } }
         rule.runOnIdle { vm.theme("light"); vm.scope(0); vm.search("") }
-        rule.onNodeWithText("我的收藏").assertIsDisplayed()
+        rule.onNodeWithText("书架").assertIsDisplayed()
         // 真实点击验收：页签必须可点，搜索框必须能输入并筛选，而不是只看截图。
         rule.onNode(hasText("未读") and hasClickAction()).performClick()
         rule.onNode(hasText("未读") and hasClickAction()).assertIsSelected()
@@ -126,7 +126,7 @@ class VisualTest {
         runBlocking { scrollSamples.forEach { VaultDb.get(rule.activity).bookmarks().delete(it) } }
         rule.waitUntil(20_000) { rule.runOnIdle { vm.items.size == 3 } }
         rule.onNodeWithText("值得慢慢看的宇宙").performClick()
-        rule.onNodeWithText("收藏详情").assertIsDisplayed()
+        rule.onNodeWithText("打开原文").assertIsDisplayed()
         capture("02-detail-light")
         // 抓取默认关闭，详情页的「抓取页面信息 / 提取正文快照」入口在上面的图里根本不出现。
         // 空态收纳后这三行是详情页的主要入口，必须单独拍一张。
@@ -167,11 +167,10 @@ class VisualTest {
         }
         rule.onNodeWithContentDescription("返回").performClick()
         rule.onNodeWithText("值得慢慢看的宇宙").performClick()
-        rule.onNodeWithText("收藏详情").assertIsDisplayed()
-        // 图片在后台线程解码，等它真的进到语义树再截图，否则拍到的是「还没加载完」的空页。
-        // 用未合并树查：正文快照整块包在 SelectionContainer 里，图片的描述会被合并到父节点上。
-        rule.waitUntil(20_000) { rule.onAllNodes(hasContentDescription("封面图"), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
-        capture("02c-detail-cover-light")
+        rule.onNodeWithText("打开原文").assertIsDisplayed()
+        // 进详情不自动拉封面。正文先出现；图只在展开全文之后按用户操作加载。
+        rule.onNode(hasText("带图的正文", substring = true), useUnmergedTree = true).assertExists()
+        capture("02c-detail-body-light")
         // 展开按钮被封面图顶到屏幕外了，不先滚到位点击是空操作。
         rule.onNodeWithText("展开全文阅读").performScrollTo().performClick()
         rule.waitUntil(20_000) { Images.cached(inlineUrl) != null }
@@ -201,7 +200,8 @@ class VisualTest {
         rule.onNode(hasText("切换开关只有一段译文存在时才出现", substring = true), useUnmergedTree = true).performScrollTo()
         capture("02e-detail-translated-light")
         rule.onNodeWithText("原文").performClick()
-        rule.onNodeWithText("离线正文快照").performScrollTo().assertExists()
+        // 快照标题和缓存说明现在是同一行，切回原文后两段都得在。
+        rule.onNode(hasText("离线正文快照", substring = true) and hasText("已缓存 Markdown", substring = true)).performScrollTo().assertExists()
         // 造出来的封面图和快照只为了拍这两张图，必须还原：后面的列表与深色截图不能带上测试文案。
         runBlocking {
             val dao = VaultDb.get(rule.activity).bookmarks()
@@ -221,10 +221,11 @@ class VisualTest {
         rule.onNodeWithContentDescription("返回").performClick()
         rule.onNodeWithText("放弃编辑").performClick()
         rule.onNodeWithContentDescription("返回").performClick()
-        rule.onNodeWithText("标签").performClick()
+        rule.onNodeWithContentDescription("展开标签筛选").performClick()
+        rule.onNodeWithText("管理标签").performClick()
         rule.onAllNodesWithText("2 条").onFirst().assertExists()
         capture("04-tags-light")
-        rule.onNodeWithText("设置").performClick()
+        rule.onNodeWithContentDescription("设置").performClick()
         capture("05-settings-light")
         // AI 翻译默认收起，展开后的配置表单是这一版新增的主要入口，单独拍一张。
         rule.runOnIdle {
@@ -262,7 +263,7 @@ class VisualTest {
         rule.onAllNodes(hasContentDescription("新建笔记")).onFirst().performClick()
         rule.onNode(hasSetTextAction()).performTextInput("家里 WiFi：链藏-5G\n管理页口令 hello-vault-2026")
         rule.onNode(SemanticsMatcher.expectValue(SemanticsProperties.ToggleableState, ToggleableState.Off)).performClick()
-        rule.onNodeWithText("正文加密后才落盘", substring = true).assertIsDisplayed()
+        rule.onNodeWithText("忘记主密码无法找回", substring = true).assertIsDisplayed()
         capture("09-note-editor-secret-light")
         rule.onNodeWithText("加密保存").performClick()
         rule.waitUntil(20000) { rule.runOnIdle { vm.notes.rows.size == 1 && vm.notes.draft == null } }
@@ -292,7 +293,7 @@ class VisualTest {
         rule.onAllNodesWithText("显示").onFirst().performClick()
         capture("11-notes-unlocked-light")
         // 改密码弹窗同样拍不出来，这里只验收入口在设置页里存在。
-        rule.onNodeWithText("设置").performClick()
+        rule.onNodeWithContentDescription("设置").performClick()
         rule.onNodeWithText("备份与更新").performScrollTo().performClick()
         rule.onNodeWithText("修改主密码").performScrollTo().assertIsDisplayed()
         rule.onNodeWithContentDescription("返回").performClick()
@@ -305,7 +306,7 @@ class VisualTest {
         rule.waitUntil(20000) { rule.runOnIdle { vm.clipboardText != null } }
         capture("13-clipboard-text-light")
         rule.runOnIdle { vm.dismissClipboard() }
-        rule.onNodeWithText("设置").performClick()
+        rule.onNodeWithContentDescription("设置").performClick()
         rule.onNodeWithText("外观").performScrollTo().performClick()
         rule.onNodeWithText("深色").performScrollTo().performClick()
         rule.onNodeWithText("收藏").performClick()

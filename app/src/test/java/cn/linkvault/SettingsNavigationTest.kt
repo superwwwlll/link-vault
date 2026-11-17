@@ -29,14 +29,14 @@ class SettingsNavigationTest {
 
     @Test fun homeHasOnlyEntriesAndSystemBackReturnsBeforeLeavingSettings() {
         val vm = openSettings()
-        rule.onNodeWithText("收藏与笔记仅存本机", substring = true).performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("备份与更新").performScrollTo().assertIsDisplayed()
         rule.onNodeWithText("你的 API Key").assertDoesNotExist()
         rule.onNodeWithText("导出收藏").assertDoesNotExist()
         rule.onNodeWithText("抓取").performScrollTo().performClick()
         rule.onNodeWithText("页面信息抓取").assertIsDisplayed()
         back()
         rule.runOnIdle { assertEquals(3, vm.tab) }
-        rule.onNodeWithText("收藏与笔记仅存本机", substring = true).performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("备份与更新").performScrollTo().assertIsDisplayed()
         back()
         rule.runOnIdle { assertEquals(0, vm.tab) }
     }
@@ -63,7 +63,8 @@ class SettingsNavigationTest {
         val vm = openSettings()
         rule.runOnIdle { vm.analysis.profile(""); vm.analysis.auto(false) }
         rule.onNodeWithText("阅读助手").performScrollTo().performClick()
-        rule.onNodeWithText("未填写关注方向也可以分析；填写后，结果会更贴近你的需求。").assertIsDisplayed()
+        rule.onNodeWithText("我的工作、兴趣与关注方向").assertIsDisplayed()
+        rule.onNodeWithText("未填写关注方向也可以分析", substring = true).assertDoesNotExist()
         rule.onNodeWithText("模板名称").assertDoesNotExist()
         rule.onNodeWithText("编辑模板").performScrollTo().performClick()
         rule.runOnIdle { vm.analysis.addTemplate() }
@@ -81,14 +82,14 @@ class SettingsNavigationTest {
         openSettings()
         rule.onNodeWithText("翻译").performScrollTo().performClick()
         rule.onNodeWithText("一篇最多 24,000 字", substring = true).assertDoesNotExist()
-        rule.onNodeWithText("详细隐私与用量说明").performScrollTo().performClick()
-        rule.onNodeWithText("一篇最多 24,000 字", substring = true).performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("详细隐私与用量说明").assertDoesNotExist()
+        rule.onNodeWithText("可能计费", substring = true).assertIsDisplayed()
         rule.onNodeWithText("配置 AI 接口").performScrollTo().performClick()
         rule.onNodeWithText("你的 API Key").performScrollTo().assertIsDisplayed()
         back()
         rule.onNodeWithText("启用翻译").assertIsDisplayed()
         rule.onNodeWithContentDescription("返回").performClick()
-        rule.onNodeWithText("收藏与笔记仅存本机", substring = true).performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("备份与更新").performScrollTo().assertIsDisplayed()
     }
 
     @Test fun encryptedBackupPasswordDialogRemainsInBackupSubpage() {
@@ -103,6 +104,7 @@ class SettingsNavigationTest {
         rule.onNodeWithText("选择备份文件").assertIsNotEnabled()
         rule.onNodeWithText("取消").performClick()
         back()
-        rule.onNodeWithText("收藏与笔记仅存本机", substring = true).performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("外观").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("加密导出").assertDoesNotExist()
     }
 }

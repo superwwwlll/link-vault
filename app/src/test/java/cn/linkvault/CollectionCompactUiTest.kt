@@ -29,7 +29,7 @@ class CollectionCompactUiTest {
             repeat(16) { index ->
                 dao.insert(Bookmark(url = "https://x.com/example/status/${index + 1}",
                     canonical = "https://x.com/example/status/${index + 1}", title = "收藏示例 $index",
-                    summary = "网页摘要仍保留", tags = "很长的研究方法标签,技术,阅读,灵感,方法,工作",
+                    summary = "网页摘要仍保留", tags = "很长的研究方法标签补充说明,技术,阅读,灵感,方法,工作",
                     createdAt = 100L + index))
             }
         }
@@ -47,23 +47,28 @@ class CollectionCompactUiTest {
         rule.onNodeWithContentDescription("清空搜索").performClick()
         rule.onNodeWithContentDescription("关闭搜索").performClick()
         rule.onNodeWithContentDescription("展开标签筛选").performClick()
+        rule.onNodeWithTag("collection-filter-技术").performClick().assertIsSelected()
+        rule.onNodeWithTag("collection-result-count").assertTextEquals("# 技术 · 16 条")
+        rule.onNodeWithTag("collection-filter-技术").performClick()
+        rule.onNodeWithTag("collection-result-count").assertTextEquals("最近收藏 · 16 条")
         rule.onNodeWithContentDescription("收起标签筛选").performClick()
         rule.onNodeWithTag("collection-more").performClick()
         rule.onNodeWithText("随机翻一篇").assertIsDisplayed()
         rule.onNodeWithText("多选当前结果").performClick()
         rule.onNodeWithText("已选择 16 条").assertIsDisplayed()
         rule.onNodeWithContentDescription("取消多选").performClick()
-        rule.onAllNodesWithText("X").onFirst().assertIsDisplayed()
+        rule.onAllNodes(hasText("X ·", substring = true)).onFirst().assertIsDisplayed()
         rule.onAllNodesWithContentDescription("查看全部 6 个标签").onFirst().performClick()
         rule.onNodeWithText("全部标签（6）").assertIsDisplayed()
-        rule.onNodeWithText("关闭").performClick()
+        rule.onNodeWithTag("collection-tag-choice-很长的研究方法标签补充说明").performClick()
+        rule.onNodeWithTag("collection-result-count").assertTextEquals("# 很长的研究方法标签补充说明 · 16 条")
         rule.onNodeWithTag("collection-list").performTouchInput { swipeUp() }
         rule.waitForIdle()
-        rule.onNodeWithText("我的收藏").assertIsDisplayed()
+        rule.onNodeWithText("书架").assertIsDisplayed()
         rule.onAllNodesWithContentDescription("收藏链接").assertCountEquals(0)
         rule.onNodeWithTag("collection-list").performScrollToIndex(0)
         rule.waitForIdle()
-        rule.onNodeWithText("我的收藏").assertIsDisplayed()
+        rule.onNodeWithText("书架").assertIsDisplayed()
     }
 
     @Test fun doubleFontScaleKeepsCountAndAllTagsReachable() {

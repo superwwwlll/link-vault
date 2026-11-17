@@ -28,9 +28,10 @@ class TelegramSettingsSummaryTest {
         assertEquals("已开启", settingsTranslationStatus(true, true))
     }
 
-    @Test fun blueActionsRemainReadableOnBothThemes() {
+    @Test fun cinnabarActionsRemainReadableOnBothThemes() {
         for (scheme in listOf(DayColors, NightColors)) {
-            assertTrue(scheme.primary.blue > scheme.primary.red)
+            assertTrue(scheme.primary.red > scheme.primary.blue)
+            assertTrue(scheme.primary.red > scheme.primary.green)
             assertTrue(contrast(scheme.primary, scheme.onPrimary) >= 4.5)
             assertTrue(contrast(scheme.primary, scheme.surface) >= 4.5)
             assertTrue(contrast(scheme.primaryContainer, scheme.onPrimaryContainer) >= 4.5)

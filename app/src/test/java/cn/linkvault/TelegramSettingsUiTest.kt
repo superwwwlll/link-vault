@@ -31,14 +31,17 @@ class TelegramSettingsUiTest {
         rule.onNodeWithText("LINK VAULT").assertDoesNotExist()
         rule.onNodeWithText("深色").assertIsDisplayed()
         rule.onNodeWithText("自动分析未开启").assertIsDisplayed()
-        rule.onNodeWithText("当前 ${vm.installedVersionName}").assertIsDisplayed()
-        rule.onNodeWithText("可能计费", substring = true).performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("当前 ${vm.installedVersionName}", substring = true).assertIsDisplayed()
+        rule.onNodeWithText("AI 接口").performScrollTo().performClick()
+        rule.onNodeWithText("可能计费", substring = true).assertIsDisplayed()
+        rule.runOnIdle { rule.activity.onBackPressedDispatcher.onBackPressed() }
         rule.onNodeWithText("外观").performScrollTo().performClick()
         rule.onNodeWithText("紧凑").performClick()
         rule.runOnIdle { assertTrue(vm.compactCollection) }
         rule.onNodeWithText("舒适").performClick()
         rule.runOnIdle { assertFalse(vm.compactCollection) }
         rule.runOnIdle { rule.activity.onBackPressedDispatcher.onBackPressed() }
-        rule.onNodeWithText("当前 ${vm.installedVersionName}").assertIsDisplayed()
+        rule.onNodeWithText("备份与更新").assertIsDisplayed()
+        rule.onNodeWithText("当前 ${vm.installedVersionName}", substring = true).assertIsDisplayed()
     }
 }

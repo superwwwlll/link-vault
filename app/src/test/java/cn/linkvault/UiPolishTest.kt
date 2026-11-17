@@ -69,8 +69,10 @@ class UiPolishTest {
     }
 
     private fun scopes() {
-        (0..3).forEach { index -> rule.onNodeWithTag("collection-scope-$index").assertIsDisplayed().performClick().assertIsSelected() }
-        rule.onNodeWithTag("collection-scope-0").performClick()
+        (0..3).forEach { index ->
+            rule.onNodeWithTag("collection-scope-$index").performScrollTo().assertIsDisplayed().performClick().assertIsSelected()
+        }
+        rule.onNodeWithTag("collection-scope-0").performScrollTo().performClick()
     }
 
     @Test fun allFourScopesRemainReachableAtDoubleFont() {
@@ -111,7 +113,7 @@ class UiPolishTest {
             assertNull(vm.analysisConversationKey); assertNull(vm.settingsTarget)
         }
         rule.onNodeWithContentDescription("返回").performClick()
-        rule.onNodeWithText("收藏与笔记仅存本机", substring = true).performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("备份与更新").performScrollTo().assertIsDisplayed()
     }
 
     /** Scroll-viewport clipping is not an undersized measured target. Check fully visible nodes;

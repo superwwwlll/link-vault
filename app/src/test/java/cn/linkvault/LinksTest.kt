@@ -60,6 +60,19 @@ class LinksTest {
         assertEquals("", Links.readable("https://example.com/"))
     }
 
+    @Test fun fallbackTitleUsesPathThenSiteAndNeverTheRawUrl() {
+        assertEquals("Design", Links.fallbackTitle("https://example.com/design"))
+        assertEquals("微信公众号", Links.fallbackTitle("https://mp.weixin.qq.com/s/AbCdEfGhIjKl"))
+        assertFalse(Links.fallbackTitle("https://example.com/a").contains("https://"))
+    }
+
+    @Test fun listSourceSkipsASiteAlreadyShownByTheTitle() {
+        assertEquals("知乎", Links.listSource("https://www.zhihu.com/question/1", "结构化并发"))
+        assertEquals("", Links.listSource("https://www.zhihu.com/", "知乎"))
+        assertEquals("", Links.listSource("https://github.com/a/b", "我的 GitHub"))
+        assertEquals("example.com", Links.listSource("https://example.com/design", "Design"))
+    }
+
     @Test fun displayTitleNeverFallsBackToTheRawUrl() {
         assertEquals("我的标题", Links.displayTitle("https://example.com/design", "我的标题"))
         assertEquals("Design", Links.displayTitle("https://example.com/design", ""))

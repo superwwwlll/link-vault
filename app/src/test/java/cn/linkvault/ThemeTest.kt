@@ -15,7 +15,8 @@ class ThemeTest {
                 scheme.background to scheme.onBackground,
                 scheme.surface to scheme.onSurface,
                 scheme.surface to scheme.onSurfaceVariant,
-                scheme.surfaceVariant to scheme.onSurfaceVariant
+                scheme.surfaceVariant to scheme.onSurfaceVariant,
+                scheme.surface to scheme.error
             )
             pairs.forEach { (background, text) ->
                 assertEquals(1f, background.alpha, 0f)

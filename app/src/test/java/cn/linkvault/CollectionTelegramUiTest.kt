@@ -62,7 +62,7 @@ class CollectionTelegramUiTest {
         rule.runOnIdle { rule.activity.onBackPressedDispatcher.onBackPressed() }
         rule.runOnIdle { assertFalse(selecting) }
         rule.onNodeWithTag("collection-list").performScrollToIndex(15)
-        rule.onNodeWithText("我的收藏").assertIsDisplayed()
+        rule.onNodeWithText("书架").assertIsDisplayed()
         rule.onNodeWithTag("collection-search-toggle").assertIsDisplayed()
         rule.onNodeWithTag("collection-scope-0").assertIsSelected()
     }
@@ -83,7 +83,7 @@ class CollectionTelegramUiTest {
 
     @Test fun largeFontNarrowScreenKeepsArchivedFilterReachable() {
         seed(fontScale = 2f)
-        rule.onNodeWithTag("collection-scope-3").performClick().assertIsSelected()
+        rule.onNodeWithTag("collection-scope-3").performScrollTo().performClick().assertIsSelected()
         rule.onNodeWithText("归档为空").assertIsDisplayed()
         rule.onNodeWithContentDescription("展开搜索").performClick()
         rule.onNodeWithTag("collection-search").assertIsDisplayed()

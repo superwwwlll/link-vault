@@ -12,6 +12,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -55,49 +57,77 @@ object Glyph {
     val Translate = line("Translate", "M5 8L11 14 M4 14L10 8L12 5 M2 5H14 M8 2H1 M22 22L17 12L12 22 M14 18H20")
 }
 
-// 克制的蓝色操作色，借鉴即时通讯界面的清晰层级，不使用品牌标识。
-// 笔记仍使用独立中性色，来源色仍承担辨识功能。
+// 浅色用 iPhone 浅色主题的白：白底、中性浅灰分组和分隔、黑色正文、中性灰次要字。
+// 朱红只留在下划线、来源和少量文字动作。surfaceTint 与底色相同，避免 Material 把表面染暖。
+private val DayWhite = Color(0xFFFFFFFF)
+private val DayGroup = Color(0xFFF2F2F7)
+private val DayInk = Color(0xFF000000)
+private val DaySecondaryText = Color(0xFF636366)
+private val DayLine = Color(0xFFE5E5EA)
 internal val DayColors = lightColorScheme(
-    primary = Color(0xFF236A9F), onPrimary = Color.White,
-    primaryContainer = Color(0xFFE2EFF9), onPrimaryContainer = Color(0xFF163F60),
-    secondary = Color(0xFF65635D), onSecondary = Color.White,
-    secondaryContainer = Color(0xFFE2EFF9), onSecondaryContainer = Color(0xFF163F60),
-    tertiary = Color(0xFF65635D), onTertiary = Color.White,
-    tertiaryContainer = Color(0xFFF0EFEB), onTertiaryContainer = Color(0xFF292824),
-    background = Color(0xFFF8F7F4), onBackground = Color(0xFF292824),
-    surface = Color(0xFFFFFFFF), onSurface = Color(0xFF292824),
-    surfaceVariant = Color(0xFFF1F0EC), onSurfaceVariant = Color(0xFF6C6A64),
-    surfaceTint = Color(0xFF236A9F), inverseSurface = Color(0xFF292824), inverseOnSurface = Color(0xFFF8F7F4),
-    outline = Color(0xFFAAA79F), outlineVariant = Color(0xFFE5E3DD)
+    primary = Color(0xFF9C3B2E), onPrimary = Color.White,
+    primaryContainer = DayGroup, onPrimaryContainer = DayInk,
+    secondary = DaySecondaryText, onSecondary = Color.White,
+    secondaryContainer = DayGroup, onSecondaryContainer = DayInk,
+    tertiary = DaySecondaryText, onTertiary = Color.White,
+    tertiaryContainer = DayGroup, onTertiaryContainer = DayInk,
+    background = DayWhite, onBackground = DayInk,
+    surface = DayWhite, onSurface = DayInk,
+    surfaceVariant = DayGroup, onSurfaceVariant = DaySecondaryText,
+    surfaceTint = DayWhite,
+    inverseSurface = Color(0xFF1C1C1E), inverseOnSurface = DayWhite,
+    outline = Color(0xFFC7C7CC), outlineVariant = DayLine,
+    surfaceBright = DayWhite, surfaceDim = DayGroup,
+    surfaceContainerLowest = DayWhite, surfaceContainerLow = DayWhite,
+    surfaceContainer = DayWhite, surfaceContainerHigh = DayGroup,
+    surfaceContainerHighest = DayGroup
 )
 internal val NightColors = darkColorScheme(
-    primary = Color(0xFF8CC9F4), onPrimary = Color(0xFF102F45),
-    primaryContainer = Color(0xFF203F56), onPrimaryContainer = Color(0xFFD3EBFF),
-    secondary = Color(0xFFB9B6AD), onSecondary = Color(0xFF242320),
-    secondaryContainer = Color(0xFF203F56), onSecondaryContainer = Color(0xFFD3EBFF),
-    tertiary = Color(0xFFB9B6AD), onTertiary = Color(0xFF242320),
-    tertiaryContainer = Color(0xFF302F2B), onTertiaryContainer = Color(0xFFF0EFEB),
-    background = Color(0xFF191918), onBackground = Color(0xFFF0EFEB),
-    surface = Color(0xFF232322), onSurface = Color(0xFFF0EFEB),
-    surfaceVariant = Color(0xFF2D2D2A), onSurfaceVariant = Color(0xFFB2B0A8),
-    surfaceTint = Color(0xFF8CC9F4), inverseSurface = Color(0xFFF0EFEB), inverseOnSurface = Color(0xFF242320),
-    outline = Color(0xFF77756D), outlineVariant = Color(0xFF3C3B36)
+    primary = Color(0xFFE07A64), onPrimary = Color(0xFF2A120C),
+    primaryContainer = Color(0xFF3A3128), onPrimaryContainer = Color(0xFFF6F0E6),
+    secondary = Color(0xFFC4B6A4), onSecondary = Color(0xFF221C16),
+    secondaryContainer = Color(0xFF3A3128), onSecondaryContainer = Color(0xFFF6F0E6),
+    tertiary = Color(0xFFC4B6A4), onTertiary = Color(0xFF221C16),
+    tertiaryContainer = Color(0xFF2C261F), onTertiaryContainer = Color(0xFFF6F0E6),
+    background = Color(0xFF221C16), onBackground = Color(0xFFF6F0E6),
+    surface = Color(0xFF221C16), onSurface = Color(0xFFF6F0E6),
+    surfaceVariant = Color(0xFF2C261F), onSurfaceVariant = Color(0xFFC4B6A4),
+    surfaceTint = Color(0xFF221C16), inverseSurface = Color(0xFFF6F0E6), inverseOnSurface = Color(0xFF221C16),
+    outline = Color(0xFF8A7B68), outlineVariant = Color(0xFF3A3128),
+    surfaceBright = Color(0xFF221C16), surfaceDim = Color(0xFF221C16),
+    surfaceContainerLowest = Color(0xFF221C16), surfaceContainerLow = Color(0xFF221C16),
+    surfaceContainer = Color(0xFF221C16), surfaceContainerHigh = Color(0xFF2C261F),
+    surfaceContainerHighest = Color(0xFF2C261F)
+)
+
+/** 浅色分组和输入用中性浅灰；深色仍用原来的深色填充。 */
+internal val DayFill = Color(0xFFF2F2F7)
+internal val NightFill = Color(0xFF2C241C)
+
+/**
+ * 离线中文宋体。Noto Serif SC（OFL-1.1）的 GB2312 子集，字重 500。
+ * 许可全文在 assets/fonts/OFL-NotoSerifSC.txt。不从网络加载。
+ */
+internal val ReadingSerif = FontFamily(
+    Font(R.font.reading_serif, FontWeight.Normal),
+    Font(R.font.reading_serif, FontWeight.Medium),
+    Font(R.font.reading_serif, FontWeight.SemiBold)
 )
 
 private val VaultTypography = Typography(
-    headlineSmall = TextStyle(fontSize = 24.sp, lineHeight = 32.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp),
-    titleLarge = TextStyle(fontSize = 22.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold),
-    titleMedium = TextStyle(fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.SemiBold),
-    bodyLarge = TextStyle(fontSize = 15.sp, lineHeight = 24.sp),
-    bodyMedium = TextStyle(fontSize = 14.sp, lineHeight = 21.sp),
+    headlineSmall = TextStyle(fontFamily = ReadingSerif, fontSize = 34.sp, lineHeight = 42.sp, fontWeight = FontWeight.Medium),
+    titleLarge = TextStyle(fontFamily = ReadingSerif, fontSize = 22.sp, lineHeight = 32.sp, fontWeight = FontWeight.Medium),
+    titleMedium = TextStyle(fontFamily = ReadingSerif, fontSize = 17.sp, lineHeight = 26.sp, fontWeight = FontWeight.Medium),
+    bodyLarge = TextStyle(fontFamily = ReadingSerif, fontSize = 17.sp, lineHeight = 30.sp),
+    bodyMedium = TextStyle(fontSize = 15.sp, lineHeight = 22.sp),
     labelMedium = TextStyle(fontSize = 12.sp, lineHeight = 17.sp, fontWeight = FontWeight.Medium),
     bodySmall = TextStyle(fontSize = 12.sp, lineHeight = 18.sp),
     labelLarge = TextStyle(fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium)
 )
 
 private val VaultShapes = Shapes(
-    small = RoundedCornerShape(10.dp), medium = RoundedCornerShape(14.dp),
-    large = RoundedCornerShape(18.dp), extraLarge = RoundedCornerShape(24.dp)
+    small = RoundedCornerShape(6.dp), medium = RoundedCornerShape(10.dp),
+    large = RoundedCornerShape(14.dp), extraLarge = RoundedCornerShape(18.dp)
 )
 
 data class NoteThemeColors(
@@ -108,17 +138,17 @@ data class NoteThemeColors(
 )
 
 private val DayNoteColors = NoteThemeColors(
-    container = Color(0xFFF5F4F0),
-    onContainer = Color(0xFF292524),
-    border = Color(0xFFE5E3DD),
-    icon = Color(0xFF6C6A64)
+    container = Color(0xFFF2F2F7),
+    onContainer = Color(0xFF000000),
+    border = Color(0xFFE5E5EA),
+    icon = Color(0xFF636366)
 )
 
 private val NightNoteColors = NoteThemeColors(
-    container = Color(0xFF2D2D2A),
-    onContainer = Color(0xFFF0EFEB),
-    border = Color(0xFF3C3B36),
-    icon = Color(0xFFB2B0A8)
+    container = Color(0xFF2C261F),
+    onContainer = Color(0xFFF6F0E6),
+    border = Color(0xFF3A3128),
+    icon = Color(0xFFC4B6A4)
 )
 
 val LocalNoteColors = staticCompositionLocalOf { DayNoteColors }
@@ -165,8 +195,8 @@ internal fun sourceColorFor(hue: Float, deep: Boolean, dark: Boolean): Pair<Colo
     val tint = Color.hsl(hue, 0.85f, 0.60f)
     NightSourceBase.blend(tint, if (deep) 0.34f else 0.22f) to Color.hsl(hue, 0.62f, 0.86f)
 } else {
-    // 深浅两档要拉得开：0.90/0.95 的两档在同一色相下 ΔE 仅 5.7，等于白占一个比特位
-    Color.hsl(hue, 0.55f, if (deep) 0.80f else 0.935f) to Color.hsl(hue, 0.60f, 0.27f)
+    // 白底上浅档靠饱和度分开，深档再压暗，避免色块贴进白色。
+    Color.hsl(hue, if (deep) 0.58f else 0.78f, if (deep) 0.74f else 0.90f) to Color.hsl(hue, 0.62f, 0.22f)
 }
 
 fun sourcePalette(key: String, dark: Boolean): Pair<Color, Color> {

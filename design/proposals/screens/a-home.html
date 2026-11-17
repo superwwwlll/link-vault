@@ -1,0 +1,43 @@
+<!doctype html><html><head><meta charset='utf-8'><style>
+@font-face { font-family: "Sans"; src: url("file:///tmp/fonts/NotoSansSC.ttf") format("truetype"); font-weight: 100 900; font-display: block; }
+@font-face { font-family: "Serif"; src: url("file:///tmp/fonts/NotoSerifSC.ttf") format("truetype"); font-weight: 100 900; font-display: block; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 390px; height: 844px; overflow: hidden; background: transparent; }
+body { font-family: "Sans", sans-serif; -webkit-font-smoothing: antialiased; }
+button { background: none; border: 0; font: inherit; color: inherit; }
+.phone { width: 390px; height: 844px; position: relative; overflow: hidden; }
+.status { height: 54px; padding: 18px 22px 0; display: flex; justify-content: space-between; align-items: flex-end; font-size: 15px; font-weight: 600; letter-spacing: 0.2px; }
+.sig { display: flex; gap: 3px; align-items: flex-end; height: 12px; }
+.sig i, .sig b { display: block; width: 3px; border-radius: 1px; background: currentColor; }
+.sig i:nth-child(1) { height: 5px; opacity: .45; }
+.sig i:nth-child(2) { height: 8px; opacity: .7; }
+.sig i:nth-child(3) { height: 11px; }
+.sig b { width: 16px; height: 8px; border-radius: 2px; opacity: .9; margin-left: 4px; }
+.nav { height: 48px; display: flex; align-items: center; padding: 0 8px 0 20px; }
+.nav h1 { font-size: 17px; font-weight: 600; flex: 1; }
+.nav .icons { display: flex; }
+.nav .icons span, .nav .back { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; }
+.nav .action { font-size: 17px; font-weight: 600; padding: 0 14px; height: 44px; }
+.scopes { display: flex; gap: 22px; padding: 2px 20px 0; height: 44px; align-items: flex-end; }
+.scopes button { font-size: 16px; line-height: 22px; padding-bottom: 8px; position: relative; }
+.scopes i { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; border-radius: 1px; }
+.dock { position: absolute; left: 0; right: 0; bottom: 0; height: 78px; display: flex; padding: 8px 8px 22px; }
+.dock .tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.dock em { font-style: normal; font-size: 10px; line-height: 12px; letter-spacing: 0.2px; }
+.list { padding: 6px 0 90px; }
+.row { padding: 13px 20px 14px; }
+.row h2 { font-size: 17px; line-height: 24px; font-weight: 500; }
+.row p { margin-top: 3px; font-size: 13px; line-height: 18px; }
+.count { padding: 10px 20px 2px; font-size: 13px; line-height: 18px; }
+</style></head><body><div class="phone" style="background:#FFFFFF">
+      <div class="status" style="color:#1C1C1E">
+      <span>08:30</span>
+      <span class="sig"><i></i><i></i><i></i><b></b></span>
+    </div>
+      <div class="nav"><h1 style="color:#1C1C1E">收藏</h1>
+        <div class="icons"><span><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="11" cy="11" r="6.2" stroke="#1C1C1E" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M15.6 15.6L19 19" stroke="#1C1C1E" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 5.5v13M5.5 12h13" stroke="#1C1C1E" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div></div>
+      <div class="scopes"><button style="color:#1C1C1E;font-weight:600">未归档<i style="background:#1C1C1E"></i></button><button style="color:#8E8E93;font-weight:430">未读<i></i></button><button style="color:#8E8E93;font-weight:430">已读<i></i></button><button style="color:#8E8E93;font-weight:430">归档<i></i></button></div>
+      <div class="count" style="color:#8E8E93">未归档 · 5 条</div>
+      <div class="list"><div class="row" style="border-bottom:0.5px solid #ECECEF"><h2 style="color:#1C1C1E">把读过的长文留在自己的书架上</h2><p style="color:#8E8E93">少数派 · 10月3日 · 阅读</p></div><div class="row" style="border-bottom:0.5px solid #ECECEF"><h2 style="color:#1C1C1E">如何给十年后的自己留一份还能检索的阅读记录</h2><p style="color:#8E8E93">知乎 · 8月18日 · 方法</p></div><div class="row" style="border-bottom:0.5px solid #ECECEF"><h2 style="color:#1C1C1E">城市里还在营业的独立书店，靠什么撑过这一年</h2><p style="color:#8E8E93">36氪 · 6月2日 · 城市</p></div><div class="row" style="border-bottom:0.5px solid #ECECEF"><h2 style="color:#1C1C1E">一次连接里还剩下什么成本</h2><p style="color:#8E8E93">GitHub · 12月11日 · 网络</p></div><div class="row" style="border-bottom:0.5px solid #ECECEF"><h2 style="color:#1C1C1E">活版印刷的条目比想象中更好读</h2><p style="color:#8E8E93">维基百科 · 4月9日 · 历史</p></div></div>
+      <div class="dock" style="background:#FFFFFF;border-top:0.5px solid #ECECEF"><div class="tab"><span style="color:#1C1C1E"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M7 4.8h10v14.4l-5-3.1-5 3.1V4.8z" stroke="#1C1C1E" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span><em style="color:#1C1C1E;font-weight:600">收藏</em></div><div class="tab"><span style="color:#8E8E93"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M14.2 5.2l4.2 4.2L9.2 18.6H5v-4.2L14.2 5.2z" stroke="#8E8E93" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span><em style="color:#8E8E93;font-weight:430">笔记</em></div><div class="tab"><span style="color:#8E8E93"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4.8 12.2L12 5h6.2v6.2l-7.2 7.2-6.2-6.2z" stroke="#8E8E93" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="15.2" cy="8.6" r="0.9" fill="#8E8E93" stroke="none"/></svg></span><em style="color:#8E8E93;font-weight:430">标签</em></div><div class="tab"><span style="color:#8E8E93"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M5 8h14M5 12h14M5 16h14" stroke="#8E8E93" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="8" r="1.7" fill="#8E8E93" stroke="none"/><circle cx="15" cy="12" r="1.7" fill="#8E8E93" stroke="none"/><circle cx="11" cy="16" r="1.7" fill="#8E8E93" stroke="none"/></svg></span><em style="color:#8E8E93;font-weight:430">设置</em></div></div>
+    </div></body></html>

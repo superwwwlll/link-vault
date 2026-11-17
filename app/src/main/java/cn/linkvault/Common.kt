@@ -1,8 +1,5 @@
 package cn.linkvault
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -28,9 +25,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -49,6 +48,15 @@ internal fun RootHeading(title: String, subtitle: String = "") {
 }
 
 @Composable
+internal fun quietFieldColors() = OutlinedTextFieldDefaults.colors(
+    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+    focusedBorderColor = MaterialTheme.colorScheme.primary,
+    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+    focusedContainerColor = MaterialTheme.colorScheme.surface,
+    cursorColor = MaterialTheme.colorScheme.primary
+)
+
+@Composable
 internal fun SearchBox(value: String, onChange: (String) -> Unit, placeholder: String, modifier: Modifier = Modifier, onExpandedChange: (Boolean) -> Unit = {}, initiallyExpanded: Boolean = value.isNotEmpty()) {
     var expanded by rememberSaveable { mutableStateOf(initiallyExpanded) }
     val focus = remember { FocusRequester() }
@@ -59,11 +67,12 @@ internal fun SearchBox(value: String, onChange: (String) -> Unit, placeholder: S
         return
     }
     LaunchedEffect(expanded) { if (expanded) focus.requestFocus() }
-    OutlinedTextField(
+    TextField(
         value = value,
         onValueChange = { onChange(it.replace("\n", "").replace("\r", "")) },
         singleLine = true,
         maxLines = 1,
+        textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
         placeholder = {
             Text(
@@ -71,7 +80,7 @@ internal fun SearchBox(value: String, onChange: (String) -> Unit, placeholder: S
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         },
         leadingIcon = { Icon(Glyph.Search, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant) },
@@ -81,37 +90,88 @@ internal fun SearchBox(value: String, onChange: (String) -> Unit, placeholder: S
                 IconButton(onClick = { onChange(""); expanded = false; onExpandedChange(false) }, modifier = Modifier.size(48.dp)) { Icon(Glyph.Back, "关闭搜索", Modifier.size(16.dp)) }
             }
         },
-        shape = RoundedCornerShape(16.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-            focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-            focusedContainerColor = MaterialTheme.colorScheme.surface
-        ),
+        shape = RoundedCornerShape(10.dp),
+        colors = quietFillColors(),
         modifier = modifier.fillMaxWidth().focusRequester(focus)
     )
 }
 
+/** 比列表上原来的 12sp 标签再小一档，仍随系统字号缩放。 */
+internal val TagLabelStyle = TextStyle(fontSize = 11.sp, lineHeight = 14.sp, fontWeight = FontWeight.Medium)
+internal val TagChipBorder = 0.7.dp
+internal val TagChipPadH = 6.dp
+internal val TagChipPadV = 2.dp
+
+/**
+ * 贴合文字的细框。可点时外层至少 48dp，框本身不拉开；相邻项的可点区域互不重叠。
+ */
 @Composable
-internal fun TagPill(text: String, trailing: String = "", onClick: (() -> Unit)? = null) {
-    Surface(
-        shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
-        border = BorderStroke(0.6.dp, MaterialTheme.colorScheme.outlineVariant),
-        modifier = if (onClick != null) Modifier.heightIn(min = 48.dp).widthIn(min = 48.dp).clickable(onClick = onClick) else Modifier
-    ) {
-        Row(Modifier.padding(horizontal = 9.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(text, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+internal fun TagChip(
+    text: String,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    selected: Boolean = false,
+    toggle: Boolean = false,
+    trailing: String = "",
+    maxLines: Int = 1,
+    description: String? = null,
+    enabled: Boolean = true
+) {
+    val borderColor = when {
+        !enabled -> MaterialTheme.colorScheme.outlineVariant
+        selected -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.outline
+    }
+    val textColor = when {
+        !enabled -> MaterialTheme.colorScheme.onSurfaceVariant
+        selected -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.onSurface
+    }
+    val frame = @Composable {
+        Row(
+            Modifier
+                .border(TagChipBorder, borderColor, RoundedCornerShape(3.dp))
+                .padding(horizontal = TagChipPadH, vertical = TagChipPadV),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text,
+                style = TagLabelStyle,
+                color = textColor,
+                maxLines = maxLines,
+                softWrap = maxLines != 1,
+                overflow = TextOverflow.Ellipsis
+            )
             if (trailing.isNotEmpty()) {
                 Spacer(Modifier.width(4.dp))
-                Text(trailing, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+                Text(trailing, style = TagLabelStyle, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, softWrap = false)
             }
         }
     }
+    if (onClick == null) {
+        Box(modifier) { frame() }
+    } else {
+        Box(
+            modifier
+                .heightIn(min = 48.dp)
+                .widthIn(min = 48.dp)
+                .semantics {
+                    if (description != null) contentDescription = description
+                    if (toggle) this.selected = selected
+                }
+                .clickable(enabled = enabled, onClick = onClick),
+            contentAlignment = Alignment.Center
+        ) { frame() }
+    }
+}
+
+@Composable
+internal fun TagPill(text: String, trailing: String = "", onClick: (() -> Unit)? = null) {
+    TagChip(text, onClick = onClick, trailing = trailing)
 }
 
 /**
- * 手记使用浅中性底，与正文区分而不争夺标题的视觉优先级。
+ * 手记用一条细线隔开，不再套一层卡片。
  */
 @Composable
 internal fun NoteSnippetCard(
@@ -121,35 +181,27 @@ internal fun NoteSnippetCard(
     onClick: (() -> Unit)? = null
 ) {
     val noteColors = LocalNoteColors.current
-    val shape = RoundedCornerShape(12.dp)
-    Surface(
-        shape = shape,
-        color = noteColors.container,
-        border = BorderStroke(0.6.dp, noteColors.border),
-        modifier = modifier
+    Row(
+        modifier
             .fillMaxWidth()
-            .then(if (onClick != null) Modifier.heightIn(min = 48.dp).widthIn(min = 48.dp).clickable(onClick = onClick) else Modifier)
+            .then(if (onClick != null) Modifier.heightIn(min = 48.dp).clickable(onClick = onClick) else Modifier),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.Top
     ) {
-        Row(
-            Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.Top
-        ) {
-            Icon(
-                Glyph.Quote,
-                contentDescription = "手记",
-                modifier = Modifier.size(13.dp).padding(top = 2.dp),
-                tint = noteColors.icon
-            )
-            Text(
-                text = text,
-                style = MaterialTheme.typography.bodyMedium,
-                color = noteColors.onContainer,
-                fontWeight = FontWeight.Normal,
-                maxLines = maxLines,
-                overflow = if (maxLines != Int.MAX_VALUE) TextOverflow.Ellipsis else TextOverflow.Clip
-            )
-        }
+        Box(
+            Modifier
+                .padding(top = 3.dp)
+                .width(2.dp)
+                .height(16.dp)
+                .background(noteColors.border, RoundedCornerShape(1.dp))
+        )
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = noteColors.onContainer,
+            maxLines = maxLines,
+            overflow = if (maxLines != Int.MAX_VALUE) TextOverflow.Ellipsis else TextOverflow.Clip
+        )
     }
 }
 
@@ -205,10 +257,9 @@ internal fun <T> SegmentedPills(
             Surface(
                 onClick = { onSelect(item) },
                 modifier = Modifier.semantics { selected = chosen; role = Role.Tab },
-                shape = RoundedCornerShape(12.dp),
-                color = if (chosen) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface,
-                contentColor = if (chosen) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                border = BorderStroke(1.dp, if (chosen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)
+                shape = RoundedCornerShape(8.dp),
+                color = if (chosen) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent,
+                contentColor = if (chosen) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
             ) {
                 Row(Modifier.heightIn(min = 48.dp).padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(label(item), style = MaterialTheme.typography.bodyMedium, fontWeight = if (chosen) FontWeight.SemiBold else FontWeight.Normal)
@@ -222,17 +273,12 @@ internal fun <T> SegmentedPills(
 @Composable
 internal fun EmptyState(icon: ImageVector, title: String, subtitle: String = "") {
     Column(
-        Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 48.dp),
+        Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 56.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Box(
-             Modifier.size(64.dp).border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.surface, RoundedCornerShape(20.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(icon, null, Modifier.size(26.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+        Icon(icon, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
         if (subtitle.isNotBlank()) {
             Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         }
@@ -242,17 +288,47 @@ internal fun EmptyState(icon: ImageVector, title: String, subtitle: String = "")
 @Composable
 internal fun PageToolbar(title: String, onBack: () -> Unit, subtitle: String = "", action: (@Composable () -> Unit)? = null) {
     Row(
-        Modifier.fillMaxWidth().heightIn(min = 60.dp).padding(horizontal = 10.dp),
+        Modifier.fillMaxWidth().heightIn(min = 48.dp).background(MaterialTheme.colorScheme.surface),
         verticalAlignment = Alignment.CenterVertically
     ) {
         IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) { Icon(Glyph.Back, "返回", tint = MaterialTheme.colorScheme.onSurface) }
-        Column(Modifier.weight(1f).padding(start = 4.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
-            if (subtitle.isNotEmpty()) Text(subtitle, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(Modifier.weight(1f)) {
+            Text(title, fontFamily = ReadingSerif, fontSize = 17.sp, lineHeight = 22.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurface)
+            if (subtitle.isNotEmpty()) Text(subtitle, fontSize = 13.sp, lineHeight = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         action?.invoke()
     }
 }
+
+@Composable
+internal fun readingLineColors() = TextFieldDefaults.colors(
+    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+    disabledTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    focusedContainerColor = Color.Transparent,
+    unfocusedContainerColor = Color.Transparent,
+    disabledContainerColor = Color.Transparent,
+    cursorColor = MaterialTheme.colorScheme.primary,
+    focusedIndicatorColor = MaterialTheme.colorScheme.outline,
+    unfocusedIndicatorColor = MaterialTheme.colorScheme.outlineVariant,
+    disabledIndicatorColor = MaterialTheme.colorScheme.outlineVariant,
+    errorIndicatorColor = MaterialTheme.colorScheme.error
+)
+
+@Composable
+internal fun quietFillColors() = TextFieldDefaults.colors(
+    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+    disabledTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    focusedContainerColor = if (LocalVaultDark.current) NightFill else DayFill,
+    unfocusedContainerColor = if (LocalVaultDark.current) NightFill else DayFill,
+    disabledContainerColor = if (LocalVaultDark.current) NightFill else DayFill,
+    cursorColor = MaterialTheme.colorScheme.primary,
+    focusedIndicatorColor = Color.Transparent,
+    unfocusedIndicatorColor = Color.Transparent,
+    disabledIndicatorColor = Color.Transparent,
+    errorIndicatorColor = Color.Transparent
+)
 
 @Composable
 internal fun SectionLabel(text: String, trailing: String = "") {

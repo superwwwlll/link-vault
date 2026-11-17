@@ -201,6 +201,26 @@ object Links {
         return prettify(candidate)
     }
 
+    /** 没有可用标题时的安全回退：路径里能读的词，否则站点名。不把整条 URL 写进标题。 */
+    fun fallbackTitle(url: String): String {
+        val derived = readable(url)
+        if (derived.isNotEmpty()) return derived.take(200)
+        return siteName(url).take(200)
+    }
+
+    /**
+     * 列表和详情上单独的来源。标题本身已经是站点名，或标题结尾就是这个来源时不再重复一行。
+     * 不改用户写进库里的标题。
+     */
+    fun listSource(url: String, title: String): String {
+        val site = siteName(url)
+        if (site.isEmpty() || site == "链接") return ""
+        val shown = displayTitle(url, title)
+        if (shown.equals(site, ignoreCase = true)) return ""
+        if (shown.endsWith(site)) return ""
+        return site
+    }
+
     /** 标题为空或只剩「首页」这类空壳时依次退回：路径推导 → 站点名。永远不把整条 URL 当作标题显示。 */
     fun displayTitle(url: String, title: String): String {
         // 显示时再清一遍：1.3.8 之前入库的标题里存着换行符和粘着的站点名，

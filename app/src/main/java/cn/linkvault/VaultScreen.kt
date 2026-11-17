@@ -9,20 +9,13 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.browser.customtabs.CustomTabColorSchemeParams
 import androidx.browser.customtabs.CustomTabsIntent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -33,6 +26,8 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -108,7 +103,7 @@ fun VaultScreen(vm: VaultViewModel) {
                 .setColorScheme(if (isDark) CustomTabsIntent.COLOR_SCHEME_DARK else CustomTabsIntent.COLOR_SCHEME_LIGHT)
                 .setDefaultColorSchemeParams(
                     CustomTabColorSchemeParams.Builder()
-                        .setToolbarColor(if (isDark) 0xFF232322.toInt() else 0xFFF8F7F4.toInt())
+                        .setToolbarColor(if (isDark) 0xFF221C16.toInt() else 0xFFFFFFFF.toInt())
                         .build()
                 )
                 .build()
@@ -145,6 +140,7 @@ fun VaultScreen(vm: VaultViewModel) {
             else if (d != null) cancelConfirm = true
             else if (vm.detailId != null) vm.closeDetail()
             else if (vm.trashOpen) vm.closeTrash()
+            else if (vm.tab == 3) vm.closeSettings()
             else vm.tab(0)
         }
     }
@@ -155,55 +151,31 @@ fun VaultScreen(vm: VaultViewModel) {
         bottomBar = {
             if (conversationKey != null) {
                 // 独立对话页自己提供随输入法抬升的输入栏。
-            } else if (nd != null) {
-                Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
-                    Button(onClick = vm.notes::save, enabled = !vm.notes.busy, shape = RoundedCornerShape(14.dp), modifier = Modifier
-                        .navigationBarsPadding().imePadding().padding(horizontal = 24.dp, vertical = 12.dp).fillMaxWidth().height(50.dp)) {
-                        Icon(Glyph.Check, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp))
-                        Text(if (vm.notes.busy) "保存中…" else if (nd.secret) "加密保存" else "保存笔记", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    }
-                }
-            } else if (d != null) {
-                Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
-                    Button(onClick = vm::save, enabled = !vm.busy, shape = RoundedCornerShape(14.dp), modifier = Modifier
-                        .navigationBarsPadding().imePadding().padding(horizontal = 24.dp, vertical = 12.dp).fillMaxWidth().height(50.dp)) {
-                        Icon(Glyph.Check, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(if (vm.busy) "保存中…" else "保存收藏", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    }
-                }
+            } else if (nd != null || d != null) {
+                Spacer(Modifier.navigationBarsPadding())
             } else if (vm.detailId == null && !vm.trashOpen) {
-                NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
-                    val labels = listOf("收藏", "笔记", "标签", "设置")
-                    val icons = listOf(Glyph.Bookmark, Glyph.Note, Glyph.Tag, Glyph.Settings)
-                    labels.forEachIndexed { index, label ->
-                        NavigationBarItem(selected = vm.tab == index, onClick = { vm.tab(index) },
-                            icon = { Icon(icons[index], null, Modifier.size(22.dp)) },
-                            label = { Text(label, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis) })
+                Column(Modifier.navigationBarsPadding().background(MaterialTheme.colorScheme.surface)) {
+                    HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                    val labels = listOf("收藏", "笔记")
+                    val icons = listOf(Glyph.Bookmark, Glyph.Note)
+                    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                        labels.forEachIndexed { index, label ->
+                            val selected = vm.tab == index
+                            val tint = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                            Column(
+                                Modifier.weight(1f).heightIn(min = 48.dp).clickable { vm.tab(index) }.semantics { this.selected = selected }.padding(vertical = 4.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Icon(icons[index], null, Modifier.size(22.dp), tint = tint)
+                                Text(label, fontSize = 10.sp, lineHeight = 12.sp, fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal, color = tint, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                        }
                     }
                 }
             }
         },
-        floatingActionButton = {
-            if (conversationKey == null && !collectionSelection && !editing && vm.detailId == null && !vm.trashOpen && (vm.tab == 0 || vm.tab == 1)) AnimatedVisibility(
-                visible = fabShown,
-                enter = fadeIn(tween(180)) + scaleIn(tween(180), initialScale = 0.86f),
-                exit = fadeOut(tween(130)) + scaleOut(tween(130), targetScale = 0.86f)
-            ) {
-                FloatingActionButton(
-                    onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        // 笔记页的 + 建笔记，收藏页的 + 建收藏：同一个位置，两种意图。
-                        if (vm.tab == 1) vm.notes.create() else vm.edit(Draft())
-                    },
-                    shape = RoundedCornerShape(50),
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 1.dp, pressedElevation = 0.dp),
-                    modifier = Modifier.size(56.dp)
-                ) {
-                    Icon(Glyph.Add, contentDescription = if (vm.tab == 1) "新建笔记" else "收藏链接", modifier = Modifier.size(22.dp))
-                }
-            }
-        }
+        floatingActionButton = {}
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
             if (vm.busy || vm.notes.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -215,13 +187,12 @@ fun VaultScreen(vm: VaultViewModel) {
             }
             if (d == null && vm.detailId == null && vm.tab == 0 && !vm.updateBannerDismissed) {
                 vm.available?.let { info ->
-                    Surface(color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.fillMaxWidth()) {
-                        Row(Modifier.padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Glyph.Cloud, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
-                            Column(Modifier.weight(1f).padding(start = 10.dp, top = 10.dp, bottom = 10.dp)) {
-                                Text("发现新版本 ${info.versionName}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    Surface(color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth()) {
+                        Row(Modifier.padding(start = 20.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f).padding(top = 10.dp, bottom = 10.dp)) {
+                                Text("发现新版本 ${info.versionName}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
                             }
-                            TextButton(onClick = { vm.downloadUpdate() }, enabled = !vm.updateDownloading) {
+                            TextButton(onClick = { vm.downloadUpdate() }, enabled = !vm.updateDownloading, modifier = Modifier.heightIn(min = 48.dp)) {
                                 Text(if (vm.updateDownloading) "${(vm.updateProgress * 100).toInt()}%" else "更新", style = MaterialTheme.typography.bodyMedium)
                             }
                             IconButton(onClick = vm::dismissUpdateBanner, modifier = Modifier.size(48.dp)) { Icon(Glyph.Close, "忽略这次更新", Modifier.size(15.dp)) }
@@ -260,7 +231,12 @@ fun VaultScreen(vm: VaultViewModel) {
                 vm.tab == 2 -> TagsPage(vm)
                 vm.tab == 3 -> SettingsPage(vm, ::launchExport, ::launchExportHtml, ::launchExportPortalHtml, ::launchExportMarkdown, ::launchImport, ::launchFolder, ::launchSecureExport, ::launchSecureImport)
                 else -> CollectionPage(vm, onShare = ::share, onDelete = { deleteId = it.id }, onCopy = ::copyLink, onCopyMarkdown = ::copyMarkdown, onOpen = ::openLink, listState = collectionListState,
-                    onSelectionChange = { collectionSelection = it })
+                    onSelectionChange = { collectionSelection = it },
+                    showAdd = fabShown && !collectionSelection,
+                    onAdd = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        vm.edit(Draft())
+                    })
             }
         }
     }
@@ -288,7 +264,7 @@ fun VaultScreen(vm: VaultViewModel) {
  *
  * 只提示、不监听：Android 13 起读剪贴板会弹系统提示，主动进页面才查一次，
  * 免得后台监听把用户每一次复制都变成一次系统弹窗。
- * 纯文本按明文存，所以这里就把"明文存在本机"写在脸上，而不是等出事再解释。
+ * 纯文本按明文存。加密与丢密码的提醒留在笔记的「私密」开关上。
  */
 @Composable
 private fun ClipboardSuggestion(
@@ -298,34 +274,25 @@ private fun ClipboardSuggestion(
     onSaveNote: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    Surface(
-        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.85f),
-        shape = RoundedCornerShape(14.dp),
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 6.dp),
-        border = BorderStroke(0.6.dp, MaterialTheme.colorScheme.outlineVariant)
-    ) {
-        Row(Modifier.padding(start = 14.dp, end = 4.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(if (url != null) Glyph.LinkChain else Glyph.Note, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
-            Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
-                Text(if (url != null) "检测到剪贴板链接" else "检测到剪贴板文字", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSecondaryContainer)
+    Column(Modifier.fillMaxWidth()) {
+        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+        Row(Modifier.padding(start = 20.dp, end = 4.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f).padding(end = 8.dp)) {
+                Text(if (url != null) "检测到剪贴板链接" else "检测到剪贴板文字", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
                 Text((url ?: text.orEmpty()).take(80), style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (url == null) Text("存下来是明文笔记 · 要加密就在笔记里打开「私密」", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            TextButton(onClick = if (url != null) onSaveUrl else onSaveNote, contentPadding = PaddingValues(horizontal = 8.dp)) {
-                Text(if (url != null) "收录" else "存为笔记", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+            TextButton(onClick = if (url != null) onSaveUrl else onSaveNote, modifier = Modifier.heightIn(min = 48.dp), contentPadding = PaddingValues(horizontal = 8.dp)) {
+                Text(if (url != null) "收录" else "存为笔记", style = MaterialTheme.typography.bodyMedium)
             }
             IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp)) {
-                Icon(Glyph.Close, "忽略", Modifier.size(14.dp))
+                Icon(Glyph.Close, "忽略", Modifier.size(16.dp))
             }
         }
     }
 }
 
 /**
- * 向下滚动时收起添加按钮。
- *
- * 它停在右下角，正好压住列表第三张卡片的来源与时间；列表越长，被挡住的那张越靠不上前。
- * 回到列表顶部时必须显示，否则首屏会没有添加入口。
+ * 向下滚动时收起收藏页导航栏里的添加按钮。回到列表顶部时必须显示。
  */
 @Composable
 private fun rememberFabShown(listState: LazyListState): Boolean {
