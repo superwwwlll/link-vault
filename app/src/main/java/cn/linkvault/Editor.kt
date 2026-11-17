@@ -35,7 +35,7 @@ internal fun EditorPage(vm: VaultViewModel, draft: Draft, onBack: () -> Unit) {
                 Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
             }
             EditorCaption("链接")
-            EditorField(draft.url, { vm.edit(draft.copy(url = it.take(16000))) }, "粘贴 HTTP / HTTPS 链接", !vm.busy, minLines = 2, maxLines = 5)
+            EditorField(draft.url, { vm.edit(draft.copy(url = it.take(16000))) }, "", !vm.busy, minLines = 2, maxLines = 5)
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                 TextButton(
                     onClick = {
@@ -57,9 +57,9 @@ internal fun EditorPage(vm: VaultViewModel, draft: Draft, onBack: () -> Unit) {
                 }
             }
             EditorCaption("标题", trailing = if (draft.title.isBlank() && draft.url.isNotBlank()) Links.readable(draft.url).takeIf { it.isNotEmpty() }?.let { "自动：$it" }.orEmpty() else "")
-            EditorField(draft.title, { vm.edit(draft.copy(title = it.take(200))) }, "留空则按链接路径自动生成", !vm.busy)
+            EditorField(draft.title, { vm.edit(draft.copy(title = it.take(200))) }, "", !vm.busy)
             EditorCaption("一句")
-            EditorField(draft.notes, { vm.edit(draft.copy(notes = it.take(8000))) }, "写下灵感、重点，或收藏的理由", !vm.busy, minLines = 4, maxLines = 9)
+            EditorField(draft.notes, { vm.edit(draft.copy(notes = it.take(8000))) }, "", !vm.busy, minLines = 4, maxLines = 9)
             EditorCaption("标签")
             TagInput(vm, draft)
         }
@@ -83,7 +83,9 @@ private fun EditorField(value: String, onChange: (String) -> Unit, placeholder: 
         value = value,
         onValueChange = onChange,
         enabled = enabled,
-        placeholder = { Text(placeholder, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+        placeholder = if (placeholder.isNotEmpty()) {
+            { Text(placeholder, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        } else null,
         modifier = Modifier.fillMaxWidth(),
         minLines = minLines,
         maxLines = maxLines,

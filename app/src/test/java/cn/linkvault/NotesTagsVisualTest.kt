@@ -95,7 +95,7 @@ class NotesTagsVisualTest {
         capture("notes-v2-revealed")
         rule.runOnIdle { vm.notes.open(vm.notes.rows.first { it.secret }); vm.clearMessage() }
         rule.onNodeWithText("加密保存").assertIsDisplayed()
-        rule.onNodeWithText("正文加密后才落盘", substring = true).assertIsDisplayed()
+        rule.onNodeWithText("忘记主密码无法找回", substring = true).assertIsDisplayed()
         capture("notes-v2-editor-secret")
         rule.runOnIdle { vm.notes.edit(null); vm.notes.lock(); vm.clearMessage() }
         rule.onNodeWithText("已锁定 · 点按解锁").assertIsDisplayed()

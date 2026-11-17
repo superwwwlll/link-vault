@@ -183,7 +183,6 @@ internal fun CollectionPage(
                         vm.scope == 1 -> "已全部读完"
                         else -> "未找到匹配收藏"
                     },
-                    if (vm.items.isEmpty()) "从分享菜单或右上角的 +，为值得回看的链接留个位置。" else "试试其他筛选，或换个关键词。"
                 )
             }
         } else {

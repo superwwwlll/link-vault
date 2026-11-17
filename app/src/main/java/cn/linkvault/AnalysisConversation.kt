@@ -66,11 +66,9 @@ internal fun AnalysisConversationPage(vm: VaultViewModel, key: String, onBack: (
                     if (summaryExpanded && record != null) {
                         Text("原总结 · ${record.template}", fontWeight = FontWeight.SemiBold)
                         SelectionContainer { SnapshotMarkdownViewer(messages.firstOrNull()?.text.orEmpty(), expanded = true, showImages = false) }
-                        if (record.sourceChars > Analysis.MAX_SOURCE) Text("材料 ${record.sourceChars} 字，仅分析前 ${Analysis.MAX_SOURCE} 字；对话也只能参考这部分。",
+                        if (record.sourceChars > Analysis.MAX_SOURCE) Text("材料 ${record.sourceChars} 字，仅分析前 ${Analysis.MAX_SOURCE} 字。",
                             style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
                     }
-                    Text("AI 回答不等于事实核验，请结合原文判断。发送原文、总结及最近最多 6 轮；全部历史仅存本机。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    if (record == null) Text("尚无可用总结，请返回原内容先完成分析。", style = MaterialTheme.typography.bodyMedium)
                 }
             }
             itemsIndexed(history, key = { index, _ -> "message-$index" }) { _, message -> AnalysisConversationMessage(message) }
@@ -94,7 +92,7 @@ internal fun AnalysisConversationPage(vm: VaultViewModel, key: String, onBack: (
                     TextButton(onClick = { vm.openSettings("AI 接口") }, modifier = Modifier.heightIn(min = 48.dp)) { Text("去设置") }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextField(question, { vm.conversationQuestion(key, it) }, placeholder = { Text("围绕这篇内容继续追问", style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    TextField(question, { vm.conversationQuestion(key, it) }, label = { Text("追问") },
                         textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                         modifier = Modifier.weight(1f).testTag("analysis-conversation-input"), minLines = 1, maxLines = 4, enabled = state == null,
                         shape = RoundedCornerShape(10.dp), colors = quietFillColors())

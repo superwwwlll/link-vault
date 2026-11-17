@@ -263,7 +263,7 @@ class VisualTest {
         rule.onAllNodes(hasContentDescription("新建笔记")).onFirst().performClick()
         rule.onNode(hasSetTextAction()).performTextInput("家里 WiFi：链藏-5G\n管理页口令 hello-vault-2026")
         rule.onNode(SemanticsMatcher.expectValue(SemanticsProperties.ToggleableState, ToggleableState.Off)).performClick()
-        rule.onNodeWithText("正文加密后才落盘", substring = true).assertIsDisplayed()
+        rule.onNodeWithText("忘记主密码无法找回", substring = true).assertIsDisplayed()
         capture("09-note-editor-secret-light")
         rule.onNodeWithText("加密保存").performClick()
         rule.waitUntil(20000) { rule.runOnIdle { vm.notes.rows.size == 1 && vm.notes.draft == null } }

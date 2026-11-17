@@ -58,7 +58,7 @@ class AnalysisVisualTest {
         rule.runOnIdle { check(vm.aiKey == "fake-visual-key") }
         rule.onNodeWithText("测试连接").performScrollTo().performClick()
         rule.waitUntil(10_000) { rule.runOnIdle { vm.aiVerified && !vm.aiTesting } }
-        rule.onNodeWithText("连接验证通过，可以使用总结和对话").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("连接验证通过").performScrollTo().assertIsDisplayed()
         capture("analysis-01-provider-verified")
         rule.onNodeWithContentDescription("返回").performClick()
         rule.onNodeWithText("阅读助手").performScrollTo().performClick()

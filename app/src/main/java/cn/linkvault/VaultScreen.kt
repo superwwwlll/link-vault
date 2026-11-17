@@ -263,7 +263,7 @@ fun VaultScreen(vm: VaultViewModel) {
  *
  * 只提示、不监听：Android 13 起读剪贴板会弹系统提示，主动进页面才查一次，
  * 免得后台监听把用户每一次复制都变成一次系统弹窗。
- * 纯文本按明文存，所以这里就把"明文存在本机"写在脸上，而不是等出事再解释。
+ * 纯文本按明文存。加密与丢密码的提醒留在笔记的「私密」开关上。
  */
 @Composable
 private fun ClipboardSuggestion(
@@ -279,7 +279,6 @@ private fun ClipboardSuggestion(
             Column(Modifier.weight(1f).padding(end = 8.dp)) {
                 Text(if (url != null) "检测到剪贴板链接" else "检测到剪贴板文字", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
                 Text((url ?: text.orEmpty()).take(80), style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (url == null) Text("存下来是明文笔记 · 要加密就在笔记里打开「私密」", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             TextButton(onClick = if (url != null) onSaveUrl else onSaveNote, modifier = Modifier.heightIn(min = 48.dp), contentPadding = PaddingValues(horizontal = 8.dp)) {
                 Text(if (url != null) "收录" else "存为笔记", style = MaterialTheme.typography.bodyMedium)

@@ -60,7 +60,7 @@ internal fun NotesPage(vm: VaultViewModel, listState: LazyListState = rememberLa
         }
         NotesKeyRow(vm)
         if (notes.hiddenByLock > 0) Text(
-            "另有 ${notes.hiddenByLock} 条私密笔记未参与搜索：内容锁着，解锁后才能读。",
+            "另有 ${notes.hiddenByLock} 条未参与搜索",
             Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
             fontSize = 13.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -76,10 +76,6 @@ internal fun NotesPage(vm: VaultViewModel, listState: LazyListState = rememberLa
                         when {
                             notes.total == 0 -> "还没有笔记"
                             else -> "没有匹配的笔记"
-                        },
-                        when {
-                            notes.total == 0 -> "点右上角的 + 新建，或直接从剪贴板存一段文字。"
-                            else -> ""
                         }
                     )
                 }
@@ -91,8 +87,8 @@ internal fun NotesPage(vm: VaultViewModel, listState: LazyListState = rememberLa
                         onCopy = {
                             notes.plainText(row.id)?.let {
                                 clipboard.setText(AnnotatedString(it))
-                                vm.toast("已复制 · 这段文字会留在系统剪贴板里，直到你复制或清空")
-                            } ?: vm.fail("锁着的内容复制不出来，先解锁这条笔记")
+                                vm.toast("已复制")
+                            } ?: vm.fail("先解锁再复制")
                         }
                     )
                 }
@@ -144,7 +140,7 @@ private fun NoteCard(row: NoteRow, onClick: () -> Unit, onCopy: () -> Unit) {
                     maxLines = 2, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurface
                 )
                 val preview = when {
-                    row.unreadable -> "这条属于另一个主密码（可能来自别人的备份）。解锁原来那个主密码才能看和改。"
+                    row.unreadable -> "另一个主密码"
                     row.locked -> "已锁定 · 点按解锁"
                     masked -> "••••••••••••"
                     else -> row.summary
@@ -189,11 +185,7 @@ internal fun LockedDraftPage(vm: VaultViewModel, onBack: () -> Unit) {
     val notes = vm.notes
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
         PageToolbar(if ((notes.draft?.id ?: 0L) == 0L) "新建笔记" else "编辑笔记", onBack)
-        EmptyState(
-            Glyph.Shield,
-            "这条草稿是私密的",
-            "内容还在这里，一个字都没丢，也还没保存。解锁后接着写；返回会先问你一次，确认才丢弃。"
-        )
+        EmptyState(Glyph.Shield, "这条草稿是私密的")
         Row(Modifier.padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             TextButton(onClick = { notes.requireKey() }, enabled = !notes.busy, modifier = Modifier.heightIn(min = 48.dp)) {
                 Text("解锁继续", color = MaterialTheme.colorScheme.primary, fontSize = 17.sp)
@@ -236,7 +228,6 @@ internal fun NotesEditorPage(vm: VaultViewModel, draft: NoteDraft, onBack: () ->
             value = draft.text,
             onValueChange = { notes.change(draft.copy(text = it)) },
             enabled = !notes.busy,
-            placeholder = { Text("记下来：账号、地址、验证码、一段想法", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) },
             textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
             modifier = Modifier.fillMaxWidth(),
             minLines = 8,
@@ -311,9 +302,8 @@ private fun NoteSecretSwitch(vm: VaultViewModel, draft: NoteDraft) {
                     colors = SwitchDefaults.colors(checkedTrackColor = MaterialTheme.colorScheme.primary)
                 )
             }
-            Text(
-                if (draft.secret) "正文加密后才落盘，列表与搜索只显示掩码；打开笔记页需要主密码。解锁期间本应用禁止截屏。"
-                else "这段文字会以明文存在本机数据库里。账号、口令这类内容建议打开「私密」。",
+            if (draft.secret) Text(
+                "忘记主密码无法找回。",
                 style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -333,7 +323,7 @@ internal fun MasterPasswordDialog(vm: VaultViewModel, setup: Boolean, onDismiss:
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (setup) Text(
-                    "主密码不记在任何地方，也不写进备份文件。忘了无法找回。",
+                    "忘记无法找回。",
                     style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 PasswordField("主密码", first, { first = it }, "password-first")
@@ -383,7 +373,7 @@ internal fun ChangeMasterDialog(vm: VaultViewModel, onDismiss: () -> Unit) {
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    "全部私密笔记会用新密码重新加密一遍。笔记多的时候要等几秒，中途不写库。",
+                    "解不开则整次放弃。",
                     style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 PasswordField("旧主密码", old, { old = it }, "password-old")

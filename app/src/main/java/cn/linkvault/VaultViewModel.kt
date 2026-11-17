@@ -294,7 +294,7 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
                 if (connection == Translate.Config(aiEndpoint, aiKey, aiModel)) {
                     aiVerifiedHash = AiProviders.fingerprint(connection)
                     settings.edit().putString("aiVerifiedHash", aiVerifiedHash).apply()
-                    aiTestResult = "连接验证通过，可以使用总结和对话"
+                    aiTestResult = "连接验证通过"
                 } else aiTestResult = "配置已变化，请重新测试"
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
@@ -898,7 +898,7 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
         }
         backupFolder = uri.toString()
         settings.edit().putString("backupFolder", backupFolder).apply()
-        toast("已设置备份文件夹，之后可以一键备份")
+        toast("已设置备份文件夹")
     }
 
     fun clearBackupFolder() { backupFolder = ""; settings.edit().remove("backupFolder").apply(); toast("已取消备份文件夹") }

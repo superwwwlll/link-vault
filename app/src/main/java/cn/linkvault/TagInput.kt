@@ -67,7 +67,6 @@ internal fun TagInput(vm: VaultViewModel, draft: Draft) {
             else if ((selected.joinToString(",") + "," + value).length <= 1000) input = value
             else vm.fail("标签长度已达上限")
         }, enabled = !vm.busy, singleLine = true,
-            placeholder = { Text("添加标签，回车确认", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) },
             textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface, fontSize = 17.sp, lineHeight = 26.sp),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { commit() }),

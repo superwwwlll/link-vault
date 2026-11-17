@@ -72,8 +72,8 @@ class SettingsTrashVisualTest {
         seedTrash(vm)
         rule.runOnIdle { vm.tab(3); vm.clearMessage() }
         show(vm)
-        rule.onNodeWithText("更新、备份、回收站", substring = true).assertIsDisplayed()
-        rule.onNodeWithText("收藏与笔记仅存本机", substring = true).performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("备份与更新").assertIsDisplayed()
+        rule.onNodeWithText("外观").assertIsDisplayed()
         capture("settings-v2-home")
         rule.onNodeWithText("外观").performScrollTo().performClick()
         rule.onNodeWithText("跟随系统").assertIsDisplayed()
@@ -121,7 +121,6 @@ class SettingsTrashVisualTest {
         rule.runOnIdle { vm.tab(3); vm.clearMessage() }
         show(vm, scale = 2f)
         rule.onNodeWithText("备份与更新").performScrollTo().assertIsDisplayed()
-        rule.onNodeWithText("更新、备份、回收站", substring = true).assertIsDisplayed()
         rule.onNodeWithText("未设密钥", substring = true).performScrollTo().assertIsDisplayed()
         capture("settings-v2-narrow-large")
         rule.onNodeWithText("备份与更新").performScrollTo().performClick()

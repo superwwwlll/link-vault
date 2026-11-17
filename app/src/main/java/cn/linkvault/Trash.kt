@@ -22,13 +22,6 @@ internal fun TrashPage(vm: VaultViewModel, onBack: () -> Unit) {
             EmptyState(Glyph.Delete, "回收站为空")
         } else {
             LazyColumn(contentPadding = PaddingValues(bottom = 16.dp)) {
-                item {
-                    Text(
-                        "删除后保留 30 天，之后自动清理",
-                        Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        fontSize = 13.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
                 items(vm.trashItems, key = { it.id }) { item ->
                     Column(Modifier.fillMaxWidth()) {
                         Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 10.dp)) {

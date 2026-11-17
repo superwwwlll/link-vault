@@ -69,9 +69,8 @@ internal fun TagsPage(vm: VaultViewModel) {
             }
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("原标签：$tag", fontSize = 17.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
-                Text(if (existing == null) "将更新所有关联的收藏标签。" else "将把「$tag」合并到「$existing」，原标签会移除，重复标签会去重；收藏本身不会删除。", fontSize = 15.sp, lineHeight = 22.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (existing != null) Text("不删除收藏。", fontSize = 15.sp, lineHeight = 22.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 TextField(renameValue, { renameValue = it.take(1000) }, label = { Text("新标签名") },
-                    supportingText = { Text("不能包含逗号、分号或换行，且不能与原标签相同。") },
                     enabled = !vm.busy, modifier = Modifier.fillMaxWidth(), minLines = 1, maxLines = 4,
                     shape = RoundedCornerShape(10.dp), colors = quietFillColors())
                 TextButton(onClick = { renameTarget = null }, enabled = !vm.busy, modifier = Modifier.heightIn(min = 48.dp)) {
@@ -95,7 +94,6 @@ internal fun TagsPage(vm: VaultViewModel) {
             LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 item {
                     Text("原标签：$source", fontSize = 17.sp, fontWeight = FontWeight.Medium)
-                    Text("选择要保留的已有标签。合并会更新所有关联收藏（含归档），移除原标签并去重，不会删除收藏。", fontSize = 15.sp, lineHeight = 22.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     TextField(mergeQuery, { mergeQuery = it.take(1000) }, label = { Text("查找目标标签") }, singleLine = true,
                         enabled = !vm.busy, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp), colors = quietFillColors())
                 }
@@ -110,7 +108,7 @@ internal fun TagsPage(vm: VaultViewModel) {
                     }
                 }
                 item {
-                    Text(if (destination == null) "尚未选择目标标签" else "将「$source」合并到「$destination」", fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                    Text(if (destination == null) "尚未选择" else "将「$source」合并到「$destination」", fontSize = 15.sp, fontWeight = FontWeight.Medium)
                     TextButton(onClick = { mergeSource = null }, enabled = !vm.busy, modifier = Modifier.heightIn(min = 48.dp)) {
                         Text("取消", color = MaterialTheme.colorScheme.primary, fontSize = 17.sp)
                     }
@@ -203,7 +201,7 @@ internal fun TagsPage(vm: VaultViewModel) {
             onDismissRequest = { if (!vm.busy) deleteTarget = null },
             icon = { Icon(Glyph.Tag, null) },
             title = { Text("删除标签「$tag」？") },
-            text = { Text("将从所有收藏中移除此标签，收藏本身不会被删除。", style = MaterialTheme.typography.bodyMedium) },
+            text = { Text("不删除收藏。", style = MaterialTheme.typography.bodyMedium) },
             confirmButton = { TextButton(onClick = { vm.deleteTag(tag); deleteTarget = null }, enabled = !vm.busy) { Text("删除标签", color = MaterialTheme.colorScheme.error) } },
             dismissButton = { TextButton(onClick = { deleteTarget = null }, enabled = !vm.busy) { Text("取消") } }
         )

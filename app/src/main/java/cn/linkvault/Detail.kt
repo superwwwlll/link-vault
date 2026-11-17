@@ -179,16 +179,12 @@ internal fun DetailPage(
             DetailActionRow("添加备注", onClick = onEdit)
         }
 
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (item.tags.isNotEmpty()) Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("标签", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (item.tags.isEmpty()) {
-                Text("尚未添加标签", fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            } else {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    parseTags(item.tags).forEach { tag ->
-                        TextButton(onClick = { vm.tag(tag) }, modifier = Modifier.heightIn(min = 48.dp)) {
-                            Text(tag, color = MaterialTheme.colorScheme.primary, fontSize = 17.sp)
-                        }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                parseTags(item.tags).forEach { tag ->
+                    TextButton(onClick = { vm.tag(tag) }, modifier = Modifier.heightIn(min = 48.dp)) {
+                        Text(tag, color = MaterialTheme.colorScheme.primary, fontSize = 17.sp)
                     }
                 }
             }
@@ -273,14 +269,7 @@ internal fun DetailPage(
                 DetailActionRow("删除快照", destructive = true) { vm.removeSnapshot(item.id) }
             }
         } else if (canFetch) {
-            DetailActionRow(if (fetchingSnapshot) "正文提取与重排中…" else "提取正文快照 · 离线可读", busy = fetchingSnapshot) { vm.captureSnapshot(item) }
-        } else if (vm.aiEnabled) {
-            // 翻译按钮长在正文卡片里：没快照就没卡片，密钥配好了也找不到入口，这里必须把原因说破。
-            Text(
-                "一键翻译读的是离线正文快照，这条还没有。到「设置 → 联网抓取」打开抓取，" +
-                    "这里就会出现提取正文的入口。",
-                style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            DetailActionRow(if (fetchingSnapshot) "正文提取与重排中…" else "提取正文快照", busy = fetchingSnapshot) { vm.captureSnapshot(item) }
         }
 
         AnalysisPanel(vm, "b-${item.id}")

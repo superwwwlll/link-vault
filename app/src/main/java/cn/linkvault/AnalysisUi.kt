@@ -24,11 +24,9 @@ internal fun AiConnectionSettings(vm: VaultViewModel) {
     val provider = AiProviders.presets.firstOrNull { it.id == vm.aiProvider } ?: AiProviders.presets.last()
     var showKey by remember { mutableStateOf(false) }
     var advanced by rememberSaveable { mutableStateOf(false) }
-    var billing by rememberSaveable { mutableStateOf(false) }
     var confirmClearKey by remember { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         SectionLabel("连接配置", trailing = if (vm.aiVerified) "验证通过" else "待验证")
-        Text("翻译 / 总结 / 对话共用", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         SettingsChoice("服务商", provider.name, AiProviders.presets.map { it.id to it.name }, !vm.aiTesting) { id ->
             showKey = false
             vm.selectAiProvider(AiProviders.presets.first { it.id == id })
@@ -41,17 +39,10 @@ internal fun AiConnectionSettings(vm: VaultViewModel) {
         TextButton(onClick = vm::testAiConnection, enabled = !vm.aiTesting && vm.aiKey.isNotBlank(), modifier = Modifier.heightIn(min = 48.dp)) { Text(if (vm.aiTesting) "测试中…" else "测试连接", fontSize = 17.sp) }
         if (vm.aiTestResult.isNotEmpty() && (vm.aiTesting || !vm.aiTestResult.startsWith("连接验证通过") || vm.aiVerified))
             Text(vm.aiTestResult, style = MaterialTheme.typography.labelMedium, color = if (vm.aiVerified) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
-        Text("测试可能计费，不发送收藏。密钥仅存本机。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        TextButton(onClick = { billing = !billing }, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (billing) "收起计费与隐私说明" else "详细计费与隐私说明") }
-        if (billing) {
-            Text("选择服务商会填好地址与模型；跨服务商切换会清除旧密钥，避免误发。地址和模型都可修改。测试可能计费，不发送收藏。密钥仅存本机私有目录（明文），不进备份；阅读助手和翻译会向此接口发送内容。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (provider.note.isNotEmpty()) Text(provider.note, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("聊天会员、编码订阅通常不等于通用 API 额度。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
+        Text("可能计费。密钥只存本机。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         TextButton(onClick = { advanced = !advanced }, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (advanced) "收起高级配置" else "高级配置（API 地址）") }
         if (advanced) {
             TextField(vm.aiEndpoint, vm::aiEndpoint, label = { Text("API 地址（完整 chat/completions 地址）") }, modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 5, enabled = !vm.aiTesting, shape = RoundedCornerShape(10.dp), colors = quietFillColors())
-            Text("填写完整地址；修改后需重新测试。跨域跳转会停止，避免向其他域名发送密钥。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(onClick = { confirmClearKey = true }, enabled = !vm.aiTesting && vm.aiKey.isNotEmpty(), modifier = Modifier.heightIn(min = 48.dp)) { Text("清除密钥") }
@@ -61,7 +52,7 @@ internal fun AiConnectionSettings(vm: VaultViewModel) {
         }
     }
     if (confirmClearKey) AlertDialog(onDismissRequest = { confirmClearKey = false }, title = { Text("清除密钥？") },
-        text = { Text("清除后需重新填写并测试连接，不删除已有总结与对话。") },
+        text = { Text("需重新测试。已有总结保留。") },
         confirmButton = { TextButton(onClick = { confirmClearKey = false; showKey = false; vm.clearAiKey() }, enabled = !vm.aiTesting) { Text("清除") } },
         dismissButton = { TextButton(onClick = { confirmClearKey = false }) { Text("取消") } })
 }
@@ -92,11 +83,9 @@ internal fun AnalysisSettings(vm: VaultViewModel) {
     var confirmEnable by remember { mutableStateOf(false) }
     var confirmRemove by remember { mutableStateOf(false) }
     var editTemplate by rememberSaveable { mutableStateOf(false) }
-    var assistantDetails by rememberSaveable { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         SectionLabel("AI 阅读助手")
-        TextField(ai.profile, ai::profile, label = { Text("我的工作、兴趣与关注方向") }, placeholder = { Text("例如：我做生命科学产品销售，关注新研究方法、客户需求和可行动的机会") }, modifier = Modifier.fillMaxWidth(), minLines = 3, maxLines = 8, shape = RoundedCornerShape(10.dp), colors = quietFillColors())
-        if (ai.profile.isBlank()) Text("未填写关注方向也可以分析；填写后，结果会更贴近你的需求。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        TextField(ai.profile, ai::profile, label = { Text("我的工作、兴趣与关注方向") }, modifier = Modifier.fillMaxWidth(), minLines = 3, maxLines = 8, shape = RoundedCornerShape(10.dp), colors = quietFillColors())
         SettingsChoice("分析模板", ai.active.name.ifBlank { "未命名" }, ai.templates.map { it.id to it.name.ifBlank { "未命名" } }, onSelect = ai::select)
         TextButton(onClick = { editTemplate = !editTemplate }, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (editTemplate) "收起模板编辑" else "编辑模板") }
         if (editTemplate) {
@@ -110,16 +99,13 @@ internal fun AnalysisSettings(vm: VaultViewModel) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, modifier = Modifier.heightIn(min = 48.dp)) {
             Column(Modifier.weight(1f)) {
                 Text("保存后自动分析", fontWeight = FontWeight.SemiBold)
-                Text("${if (ai.auto) "已开启" else "未开启"} · 独立于翻译开关", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(if (ai.auto) "已开启" else "未开启", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Switch(checked = ai.auto, onCheckedChange = { if (it) confirmEnable = true else ai.auto(false) })
         }
-        Text("开启后，新保存的链接和普通笔记会发到已配置的 AI，可能计费。私密笔记绝不发送。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        TextButton(onClick = { assistantDetails = !assistantDetails }, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (assistantDetails) "收起阅读助手说明" else "详细阅读助手说明") }
-        if (assistantDetails) Text("批量保存也会逐条分析并计费。链接需要正文，首次抓取受「页面信息抓取」开关控制。不会自动扫描旧收藏。新分析使用当前模板；已有对话沿用生成总结时的框架。更换框架后可重新分析。总结与对话仅存本机，目前不进入备份，卸载后会丢失。应用进程退出会中断请求，可回到条目手动重试。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
     if (confirmEnable) AlertDialog(onDismissRequest = { confirmEnable = false }, title = { Text("开启自动分析？") },
-        text = { Text("保存后，正文、标题、备注、关注方向及提示词会发送到你填写的 AI 服务，可能产生费用。私密笔记不发送。请先测试连接并确认信任该接口。") },
+        text = { Text("保存后会发送正文，可能计费。私密笔记不发送。") },
         confirmButton = { TextButton(onClick = { confirmEnable = false; ai.auto(true) }, enabled = vm.aiVerified) { Text(if (vm.aiVerified) "开启" else "请先测试连接") } },
         dismissButton = { TextButton(onClick = { confirmEnable = false }) { Text("取消") } })
     if (confirmRemove) AlertDialog(onDismissRequest = { confirmRemove = false }, title = { Text("删除这个模板？") },
@@ -143,7 +129,6 @@ internal fun AnalysisPanel(vm: VaultViewModel, key: String) {
     if (!vm.aiVerified && record == null && state == null && error == null) {
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("AI 总结与对话", style = MaterialTheme.typography.bodyMedium)
-            Text("配置 AI 接口后可分析这篇内容", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             TextButton(onClick = { vm.openSettings("AI 接口") }, modifier = Modifier.heightIn(min = 48.dp)) {
                 Text("去设置"); Icon(Glyph.Next, null, Modifier.size(16.dp))
             }
@@ -152,17 +137,14 @@ internal fun AnalysisPanel(vm: VaultViewModel, key: String) {
     }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         SectionLabel("AI 总结与对话", trailing = record?.template ?: ai.active.name)
-        if (record == null && state == null) Text("保存后自动分析${if (ai.auto) "已开启" else "未开启"}，也可以点下面手动分析。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (record != null) {
-            Text("AI 分析不等于事实核验，请结合原文判断。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (record.sourceChars > Analysis.MAX_SOURCE) Text("材料 ${record.sourceChars} 字，仅分析前 ${Analysis.MAX_SOURCE} 字；后续对话也只能参考这部分。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
+            if (record.sourceChars > Analysis.MAX_SOURCE) Text("材料 ${record.sourceChars} 字，仅分析前 ${Analysis.MAX_SOURCE} 字。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
             SelectionContainer { SnapshotMarkdownViewer(record.messages.first().text, expanded = true, showImages = false) }
             if (key.startsWith("b-") && record.suggestedTitle.isNotEmpty()) {
                 Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("标题与标签建议", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
                         SelectionContainer { Text(record.suggestedTitle, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold) }
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) { record.suggestedTags.forEach { TagPill(it) } }
-                        Text("确认后替换收藏标题，标签追加到现有标签；原文和备注不变。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         TextButton(onClick = { confirmApply = true }, enabled = state == null) { Text("应用标题与标签") }
                 }
             }
@@ -170,14 +152,13 @@ internal fun AnalysisPanel(vm: VaultViewModel, key: String) {
                 Text("继续对话", fontSize = 17.sp)
                 if (record.messages.size > 1) Text(" · ${(record.messages.size - 1) / 2}轮", fontSize = 17.sp)
             }
-            Text("围绕这篇内容继续追问，在独立聊天页查看全部历史。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (state != null) {
             LinearProgressIndicator(Modifier.fillMaxWidth())
             Row { Text(state, Modifier.weight(1f), style = MaterialTheme.typography.labelMedium); TextButton(onClick = { ai.cancel(key) }) { Text("取消") } }
         }
         if (error != null) Text(error, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
-        if (!vm.aiVerified) Text("先到设置填写自己的 API Key 并测试连接，验证通过后即可分析。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (!vm.aiVerified) TextButton(onClick = { vm.openSettings("AI 接口") }, modifier = Modifier.heightIn(min = 48.dp)) { Text("去设置") }
         Column {
             TextButton(onClick = { if (record == null) ai.run(key) else confirmReplace = true }, enabled = state == null && vm.aiVerified, modifier = Modifier.heightIn(min = 48.dp)) {
                 Text(if (record == null) "分析这篇内容" else "按当前模板重新分析", fontSize = 17.sp)
@@ -188,12 +169,12 @@ internal fun AnalysisPanel(vm: VaultViewModel, key: String) {
             }
         }
     }
-    if (confirmReplace) AlertDialog(onDismissRequest = { confirmReplace = false }, title = { Text("重新分析？") }, text = { Text("使用当前关注方向与模板，会再次计费。成功后替换原总结并清空旧对话；失败则保留旧记录。") },
+    if (confirmReplace) AlertDialog(onDismissRequest = { confirmReplace = false }, title = { Text("重新分析？") }, text = { Text("会再次计费，并替换原总结。") },
         confirmButton = { TextButton(onClick = { confirmReplace = false; ai.run(key) }) { Text("重新分析") } }, dismissButton = { TextButton(onClick = { confirmReplace = false }) { Text("取消") } })
-    if (confirmClear) AlertDialog(onDismissRequest = { confirmClear = false }, title = { Text("清除总结与对话？") }, text = { Text("只清除本机 AI 记录，不修改原文，也无法撤回已发给服务商的内容。") },
+    if (confirmClear) AlertDialog(onDismissRequest = { confirmClear = false }, title = { Text("清除总结与对话？") }, text = { Text("只删本机记录，不改原文。") },
         confirmButton = { TextButton(onClick = { confirmClear = false; ai.clear(key); vm.clearConversationDraft(key) }) { Text("清除") } }, dismissButton = { TextButton(onClick = { confirmClear = false }) { Text("取消") } })
     if (confirmApply && record != null) AlertDialog(onDismissRequest = { confirmApply = false }, title = { Text("应用 AI 建议？") },
-        text = { Text("将收藏标题替换为「${record.suggestedTitle}」，并追加标签：${record.suggestedTags.joinToString("、")}。已有标签、原文和备注保留。") },
+        text = { Text("标题改为「${record.suggestedTitle}」，追加标签：${record.suggestedTags.joinToString("、")}。原文和备注保留。") },
         confirmButton = { TextButton(onClick = { confirmApply = false; ai.applySuggestions(key) }) { Text("确认应用") } },
         dismissButton = { TextButton(onClick = { confirmApply = false }) { Text("取消") } })
 }

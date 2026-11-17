@@ -73,10 +73,9 @@ internal fun SettingsPage(
                     SettingsDivider()
                     SettingsValueRow(Glyph.Translate, "翻译", settingsTranslationStatus(vm.aiEnabled, vm.canTranslate)) { page = "翻译" }
                     SettingsDivider()
-                    SettingsValueRow(Glyph.Archive, "备份与更新", "更新、备份、回收站\n当前 ${vm.installedVersionName}") { page = "备份与更新" }
+                    SettingsValueRow(Glyph.Archive, "备份与更新", "当前 ${vm.installedVersionName}") { page = "备份与更新" }
                 }
             }
-            Text("收藏与笔记仅存本机，无云同步。AI 会发送内容给服务商，可能计费；请勿发送敏感内容。", Modifier.padding(horizontal = 4.dp), fontSize = 13.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
             if (page == "外观") {
@@ -110,7 +109,7 @@ internal fun SettingsPage(
                     Column {
                         SettingRow(Glyph.Cloud, "检查更新", "当前 ${vm.installedVersionName}（build ${vm.installedVersionCode}）", !vm.busy && !vm.updateChecking, { vm.checkUpdate(true) })
                         HorizontalDivider(Modifier.padding(start = 44.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
-                        SwitchRow(Glyph.Check, "启动时自动检查", "每次打开至多查一次", vm.autoCheckUpdates, true) { vm.autoCheckUpdates(it) }
+                        SwitchRow(Glyph.Check, "启动时自动检查", "", vm.autoCheckUpdates, true) { vm.autoCheckUpdates(it) }
                     }
                 }
 
@@ -152,7 +151,7 @@ internal fun SettingsPage(
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 SectionLabel("联网抓取", trailing = if (vm.fetchEnabled) "已开启" else "未开启")
                 SettingsGroup {
-                    SwitchRow(Glyph.Cloud, "页面信息抓取", "保存链接后自动补齐标题、封面与正文，详情页可手动重抓", vm.fetchEnabled, !vm.busy) { vm.fetchEnabled(it) }
+                    SwitchRow(Glyph.Cloud, "页面信息抓取", "", vm.fetchEnabled, !vm.busy) { vm.fetchEnabled(it) }
                 }
             }
 
@@ -160,11 +159,9 @@ internal fun SettingsPage(
                 SectionLabel("标题整理")
                 SettingsGroup {
                     Column {
-                        SettingRow(Glyph.Sort, "按内容整理标题", "离线：去掉换行与尾部站点名，空壳标题改用正文里的标题或首句", !vm.busy, vm::tidyTitles)
+                        SettingRow(Glyph.Sort, "按内容整理标题", "", !vm.busy, vm::tidyTitles)
                     }
                 }
-                Text("只读本机已有的正文快照，不发任何请求；改坏的标题可以在编辑页改回去。",
-                    style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             }
 
@@ -176,21 +173,11 @@ internal fun SettingsPage(
                 SectionLabel("AI 翻译", trailing = settingsTranslationStatus(vm.aiEnabled, vm.canTranslate))
                 SettingsGroup {
                     Column {
-                        SwitchRow(Glyph.Translate, "启用翻译", "详情页把离线正文快照译成简体中文；快照要「联网抓取」才会产生", vm.aiEnabled, !vm.busy) { vm.aiEnabled(it) }
+                        SwitchRow(Glyph.Translate, "启用翻译", "", vm.aiEnabled, !vm.busy) { vm.aiEnabled(it) }
                     }
                 }
-                Text("与阅读助手共用「AI 接口」。翻译会发送正文到你配置的服务商，可能计费；敏感内容请勿翻译。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("会发送正文，可能计费。", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 TextButton(onClick = { returnPage = "翻译"; page = "AI 接口" }, modifier = Modifier.heightIn(min = 48.dp)) { Text("配置 AI 接口") }
-                var details by rememberSaveable { mutableStateOf(false) }
-                TextButton(onClick = { details = !details }, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (details) "收起翻译说明" else "详细隐私与用量说明") }
-                // 翻译与阅读助手共用用户配置的第三方接口。
-                if (details) Text(
-                    "翻译会把整段正文原样发给你填的那个地址，费用记在你的账号上：一篇最多 24,000 字，" +
-                        "按段发送，最多 20 段，每段等 60 秒，长文可能要等几分钟。密钥存在本机应用私有目录（明文，" +
-                        "未 root 的设备上其他应用读不到），不导入备份、不同步、不参与更新检查；" +
-                        "接口地址跨域跳转时一律停止，避免密钥被送到别的域名。不用时请关掉开关。",
-                    style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
             }
 
@@ -202,15 +189,14 @@ internal fun SettingsPage(
                         SettingRow(
                             Glyph.Shield,
                             if (vm.notes.hasMaster) "修改主密码" else "设置主密码",
-                            if (vm.notes.hasMaster) "全部私密笔记会用新密码重新加密一遍；有一条解不开就整体放弃，不改一半"
-                            else "私密笔记要先有主密码才能保存。它不记在任何地方，忘了无法找回",
+                            "忘记无法找回",
                             !vm.notes.busy
                         ) { if (vm.notes.hasMaster) changeMaster = true else vm.notes.requireKey() }
                         if (vm.notes.hasMaster) {
                             HorizontalDivider(Modifier.padding(start = 44.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
                             SettingRow(
                                 Glyph.Note, "${vm.notes.secretTotal} 条私密 / 共 ${vm.notes.total} 条",
-                                if (vm.notes.unlocked) "已解锁 · 退到后台会自动锁上" else "未解锁 · 列表只显示掩码",
+                                if (vm.notes.unlocked) "已解锁" else "未解锁",
                                 true
                             ) { vm.tab(1) }
                         }
@@ -223,26 +209,26 @@ internal fun SettingsPage(
                 SectionLabel("本地备份")
                 SettingsGroup {
                     Column {
-                        SettingRow(Glyph.Delete, "回收站", "删除后 30 天内可恢复", !vm.busy, vm::openTrash)
+                        SettingRow(Glyph.Delete, "回收站", "", !vm.busy, vm::openTrash)
                         HorizontalDivider(Modifier.padding(start = 44.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
-                        SettingRow(Glyph.Export, "导出收藏", "将 ${vm.items.size} 条收藏保存为 JSON", !vm.busy && !vm.readFailed && !vm.loading, onExport)
+                        SettingRow(Glyph.Export, "导出收藏", "${vm.items.size} 条", !vm.busy && !vm.readFailed && !vm.loading, onExport)
                         HorizontalDivider(Modifier.padding(start = 44.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
-                        SettingRow(Glyph.LinkChain, "导出 HTML 书签", "HTML", !vm.busy && !vm.readFailed && !vm.loading, onExportHtml)
+                        SettingRow(Glyph.LinkChain, "导出 HTML 书签", "", !vm.busy && !vm.readFailed && !vm.loading, onExportHtml)
                         HorizontalDivider(Modifier.padding(start = 44.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
-                        SettingRow(Glyph.Globe, "导出独立导航网页", "导航页", !vm.busy && !vm.readFailed && !vm.loading, onExportPortalHtml)
+                        SettingRow(Glyph.Globe, "导出独立导航网页", "", !vm.busy && !vm.readFailed && !vm.loading, onExportPortalHtml)
                         HorizontalDivider(Modifier.padding(start = 44.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
-                        SettingRow(Glyph.Markdown, "导出 Markdown 合辑", "Markdown", !vm.busy && !vm.readFailed && !vm.loading, onExportMarkdown)
+                        SettingRow(Glyph.Markdown, "导出 Markdown 合辑", "", !vm.busy && !vm.readFailed && !vm.loading, onExportMarkdown)
                         HorizontalDivider(Modifier.padding(start = 44.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
-                        SettingRow(Glyph.Import, "导入备份", "支持 JSON 与浏览器 HTML 书签", !vm.busy, onImport)
+                        SettingRow(Glyph.Import, "导入备份", "", !vm.busy, onImport)
                         HorizontalDivider(Modifier.padding(start = 44.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
-                        SettingRow(Glyph.Shield, "加密导出", "密码保护的本地备份（至少 8 位）", !vm.busy) { secureAction = "export" }
+                        SettingRow(Glyph.Shield, "加密导出", "", !vm.busy) { secureAction = "export" }
                         HorizontalDivider(Modifier.padding(start = 44.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
-                        SettingRow(Glyph.Shield, "导入加密备份", "不会上传密码或备份内容", !vm.busy) { secureAction = "import" }
+                        SettingRow(Glyph.Shield, "导入加密备份", "", !vm.busy) { secureAction = "import" }
                         HorizontalDivider(Modifier.padding(start = 44.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
-                        SettingRow(Glyph.Archive, "备份文件夹", if (vm.backupFolder.isEmpty()) "设置自动备份文件夹" else "已设置 · 点击更换或取消", !vm.busy, onPickFolder)
+                        SettingRow(Glyph.Archive, "备份文件夹", if (vm.backupFolder.isEmpty()) "" else "已设置", !vm.busy, onPickFolder)
                         if (vm.backupFolder.isNotEmpty()) {
                             HorizontalDivider(Modifier.padding(start = 44.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
-                            SettingRow(Glyph.Check, "立即备份到文件夹", "保存到已设文件夹", !vm.busy, vm::backupNow)
+                            SettingRow(Glyph.Check, "立即备份到文件夹", "", !vm.busy, vm::backupNow)
                         }
                     }
                 }
@@ -274,6 +260,9 @@ internal fun SettingsPage(
                     singleLine = true,
                     enabled = !vm.busy,
                     visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                    supportingText = if (securePassword.isNotEmpty() && securePassword.length < 8) {
+                        { Text("至少 8 位") }
+                    } else null,
                     shape = RoundedCornerShape(10.dp),
                     colors = quietFillColors(),
                     modifier = Modifier.fillMaxWidth()
@@ -383,7 +372,7 @@ private fun SettingRow(icon: ImageVector, title: String, subtitle: String, enabl
         Icon(icon, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(title, fontSize = 17.sp, lineHeight = 22.sp, fontWeight = FontWeight.Medium, color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(subtitle, fontSize = 13.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (subtitle.isNotEmpty()) Text(subtitle, fontSize = 13.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Icon(Glyph.Next, null, Modifier.size(15.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
@@ -402,7 +391,7 @@ private fun SwitchRow(icon: ImageVector, title: String, subtitle: String, checke
         Icon(icon, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(title, fontSize = 17.sp, lineHeight = 22.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
-            Text(subtitle, fontSize = 13.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (subtitle.isNotEmpty()) Text(subtitle, fontSize = 13.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Switch(checked = checked, enabled = enabled, onCheckedChange = onChange)
     }
