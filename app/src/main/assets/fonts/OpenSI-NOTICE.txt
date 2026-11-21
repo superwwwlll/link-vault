@@ -11,7 +11,8 @@ Zhuque Fangsong (technical preview) v0.212:
 https://github.com/TrionesType/zhuque/releases/download/v0.212/ZhuqueFangsong-v0.212.zip
 Copyright 2023 JadeFoci. License: SIL Open Font License 1.1, see OFL-ZhuqueFangsong.txt.
 The combined file is not named Zhuque. It is not a Claude official Chinese font.
-GB2312 Han in that release are included. Symbols and rare characters it does not
-contain fall back to the device font.
+GB2312 Han in that release are included. On Android 10 and later, symbols and
+rare characters it does not contain fall back to the device font. Android 8
+and 8.1 have no public fallback API, so those characters draw as boxes.
 
 OpenSI Mono is not bundled. Its download states no extra license.
