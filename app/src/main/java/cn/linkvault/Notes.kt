@@ -70,7 +70,7 @@ internal fun NotesPage(vm: VaultViewModel, listState: LazyListState = rememberLa
         LazyColumn(
             state = listState,
             modifier = Modifier.weight(1f).testTag("notes-list"),
-            contentPadding = PaddingValues(bottom = 16.dp)
+            contentPadding = PaddingValues(bottom = 48.dp)
         ) {
             if (rows.isEmpty()) {
                 item(contentType = "empty") {

@@ -16,12 +16,15 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToIndex
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.unit.Density
 import androidx.lifecycle.ViewModelProvider
 import java.io.File
 import java.time.LocalDate
 import java.time.ZoneId
 import kotlinx.coroutines.runBlocking
+import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -122,6 +125,14 @@ class CollectionHomeVisualTest {
     fun narrowLargeTypeHome() {
         val vm = seed(scale = 2f)
         capture("home-v2-narrow-large")
+        val last = rule.runOnIdle { vm.visible().last() }
+        rule.onNodeWithTag("collection-list").performScrollToNode(hasTestTag("collection-bookmark-${last.id}"))
+        val row = rule.onNodeWithTag("collection-bookmark-${last.id}").fetchSemanticsNode().boundsInRoot
+        val nav = rule.onNodeWithText("收藏").fetchSemanticsNode().boundsInRoot
+        val gap = with(rule.density) { 24.dp.toPx() }
+        assertTrue("最后一条被底栏挡住 row=$row nav=$nav", row.bottom <= nav.top - gap)
+        capture("home-v2-narrow-large-end")
+        rule.onNodeWithTag("collection-list").performScrollToIndex(0)
         assertHomeChrome(vm)
         capture("home-v2-narrow-large-archived")
     }
@@ -131,4 +142,5 @@ class CollectionHomeVisualTest {
         capture("home-v2-dark")
         assertHomeChrome(vm)
     }
+
 }

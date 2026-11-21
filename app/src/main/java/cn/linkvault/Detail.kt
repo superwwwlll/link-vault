@@ -118,16 +118,17 @@ internal fun DetailPage(
             .weight(1f)
             .fillMaxWidth()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 28.dp)
-            .padding(top = 12.dp, bottom = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .padding(horizontal = 24.dp)
+            .padding(top = 20.dp, bottom = 48.dp),
+        verticalArrangement = Arrangement.spacedBy(28.dp)
     ) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         SelectionContainer {
             Text(
                 Links.displayTitle(item.url, item.title),
                 fontFamily = ReadingSerif,
                 fontSize = 26.sp,
-                lineHeight = 36.sp,
+                lineHeight = 40.sp,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -138,7 +139,8 @@ internal fun DetailPage(
             append(Stamp.date(item.createdAt))
             if (item.updatedAt / 60_000L > item.createdAt / 60_000L) append("  ·  更新 ").append(Stamp.date(item.updatedAt))
         }
-        Text(stamp, fontSize = 13.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(stamp, fontSize = 13.sp, lineHeight = 20.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        }
 
         val snapshot = vm.currentSnapshot
         val translation = vm.currentTranslation
@@ -207,7 +209,7 @@ internal fun DetailPage(
         }
 
         if (item.notes.isNotBlank()) {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("我的一句", fontFamily = ReadingSerif, fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
                 SelectionContainer {
                     Text(
@@ -215,7 +217,7 @@ internal fun DetailPage(
                         Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(onClick = onEdit),
                         fontFamily = ReadingSerif,
                         fontSize = 17.sp,
-                        lineHeight = 28.sp,
+                        lineHeight = 32.sp,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }
@@ -246,13 +248,13 @@ internal fun DetailPage(
         }
 
         if (item.summary.isNotBlank()) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     if (item.fetchedAt > 0) "页面描述 · 抓取于 ${Stamp.date(item.fetchedAt)}" else "页面描述",
                     fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 SelectionContainer {
-                    Text(item.summary, fontFamily = ReadingSerif, fontSize = 17.sp, lineHeight = 30.sp, color = MaterialTheme.colorScheme.onSurface)
+                    Text(item.summary, fontFamily = ReadingSerif, fontSize = 17.sp, lineHeight = 32.sp, color = MaterialTheme.colorScheme.onSurface)
                 }
                 if (canFetch) DetailActionRow(if (fetching) "抓取中…" else if (item.fetchedAt > 0) "重新抓取" else "抓取页面信息", busy = fetching) {
                     showCover = true
