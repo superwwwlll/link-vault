@@ -1,16 +1,17 @@
-OpenSI Serif in this app
-=========================
+Reading font in this app
+=======================
 
+Latin, digits, and punctuation already present in OpenSI Serif stay OpenSI Serif.
 Source: https://github.com/auraunii/opensi-fonts/releases/download/release/OpenSI-Serif-and-Mono.zip
-Family name in the file: OpenSI Serif
-This is the open-source font recommended in a public post. It is not Anthropic Sans, Anthropic Serif, Anthropic Mono, or an official Claude font.
+License: SIL Open Font License 1.1, see OFL-OpenSI-Serif.txt and FONTLOG-OpenSI-Serif.txt.
+This is not an Anthropic or Claude font.
 
-What this build contains
-- Latin, digits, and punctuation already present in OpenSI Serif Regular keep those outlines.
-- Characters OpenSI Serif does not include, including Han, come from the existing Noto Serif SC GB2312 subset (weight 500).
-- OpenSI Mono is not bundled. The download does not state a license for Mono.
+Han characters, and Chinese punctuation OpenSI does not include, come from
+Zhuque Fangsong (technical preview) v0.212:
+https://github.com/TrionesType/zhuque/releases/download/v0.212/ZhuqueFangsong-v0.212.zip
+Copyright 2023 JadeFoci. License: SIL Open Font License 1.1, see OFL-ZhuqueFangsong.txt.
+The combined file is not named Zhuque. It is not a Claude official Chinese font.
+GB2312 Han in that release are included. Symbols and rare characters it does not
+contain fall back to the device font.
 
-Licenses
-- Serif: SIL Open Font License 1.1, see OFL-OpenSI-Serif.txt and FONTLOG-OpenSI-Serif.txt.
-- Han subset: SIL Open Font License 1.1, see OFL-NotoSerifSC.txt.
-  Noto Serif SC uses Reserved Font Name "Source". This file is not named Source or Noto.
+OpenSI Mono is not bundled. Its download states no extra license.

@@ -105,10 +105,9 @@ internal val DayFill = Color(0xFFF2F2F7)
 internal val NightFill = Color(0xFF2C241C)
 
 /**
- * 离线阅读字体。拉丁字母、数字和 OpenSI 已有的标点用 OpenSI Serif Regular
- * （SIL OFL 1.1，帖子推荐的开源字体，不是 Claude / Anthropic 官方字体）。
- * OpenSI 不含汉字，缺的字用原来的 Noto Serif SC GB2312 子集补上，字重仍是 500。
- * 两份许可在 assets/fonts/OFL-OpenSI-Serif.txt 与 OFL-NotoSerifSC.txt。不从网络加载。
+ * 离线阅读字体。拉丁字母、数字和 OpenSI 已有的标点仍是 OpenSI Serif。
+ * 汉字换成朱雀仿宋（预览版，SIL OFL 1.1），不是 Claude 官方中文字体，也不是思源宋。
+ * 朱雀没收录的符号和生僻字继续交给系统字体。许可在 assets/fonts。不从网络加载。
  */
 internal val ReadingSerif = FontFamily(
     Font(R.font.reading_serif, FontWeight.Normal),

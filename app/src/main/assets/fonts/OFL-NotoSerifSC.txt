@@ -5,9 +5,9 @@ Copyright 2017-2024 Google Inc.
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is available with a FAQ at: https://openfontlicense.org
 
-The file packaged in this app is a GB2312 subset of Noto Serif SC,
-instanced at weight 500, for offline use. It is not a network font.
-Characters outside GB2312, Latin, kana, and common punctuation are not included.
+This app no longer embeds Noto Serif SC. Han glyphs now come from
+Zhuque Fangsong. The license text below is kept because an earlier
+build used a GB2312 subset of Noto Serif SC at weight 500.
 
 -----------------------------------------------------------
 SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007

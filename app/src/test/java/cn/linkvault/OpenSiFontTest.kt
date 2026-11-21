@@ -6,19 +6,19 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** 阅读字体是 OpenSI Serif 的拉丁字形加 Noto Serif SC 的汉字，不是 Claude 官方字体。 */
+/** 阅读字体是 OpenSI Serif 的拉丁字形加朱雀仿宋的汉字，不是 Claude 官方中文。 */
 class OpenSiFontTest {
-    @Test fun readingFontKeepsOpenSiLatinAndNotoHan() {
+    @Test fun readingFontKeepsOpenSiLatinAndZhuqueHan() {
         val file = listOf(
             File("src/main/res/font/reading_serif.ttf"),
             File("app/src/main/res/font/reading_serif.ttf")
         ).first { it.isFile }
         val bytes = file.readBytes()
         val sha = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
-        assertEquals("504496e58074e379735661a0bacfa2f06224ab885d7482acc3d375474cf5ea0b", sha)
+        assertEquals("0627a808447b52b6690e3b5fde11e0b16258bbf8a542fc240676fab0d7ee2faa", sha)
         assertTrue(bytes.containsUtf16("OpenSI Serif"))
-        assertTrue(bytes.containsUtf16("Noto Serif SC"))
-        assertTrue(bytes.containsUtf16("Not Claude"))
+        assertTrue(bytes.containsUtf16("JadeFoci"))
+        assertTrue(bytes.containsUtf16("Not a Claude"))
         val chars = cmap(bytes)
         listOf('A', 'g', '2', '藏', '，', '。').forEach { ch ->
             assertTrue("$ch U+${ch.code.toString(16)}", ch.code in chars)
@@ -28,7 +28,8 @@ class OpenSiFontTest {
             File("app/src/main/assets/fonts")
         ).first { it.isDirectory }
         assertTrue(File(licenses, "OFL-OpenSI-Serif.txt").readText().contains("SIL Open Font License"))
-        assertTrue(File(licenses, "OFL-NotoSerifSC.txt").readText().contains("SIL Open Font License"))
+        assertTrue(File(licenses, "OFL-ZhuqueFangsong.txt").readText().contains("SIL Open Font License"))
+        assertTrue(File(licenses, "OpenSI-NOTICE.txt").readText().contains("Zhuque Fangsong"))
         assertTrue(File(licenses, "OpenSI-NOTICE.txt").readText().contains("OpenSI Mono is not bundled"))
     }
 
