@@ -167,7 +167,7 @@ internal fun CollectionPage(
         LazyColumn(
             state = listState,
             modifier = Modifier.weight(1f).fillMaxWidth().testTag("collection-list"),
-            contentPadding = PaddingValues(bottom = 16.dp),
+            contentPadding = PaddingValues(bottom = 48.dp),
             verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
         if (vm.loading) item(contentType = "progress") { LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 24.dp)) }
@@ -575,32 +575,34 @@ private fun BookmarkCard(
                 Icon(
                     if (selected) Glyph.Check else Glyph.Bookmark,
                     if (selected) "已选择" else "未选择",
-                    Modifier.padding(start = 16.dp, top = 14.dp).size(18.dp),
+                    Modifier.padding(start = 16.dp, top = 18.dp).size(18.dp),
                     tint = MaterialTheme.colorScheme.primary
                 )
             }
-            Column(Modifier.weight(1f).padding(start = if (selectionMode) 12.dp else 20.dp, top = 8.dp, bottom = 8.dp, end = 4.dp)) {
+            Column(Modifier.weight(1f).padding(start = if (selectionMode) 12.dp else 16.dp, top = 16.dp, bottom = 16.dp, end = 4.dp)) {
                 Text(
                     displayTitle,
                     fontFamily = ReadingSerif,
                     fontSize = 17.sp,
-                    lineHeight = 24.sp,
+                    lineHeight = 26.sp,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis
                 )
-                Row(Modifier.padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (item.pinned) Icon(Glyph.Pin, "已置顶", Modifier.padding(end = 4.dp).size(12.dp), tint = MaterialTheme.colorScheme.primary)
-                    Text(meta, fontSize = 12.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(meta, fontSize = 13.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                if (tags.isNotEmpty()) CollectionCardTags(tags) { if (selectionMode) onToggleSelection() else onTag(it) }
+                if (tags.isNotEmpty()) Box(Modifier.padding(top = 8.dp)) {
+                    CollectionCardTags(tags) { if (selectionMode) onToggleSelection() else onTag(it) }
+                }
                 if (item.notes.isNotBlank()) {
                     Text(
                         item.notes,
-                        Modifier.padding(top = 2.dp),
-                        fontSize = 13.sp,
-                        lineHeight = 18.sp,
+                        Modifier.padding(top = 8.dp),
+                        fontSize = 14.sp,
+                        lineHeight = 22.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
@@ -608,7 +610,7 @@ private fun BookmarkCard(
                 } else if (showSummary) {
                     Text(
                         summary,
-                        Modifier.padding(top = 2.dp),
+                        Modifier.padding(top = 8.dp),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = if (compact) 1 else 2,
@@ -622,17 +624,17 @@ private fun BookmarkCard(
                         color = if (vm.analysis.errors[aiKey] != null && vm.analysis.states[aiKey] == null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 2.dp).testTag("collection-ai-status-${item.id}")
+                        modifier = Modifier.padding(top = 8.dp).testTag("collection-ai-status-${item.id}")
                     )
                 }
             }
             if (!selectionMode) {
-                IconButton(onClick = { menu = true }, modifier = Modifier.padding(top = 2.dp).size(48.dp).testTag("collection-item-menu-${item.id}")) {
+                IconButton(onClick = { menu = true }, modifier = Modifier.size(48.dp).testTag("collection-item-menu-${item.id}")) {
                     Icon(Glyph.More, "收藏操作", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
-        HorizontalDivider(Modifier.padding(start = 20.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
         if (menu) {
             ModalBottomSheet(onDismissRequest = { menu = false }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
                 Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(bottom = 16.dp).testTag("collection-item-actions")) {

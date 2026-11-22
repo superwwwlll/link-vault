@@ -11,9 +11,16 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.foundation.shape.RoundedCornerShape
+import android.content.Context
+import android.graphics.Typeface
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.AndroidFont
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontLoadingStrategy
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -105,14 +112,45 @@ internal val DayFill = Color(0xFFF2F2F7)
 internal val NightFill = Color(0xFF2C241C)
 
 /**
- * 离线中文宋体。Noto Serif SC（OFL-1.1）的 GB2312 子集，字重 500。
- * 许可全文在 assets/fonts/OFL-NotoSerifSC.txt。不从网络加载。
+ * 离线阅读字体。拉丁字母、数字和 OpenSI 已有的标点仍是 OpenSI Serif。
+ * 汉字换成朱雀仿宋（预览版，SIL OFL 1.1），不是 Claude 官方中文字体，也不是思源宋。
+ * Android 10 及以上，朱雀没有的字交给系统字体。Android 8 和 8.1 没有这个回退接口，缺字会是方框。
+ * 许可在 assets/fonts。不从网络加载。
  */
 internal val ReadingSerif = FontFamily(
-    Font(R.font.reading_serif, FontWeight.Normal),
-    Font(R.font.reading_serif, FontWeight.Medium),
-    Font(R.font.reading_serif, FontWeight.SemiBold)
+    ReadingAndroidFont(FontWeight.Normal),
+    ReadingAndroidFont(FontWeight.Medium),
+    ReadingAndroidFont(FontWeight.SemiBold)
 )
+
+internal class ReadingAndroidFont(override val weight: FontWeight) : AndroidFont(
+    FontLoadingStrategy.Blocking,
+    ReadingTypefaceLoader,
+    FontVariation.Settings()
+) {
+    override val style: FontStyle = FontStyle.Normal
+}
+
+internal object ReadingTypefaceLoader : AndroidFont.TypefaceLoader {
+    override fun loadBlocking(context: Context, font: AndroidFont): Typeface {
+        val plain = context.resources.getFont(R.font.reading_serif)
+        if (Build.VERSION.SDK_INT < 29) return plain
+        return try {
+            typefaceWithSystemFallback(context)
+        } catch (_: RuntimeException) {
+            plain
+        }
+    }
+
+    override suspend fun awaitLoad(context: Context, font: AndroidFont): Typeface = loadBlocking(context, font)
+
+    @RequiresApi(29)
+    private fun typefaceWithSystemFallback(context: Context): Typeface {
+        val font = android.graphics.fonts.Font.Builder(context.resources, R.font.reading_serif).build()
+        val family = android.graphics.fonts.FontFamily.Builder(font).build()
+        return Typeface.CustomFallbackBuilder(family).build()
+    }
+}
 
 private val VaultTypography = Typography(
     headlineSmall = TextStyle(fontFamily = ReadingSerif, fontSize = 34.sp, lineHeight = 42.sp, fontWeight = FontWeight.Medium),
