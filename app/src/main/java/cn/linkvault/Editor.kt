@@ -7,36 +7,44 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
 internal fun EditorPage(vm: VaultViewModel, draft: Draft, onBack: () -> Unit) {
     val context = LocalContext.current
-    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
-        PageToolbar(if (draft.id == 0L) "新建收藏" else "编辑收藏", onBack) {
-            TextButton(onClick = vm::save, enabled = !vm.busy, modifier = Modifier.heightIn(min = 48.dp)) {
-                Text(if (vm.busy) "保存中…" else "保存收藏", fontFamily = ReadingSerif, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium, fontSize = 17.sp)
+    val focus = LocalFocusManager.current
+    val adding = draft.id == 0L
+    var detailsExpanded by rememberSaveable(draft.id) {
+        mutableStateOf(!adding || draft.notes.isNotBlank() || draft.tags.isNotBlank())
+    }
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).imePadding()) {
+        PageToolbar(if (adding) "新建收藏" else "编辑收藏", onBack) {
+            Button(
+                onClick = { focus.clearFocus(); vm.save() },
+                enabled = !vm.busy && draft.url.isNotBlank(),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.padding(end = 12.dp).heightIn(min = 48.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp)
+            ) {
+                Text(if (vm.busy) "保存中…" else "保存收藏", maxLines = 1)
             }
         }
         Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).imePadding().padding(horizontal = 28.dp).padding(top = 8.dp, bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)
+                .padding(top = 16.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            if (draft.id == 0L) {
-                Text("把这一篇留在书架上", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurface, fontSize = 28.sp, lineHeight = 38.sp)
-            }
-            vm.notice?.let {
-                Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-            }
             EditorCaption("链接")
-            EditorField(draft.url, { vm.edit(draft.copy(url = it.take(16000))) }, "", !vm.busy, minLines = 2, maxLines = 5)
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+            EditorField(draft.url, vm::updateDraftUrl, "输入或粘贴链接", !vm.busy, maxLines = 3, tag = "editor-url")
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(
                     onClick = {
                         val shared = Capture.clipboard(context)
@@ -45,52 +53,74 @@ internal fun EditorPage(vm: VaultViewModel, draft: Draft, onBack: () -> Unit) {
                     },
                     enabled = !vm.busy,
                     modifier = Modifier.heightIn(min = 48.dp)
-                ) { Text("粘贴并提取", color = MaterialTheme.colorScheme.primary) }
-                TextButton(onClick = { vm.extractText(draft.url) }, enabled = !vm.busy, modifier = Modifier.heightIn(min = 48.dp)) {
-                    Text("从输入中提取", color = MaterialTheme.colorScheme.primary)
+                ) { Text("粘贴并提取") }
+                if (draft.url.isNotBlank() && vm.detected.isEmpty() && !Links.valid(draft.url.trim())) {
+                    TextButton(onClick = { vm.extractText(draft.url) }, enabled = !vm.busy, modifier = Modifier.heightIn(min = 48.dp)) {
+                        Text("从输入中提取")
+                    }
                 }
             }
             if (vm.detected.size > 1) {
-                Text("这一段里还有 ${vm.detected.size - 1} 条链接", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                vm.notice?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
                 TextButton(onClick = vm::saveAllDetected, enabled = !vm.busy, modifier = Modifier.heightIn(min = 48.dp)) {
-                    Text("把 ${vm.detected.size} 条全部收藏", color = MaterialTheme.colorScheme.primary)
+                    Text("把 ${vm.detected.size} 条全部收藏")
                 }
             }
-            EditorCaption("标题", trailing = if (draft.title.isBlank() && draft.url.isNotBlank()) Links.readable(draft.url).takeIf { it.isNotEmpty() }?.let { "自动：$it" }.orEmpty() else "")
-            EditorField(draft.title, { vm.edit(draft.copy(title = it.take(200))) }, "", !vm.busy)
-            EditorCaption("一句")
-            EditorField(draft.notes, { vm.edit(draft.copy(notes = it.take(8000))) }, "", !vm.busy, minLines = 4, maxLines = 9)
-            EditorCaption("标签")
-            TagInput(vm, draft)
+            if (adding) {
+                if (!detailsExpanded && draft.title.isNotBlank()) {
+                    Text(draft.title, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                }
+                HorizontalDivider(Modifier.padding(top = 8.dp))
+                TextButton(
+                    onClick = {
+                        focus.clearFocus()
+                        detailsExpanded = !detailsExpanded
+                    },
+                    enabled = !vm.busy,
+                    modifier = Modifier.heightIn(min = 48.dp),
+                    contentPadding = PaddingValues(horizontal = 0.dp)
+                ) { Text(if (detailsExpanded) "收起标题、备注和标签" else "补充标题、备注和标签") }
+            }
+            if (detailsExpanded) {
+                EditorCaption("标题")
+                val autoTitle = Links.readable(draft.url).takeIf { it.isNotBlank() } ?: "选填"
+                EditorField(draft.title, { vm.edit(draft.copy(title = it.take(200))) }, autoTitle, !vm.busy, tag = "editor-title")
+                Spacer(Modifier.height(4.dp))
+                EditorCaption("备注")
+                EditorField(draft.notes, { vm.edit(draft.copy(notes = it.take(8000))) }, "选填", !vm.busy, minLines = 2, maxLines = 8, tag = "editor-notes")
+                Spacer(Modifier.height(4.dp))
+                EditorCaption("标签")
+                TagInput(vm, draft)
+            }
         }
     }
 }
 
 @Composable
-private fun EditorCaption(text: String, trailing: String = "") {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(text, fontFamily = ReadingSerif, fontSize = 13.sp, lineHeight = 18.sp, letterSpacing = 1.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        if (trailing.isNotEmpty()) {
-            Spacer(Modifier.width(8.dp))
-            Text(trailing, fontSize = 13.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-        }
-    }
+private fun EditorCaption(text: String) {
+    Text(text, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
 }
 
 @Composable
-private fun EditorField(value: String, onChange: (String) -> Unit, placeholder: String, enabled: Boolean, minLines: Int = 1, maxLines: Int = 3) {
+private fun EditorField(
+    value: String,
+    onChange: (String) -> Unit,
+    placeholder: String,
+    enabled: Boolean,
+    tag: String,
+    minLines: Int = 1,
+    maxLines: Int = 3
+) {
     TextField(
         value = value,
         onValueChange = onChange,
         enabled = enabled,
-        placeholder = if (placeholder.isNotEmpty()) {
-            { Text(placeholder, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-        } else null,
-        modifier = Modifier.fillMaxWidth(),
+        placeholder = { Text(placeholder, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        modifier = Modifier.fillMaxWidth().testTag(tag),
         minLines = minLines,
         maxLines = maxLines,
         textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface, fontSize = 17.sp, lineHeight = 26.sp),
-        shape = RoundedCornerShape(0.dp),
-        colors = readingLineColors()
+        shape = RoundedCornerShape(12.dp),
+        colors = quietFillColors()
     )
 }

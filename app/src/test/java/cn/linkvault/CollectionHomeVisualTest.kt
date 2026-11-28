@@ -17,7 +17,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToIndex
-import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.unit.Density
 import androidx.lifecycle.ViewModelProvider
 import java.io.File
@@ -99,7 +98,7 @@ class CollectionHomeVisualTest {
             assertTrue("$label 被裁切 text=$text scope=$scope", text.left >= scope.left - 1f && text.right <= scope.right + 1f && text.top >= scope.top - 1f && text.bottom <= scope.bottom + 1f)
         }
         val id = rule.runOnIdle { vm.visible().first().id }
-        val add = rule.onNodeWithContentDescription("收藏链接").fetchSemanticsNode().boundsInRoot
+        val add = rule.onNodeWithTag("collection-add").fetchSemanticsNode().boundsInRoot
         val row = rule.onNodeWithTag("collection-bookmark-$id").fetchSemanticsNode().boundsInRoot
         val menu = rule.onNodeWithTag("collection-item-menu-$id").fetchSemanticsNode().boundsInRoot
         assertTrue("新增盖住了收藏 add=$add row=$row", add.bottom <= row.top + 1f)
@@ -126,7 +125,7 @@ class CollectionHomeVisualTest {
         val vm = seed(scale = 2f)
         capture("home-v2-narrow-large")
         val last = rule.runOnIdle { vm.visible().last() }
-        rule.onNodeWithTag("collection-list").performScrollToNode(hasTestTag("collection-bookmark-${last.id}"))
+        rule.onNodeWithTag("collection-list").performScrollToIndex(rule.runOnIdle { vm.visible().lastIndex })
         val row = rule.onNodeWithTag("collection-bookmark-${last.id}").fetchSemanticsNode().boundsInRoot
         val nav = rule.onNodeWithText("收藏").fetchSemanticsNode().boundsInRoot
         val gap = with(rule.density) { 24.dp.toPx() }

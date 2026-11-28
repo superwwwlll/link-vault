@@ -55,12 +55,11 @@ internal fun DetailPage(
     val canFetch = vm.fetchEnabled && item.url.startsWith("https://", true)
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
-    PageToolbar("", onBack) {
-        TextButton(onClick = onOpen, modifier = Modifier.heightIn(min = 48.dp)) {
-            Text("打开原文", fontFamily = ReadingSerif, color = MaterialTheme.colorScheme.primary, fontSize = 17.sp)
-        }
-        IconButton(onClick = onEdit, enabled = !vm.busy, modifier = Modifier.size(48.dp)) {
-            Icon(Glyph.Edit, "编辑收藏", Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurface)
+    PageToolbar("收藏详情", onBack) {
+        TextButton(onClick = onEdit, enabled = !vm.busy, modifier = Modifier.heightIn(min = 48.dp)) {
+            Icon(Glyph.Edit, "编辑收藏", Modifier.size(16.dp))
+            Spacer(Modifier.width(4.dp))
+            Text("编辑", maxLines = 1)
         }
         Box {
             IconButton(onClick = { menu = true }, enabled = !vm.busy, modifier = Modifier.size(48.dp)) {
@@ -140,6 +139,11 @@ internal fun DetailPage(
             if (item.updatedAt / 60_000L > item.createdAt / 60_000L) append("  ·  更新 ").append(Stamp.date(item.updatedAt))
         }
         Text(stamp, fontSize = 13.sp, lineHeight = 20.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Button(onClick = onOpen, shape = RoundedCornerShape(12.dp), modifier = Modifier.heightIn(min = 48.dp)) {
+            Icon(Glyph.LinkChain, null, Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("打开原文")
+        }
         }
 
         val snapshot = vm.currentSnapshot

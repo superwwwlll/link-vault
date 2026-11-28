@@ -80,7 +80,7 @@ class QuietReadingUiTest {
         rule.onNodeWithText("只在有备注时出现").assertIsDisplayed()
         rule.onNode(hasText("收藏") and hasClickAction()).assertIsDisplayed()
         rule.onNode(hasText("笔记") and hasClickAction()).assertIsDisplayed()
-        rule.onNode(hasText("标签") and hasClickAction()).assertDoesNotExist()
+        rule.onNode(hasText("标签") and hasClickAction()).assertIsDisplayed()
         rule.onNode(hasText("设置") and hasClickAction()).assertDoesNotExist()
         capture("quiet-home")
         listOf("未归档", "未读", "已读", "归档").forEachIndexed { index, _ ->
@@ -152,7 +152,7 @@ class QuietReadingUiTest {
         capture("quiet-detail-body")
         rule.onNodeWithText("抓取页面信息").performScrollTo().assertIsDisplayed()
         rule.onNodeWithText("删除这条收藏").performScrollTo().assertIsDisplayed()
-        rule.onNodeWithText("打开原文").assertIsDisplayed()
+        rule.onNodeWithText("打开原文").performScrollTo().assertIsDisplayed()
         rule.onNodeWithText("译成中文").performScrollTo().assertIsDisplayed()
         rule.onNodeWithContentDescription("编辑收藏").assertIsDisplayed()
         Snapshots.delete(rule.activity, id)

@@ -106,8 +106,7 @@ class CatchupVisualTest {
         capture("gap-detail-menu")
         rule.onNodeWithText("标为已读").performClick()
         rule.runOnIdle { vm.closeDetail(); vm.tab(0); vm.clearMessage() }
-        rule.onNodeWithContentDescription("展开搜索").performClick()
-        rule.onNodeWithContentDescription("关闭搜索").assertIsDisplayed()
+        rule.onNodeWithTag("collection-search").assertIsDisplayed()
         capture("gap-collection-search")
         rule.runOnIdle { vm.tab(1); vm.clearMessage() }
         rule.onNodeWithContentDescription("展开搜索").performClick()

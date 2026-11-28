@@ -102,15 +102,14 @@ class VisualTest {
         rule.onNode(hasText("未归档") and hasClickAction()).performClick()
         rule.onNode(hasText("未归档") and hasClickAction()).assertIsSelected()
         rule.runOnIdle { check(vm.scope == 0) }
-        rule.onNodeWithContentDescription("展开搜索").performClick()
+        rule.onNodeWithTag("collection-search").performClick()
         rule.onNode(hasSetTextAction()).performTextInput("Compose")
         rule.onNodeWithText("用 Compose 构建更好的 Android 界面").assertIsDisplayed()
         rule.onNodeWithContentDescription("清空搜索").performClick()
-        rule.onNodeWithContentDescription("关闭搜索").performClick()
         capture("01-collection-light")
-        // 添加按钮压在列表右下角，必须给卡片让位：向下滚收起、回到顶部再出现。
+        // 收藏入口在滚动前后均可用。
         // 截图看不到这件事，所以这里按语义节点断言，而不是靠肉眼看图。
-        rule.onAllNodes(hasContentDescription("收藏链接")).assertCountEquals(1)
+        rule.onAllNodes(hasTestTag("collection-add")).assertCountEquals(1)
         // 紧凑模式下三条短收藏可能完整放下；补足真实可滚动列表再验收滚动反馈。
         val scrollSamples = runBlocking {
             val dao = VaultDb.get(rule.activity).bookmarks()
@@ -119,10 +118,10 @@ class VisualTest {
         rule.waitUntil(20_000) { rule.runOnIdle { vm.items.size == 13 } }
         rule.onNodeWithTag("collection-list").performTouchInput { swipeUp() }
         rule.waitForIdle()
-        rule.onAllNodes(hasContentDescription("收藏链接")).assertCountEquals(0)
+        rule.onAllNodes(hasTestTag("collection-add")).assertCountEquals(1)
         rule.onNodeWithTag("collection-list").performScrollToIndex(0)
         rule.waitForIdle()
-        rule.onAllNodes(hasContentDescription("收藏链接")).assertCountEquals(1)
+        rule.onAllNodes(hasTestTag("collection-add")).assertCountEquals(1)
         runBlocking { scrollSamples.forEach { VaultDb.get(rule.activity).bookmarks().delete(it) } }
         rule.waitUntil(20_000) { rule.runOnIdle { vm.items.size == 3 } }
         rule.onNodeWithText("值得慢慢看的宇宙").performClick()

@@ -71,11 +71,10 @@ class UiLayoutRegressionTest {
         val heading = rule.onNodeWithText(title).fetchSemanticsNode().boundsInRoot
         val root = rule.onRoot().fetchSemanticsNode().boundsInRoot
         check(heading.top < root.height * 0.4f) { "收藏内容仍被顶部推到首屏下半区：$heading / $root" }
-        rule.onNodeWithContentDescription("展开搜索").assertIsDisplayed().performClick()
+        rule.onNodeWithTag("collection-search").assertIsDisplayed().performClick()
         rule.onNode(hasSetTextAction()).performTextInput("Nightly")
         rule.onNodeWithText(title).assertDoesNotExist()
         rule.onNodeWithContentDescription("清空搜索").performClick()
-        rule.onNodeWithContentDescription("关闭搜索").performClick()
         capture("ui-161-collection-narrow")
         rule.onNodeWithContentDescription("展开标签筛选").performClick()
         rule.onNodeWithText("管理标签").performClick()
@@ -87,7 +86,7 @@ class UiLayoutRegressionTest {
 
     @Test fun largeTextKeepsSearchAndLongTagAccessible() {
         seed(1.5f)
-        rule.onNodeWithContentDescription("展开搜索").assertIsDisplayed()
+        rule.onNodeWithTag("collection-search").assertIsDisplayed()
         rule.onNodeWithText(title).assertIsDisplayed()
         capture("ui-161-collection-large-text")
         rule.onNodeWithContentDescription("展开标签筛选").performClick()

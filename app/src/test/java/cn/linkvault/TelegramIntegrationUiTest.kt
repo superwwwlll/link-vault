@@ -62,15 +62,15 @@ class TelegramIntegrationUiTest {
         }
     }
 
-    @Test fun realScreenHidesFabDuringSelectionAndProvidesUndo() {
+    @Test fun realScreenHidesCaptureDuringSelectionAndProvidesUndo() {
         val vm = seed()
         capture("ui-162-collection-compact")
         val first = rule.runOnIdle { vm.visible().first() }
         rule.onNodeWithTag("collection-bookmark-${first.id}").performTouchInput { longClick() }
         rule.onNodeWithText("已选择 1 条").assertIsDisplayed()
-        rule.onAllNodesWithContentDescription("收藏链接").assertCountEquals(0)
+        rule.onNodeWithTag("collection-add").assertDoesNotExist()
         rule.runOnIdle { rule.activity.onBackPressedDispatcher.onBackPressed() }
-        rule.onNodeWithContentDescription("收藏链接").assertIsDisplayed()
+        rule.onNodeWithTag("collection-add").assertIsDisplayed()
         rule.runOnIdle { vm.delete(first.id) }
         rule.waitUntil(10_000) { rule.runOnIdle { !vm.busy && vm.deletionUndo != null } }
         rule.onNodeWithText("撤销").assertIsDisplayed().performClick()
@@ -96,7 +96,7 @@ class TelegramIntegrationUiTest {
         }
         rule.onNodeWithText("AI 对话").assertIsDisplayed()
         rule.onNode(hasTestTag("analysis-conversation-input")).assertIsDisplayed()
-        rule.onAllNodesWithContentDescription("收藏链接").assertCountEquals(0)
+        rule.onNodeWithTag("collection-add").assertDoesNotExist()
         rule.onNodeWithTag("analysis-conversation-history").performScrollToIndex(1)
         rule.onNode(hasTestTag("analysis-conversation-input")).assertIsDisplayed().performTextInput("保留尚未发送的问题")
         capture("ui-162-conversation-large-text-1_5x")

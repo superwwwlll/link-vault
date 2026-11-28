@@ -38,14 +38,13 @@ class CollectionCompactUiTest {
         return vm
     }
 
-    @Test fun compactEntrancesAndScrollHidingRemainUsable() {
+    @Test fun compactEntrancesRemainUsableAfterScrolling() {
         seed()
         rule.onNodeWithTag("collection-result-count").assertTextEquals("最近收藏 · 16 条")
-        rule.onNodeWithContentDescription("展开搜索").performClick()
+        rule.onNodeWithTag("collection-search").performClick()
         rule.onNode(hasSetTextAction()).performTextInput("示例 15")
         rule.onNodeWithTag("collection-result-count").assertTextEquals("搜索结果 · 1 条")
         rule.onNodeWithContentDescription("清空搜索").performClick()
-        rule.onNodeWithContentDescription("关闭搜索").performClick()
         rule.onNodeWithContentDescription("展开标签筛选").performClick()
         rule.onNodeWithTag("collection-filter-技术").performClick().assertIsSelected()
         rule.onNodeWithTag("collection-result-count").assertTextEquals("# 技术 · 16 条")
@@ -65,7 +64,7 @@ class CollectionCompactUiTest {
         rule.onNodeWithTag("collection-list").performTouchInput { swipeUp() }
         rule.waitForIdle()
         rule.onNodeWithText("书架").assertIsDisplayed()
-        rule.onAllNodesWithContentDescription("收藏链接").assertCountEquals(0)
+        rule.onNodeWithTag("collection-add").assertIsDisplayed()
         rule.onNodeWithTag("collection-list").performScrollToIndex(0)
         rule.waitForIdle()
         rule.onNodeWithText("书架").assertIsDisplayed()
