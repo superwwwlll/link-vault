@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -28,9 +29,8 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
@@ -55,7 +55,6 @@ internal fun CollectionPage(
     onOpen: ((Bookmark) -> Unit)? = null,
     listState: LazyListState = rememberLazyListState(),
     onSelectionChange: (Boolean) -> Unit = {},
-    showAdd: Boolean = true,
     onAdd: () -> Unit = {}
 ) {
     // 筛选与聚合都只在输入真的变了时才算，避免每次重组都全量遍历一遍收藏
@@ -67,17 +66,17 @@ internal fun CollectionPage(
     var selectedIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
     val selectionMode = selectedIds.isNotEmpty()
     var confirmBulkDelete by remember { mutableStateOf(false) }
-    var searchExpanded by rememberSaveable { mutableStateOf(false) }
     var filtersExpanded by rememberSaveable { mutableStateOf(false) }
+    var tagQuery by rememberSaveable { mutableStateOf("") }
     val haptic = LocalHapticFeedback.current
     val selectionCallback by rememberUpdatedState(onSelectionChange)
     LaunchedEffect(selectionMode) { selectionCallback(selectionMode) }
     DisposableEffect(Unit) { onDispose { selectionCallback(false) } }
-    BackHandler(enabled = selectionMode || searchExpanded || vm.search.isNotEmpty() || filtersExpanded) {
+    BackHandler(enabled = selectionMode || vm.search.isNotEmpty() || filtersExpanded) {
         when {
             selectionMode -> selectedIds = emptySet()
-            searchExpanded || vm.search.isNotEmpty() -> { vm.search(""); searchExpanded = false }
-            else -> filtersExpanded = false
+            filtersExpanded -> filtersExpanded = false
+            else -> vm.search("")
         }
     }
     LaunchedEffect(visible) { selectedIds = selectedIds.intersect(visible.map { it.id }.toSet()) }
@@ -97,31 +96,65 @@ internal fun CollectionPage(
                     Text(
                         "书架",
                         Modifier.weight(1f).padding(start = 20.dp),
-                        fontFamily = ReadingSerif,
                         fontSize = 22.sp,
                         lineHeight = 28.sp,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    IconButton(onClick = { if (searchExpanded || vm.search.isNotEmpty()) { vm.search(""); searchExpanded = false } else searchExpanded = true }, modifier = Modifier.size(48.dp).testTag("collection-search-toggle")) {
-                        Icon(if (searchExpanded || vm.search.isNotEmpty()) Glyph.Close else Glyph.Search,
-                            if (searchExpanded || vm.search.isNotEmpty()) "收起搜索" else "展开搜索", Modifier.size(21.dp), tint = MaterialTheme.colorScheme.onSurface)
-                    }
-                    if (showAdd) IconButton(onClick = onAdd, modifier = Modifier.size(48.dp)) {
-                        Icon(Glyph.Add, "收藏链接", Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurface)
+                    Button(onClick = onAdd, enabled = !vm.busy,
+                        modifier = Modifier.heightIn(min = 48.dp).testTag("collection-add"),
+                        shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(horizontal = 12.dp)) {
+                        Icon(Glyph.Add, null, Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("收藏链接", maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     IconButton(onClick = { vm.tab(3) }, modifier = Modifier.size(48.dp)) {
                         Icon(Glyph.Settings, "设置", Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurface)
                     }
                 }
             }
-            if (searchExpanded || vm.search.isNotEmpty()) {
-                Box(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
-                    CollectionSearch(vm.search, vm::search, onClose = { vm.search(""); searchExpanded = false })
+            if (!selectionMode) {
+                Box(Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp)) {
+                    CollectionSearch(vm.search, vm::search)
                 }
             }
             CollectionScopes(vm.scope, vm::scope)
+            Row(Modifier.fillMaxWidth().padding(start = 20.dp), verticalAlignment = Alignment.CenterVertically) {
+                val heading = when {
+                    vm.search.isNotBlank() -> "搜索结果"
+                    vm.filter.isNotBlank() -> "# ${vm.filter}"
+                    vm.scope == 3 -> "归档"
+                    else -> "最近收藏"
+                }
+                Text("$heading · ${visible.size} 条", fontSize = 13.sp, lineHeight = 18.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f).testTag("collection-result-count"),
+                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                TextButton(onClick = { filtersExpanded = !filtersExpanded }, modifier = Modifier.heightIn(min = 48.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp)) {
+                    val active = vm.filter.isNotBlank() || filtersExpanded
+                    val tint = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    Icon(Glyph.Tag, if (filtersExpanded) "收起标签筛选" else "展开标签筛选", Modifier.size(16.dp), tint = tint)
+                    Spacer(Modifier.width(4.dp))
+                    Text("标签", color = tint, maxLines = 1)
+                }
+                CollectionMoreMenu(vm.sortOrder, vm::setSort, visible.isNotEmpty(), vm.busy,
+                    onRandom = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        vm.randomRead()
+                    }, onSelectAll = { selectedIds = visible.map { it.id }.toSet() },
+                    onClearFilter = if (vm.filter.isNotBlank()) ({ vm.filter("") }) else null)
+            }
             if (filtersExpanded) {
+                if (tagNames.size > 5) TextField(
+                    value = tagQuery,
+                    onValueChange = { tagQuery = it.replace("\n", "").take(100) },
+                    singleLine = true,
+                    label = { Text("查找标签") },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = quietFillColors(),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).testTag("collection-tag-search")
+                )
                 Row(
                     Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -130,7 +163,9 @@ internal fun CollectionPage(
                     TextButton(onClick = { vm.tab(2) }, modifier = Modifier.heightIn(min = 48.dp).testTag("manage-tags")) {
                         Text("管理标签")
                     }
-                    tagNames.forEach { tag ->
+                    val matches = tagNames.filter { it.contains(tagQuery.trim(), ignoreCase = true) }
+                    if (matches.isEmpty() && tagQuery.isNotBlank()) Text("未找到标签", style = MaterialTheme.typography.bodyMedium)
+                    matches.forEach { tag ->
                         val selected = vm.filter == tag
                         TagChip(
                             tag,
@@ -141,27 +176,6 @@ internal fun CollectionPage(
                         )
                     }
                 }
-            }
-            Row(Modifier.fillMaxWidth().padding(start = 20.dp), verticalAlignment = Alignment.CenterVertically) {
-                val heading = when {
-                    vm.search.isNotBlank() -> "搜索结果"
-                    vm.filter.isNotBlank() -> "# ${vm.filter}"
-                    vm.scope == 3 -> "归档"
-                    else -> "最近收藏"
-                }
-                Text("$heading · ${visible.size} 条", fontSize = 13.sp, lineHeight = 18.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f).testTag("collection-result-count"))
-                IconButton(onClick = { filtersExpanded = !filtersExpanded }, modifier = Modifier.size(48.dp)) {
-                    Icon(Glyph.Tag, if (filtersExpanded) "收起标签筛选" else "展开标签筛选", Modifier.size(18.dp),
-                        tint = if (vm.filter.isNotBlank() || filtersExpanded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                CollectionMoreMenu(vm.sortOrder, vm::setSort, visible.isNotEmpty(), vm.busy,
-                    onRandom = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        vm.randomRead()
-                    }, onSelectAll = { selectedIds = visible.map { it.id }.toSet() },
-                    onClearFilter = if (vm.filter.isNotBlank()) ({ vm.filter("") }) else null)
             }
         }
         LazyColumn(
@@ -179,12 +193,22 @@ internal fun CollectionPage(
                     Glyph.Bookmark,
                     when {
                         vm.items.isEmpty() -> "暂无收藏"
+                        vm.search.isNotBlank() || vm.filter.isNotBlank() -> "未找到匹配收藏"
                         vm.scope == 3 -> "归档为空"
                         vm.scope == 2 -> "暂无已读收藏"
                         vm.scope == 1 -> "已全部读完"
                         else -> "未找到匹配收藏"
                     },
                 )
+                if (!vm.busy && !selectionMode) {
+                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        if (vm.items.isEmpty() && !vm.readFailed && vm.search.isBlank() && vm.filter.isBlank()) {
+                            TextButton(onClick = onAdd, modifier = Modifier.heightIn(min = 48.dp)) { Text("收藏第一条链接") }
+                        } else if (vm.search.isNotBlank() || vm.filter.isNotBlank()) {
+                            TextButton(onClick = { vm.search(""); vm.filter("") }, modifier = Modifier.heightIn(min = 48.dp)) { Text("清除搜索和标签") }
+                        }
+                    }
+                }
             }
         } else {
             items(
@@ -199,6 +223,7 @@ internal fun CollectionPage(
                     selectionMode = selectionMode,
                     onToggleSelection = { selectedIds = if (item.id in selectedIds) selectedIds - item.id else selectedIds + item.id },
                     onClick = { vm.show(item) },
+                    onOpen = onOpen?.let { open -> { open(item) } },
                     onShare = { onShare(item) },
                     onDelete = { onDelete(item) },
                     onCopy = { onCopy(item) },
@@ -234,7 +259,7 @@ private fun CollectionScopes(scope: Int, onScope: (Int) -> Unit) {
         Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
-            .padding(start = 16.dp, end = 16.dp, bottom = 4.dp),
+            .padding(start = 12.dp, end = 12.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         scopeLabels.forEachIndexed { index, label ->
@@ -244,7 +269,8 @@ private fun CollectionScopes(scope: Int, onScope: (Int) -> Unit) {
                     .testTag("collection-scope-$index")
                     .semantics { this.selected = selected }
                     .clickable { onScope(index) }
-                    .padding(horizontal = 12.dp)
+                    .widthIn(min = 48.dp)
+                    .padding(horizontal = 4.dp)
                     .heightIn(min = 48.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
@@ -272,33 +298,27 @@ private fun CollectionScopes(scope: Int, onScope: (Int) -> Unit) {
 }
 
 @Composable
-private fun CollectionSearch(value: String, onChange: (String) -> Unit, onClose: () -> Unit) {
-    val focus = remember { FocusRequester() }
-    val dark = LocalVaultDark.current
-    LaunchedEffect(Unit) { focus.requestFocus() }
+private fun CollectionSearch(value: String, onChange: (String) -> Unit) {
+    val focus = LocalFocusManager.current
     TextField(
         value = value,
         onValueChange = { onChange(it.replace("\n", "").replace("\r", "")) },
         singleLine = true,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-        textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
-        placeholder = { Text("搜索", style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        keyboardActions = KeyboardActions(onSearch = { focus.clearFocus() }),
+        textStyle = MaterialTheme.typography.bodyLarge,
+        placeholder = { Text("搜索收藏", style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         leadingIcon = { Icon(Glyph.Search, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant) },
-        trailingIcon = {
-            IconButton(onClick = { if (value.isNotEmpty()) onChange("") else onClose() }, modifier = Modifier.size(48.dp)) {
-                Icon(Glyph.Close, if (value.isNotEmpty()) "清空搜索" else "关闭搜索", Modifier.size(16.dp))
+        trailingIcon = if (value.isNotEmpty()) {
+            {
+                IconButton(onClick = { onChange("") }, modifier = Modifier.size(48.dp)) {
+                    Icon(Glyph.Close, "清空搜索", Modifier.size(16.dp))
+                }
             }
-        },
-        shape = RoundedCornerShape(10.dp),
-        colors = TextFieldDefaults.colors(
-            focusedContainerColor = if (dark) NightFill else DayFill,
-            unfocusedContainerColor = if (dark) NightFill else DayFill,
-            focusedIndicatorColor = Color.Transparent,
-            unfocusedIndicatorColor = Color.Transparent,
-            disabledIndicatorColor = Color.Transparent,
-            cursorColor = MaterialTheme.colorScheme.primary
-        ),
-        modifier = Modifier.fillMaxWidth().focusRequester(focus).testTag("collection-search")
+        } else null,
+        shape = RoundedCornerShape(12.dp),
+        colors = quietFillColors(),
+        modifier = Modifier.fillMaxWidth().testTag("collection-search")
     )
 }
 
@@ -428,6 +448,7 @@ private fun SwipeableBookmarkCard(
     selectionMode: Boolean,
     onToggleSelection: () -> Unit,
     onClick: () -> Unit,
+    onOpen: (() -> Unit)?,
     onShare: () -> Unit,
     onDelete: () -> Unit,
     onCopy: () -> Unit,
@@ -512,6 +533,7 @@ private fun SwipeableBookmarkCard(
             selectionMode = selectionMode,
             onToggleSelection = onToggleSelection,
             onClick = onClick,
+            onOpen = onOpen,
             onShare = onShare,
             onDelete = onDelete,
             onCopy = onCopy,
@@ -529,6 +551,7 @@ private fun BookmarkCard(
     selectionMode: Boolean,
     onToggleSelection: () -> Unit,
     onClick: () -> Unit,
+    onOpen: (() -> Unit)?,
     onShare: () -> Unit,
     onDelete: () -> Unit,
     onCopy: () -> Unit,
@@ -582,12 +605,11 @@ private fun BookmarkCard(
             Column(Modifier.weight(1f).padding(start = if (selectionMode) 12.dp else 16.dp, top = 16.dp, bottom = 16.dp, end = 4.dp)) {
                 Text(
                     displayTitle,
-                    fontFamily = ReadingSerif,
-                    fontSize = 17.sp,
-                    lineHeight = 26.sp,
+                    fontSize = 16.sp,
+                    lineHeight = 23.sp,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 3,
+                    maxLines = if (compact) 1 else 2,
                     overflow = TextOverflow.Ellipsis
                 )
                 Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -640,10 +662,11 @@ private fun BookmarkCard(
                 Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(bottom = 16.dp).testTag("collection-item-actions")) {
                     Text(displayTitle, Modifier.padding(horizontal = 24.dp, vertical = 8.dp), fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     fun dismissThen(action: () -> Unit) { pendingAction = action; menu = false }
+                    if (onOpen != null) CollectionAction("打开原文", Glyph.LinkChain) { dismissThen(onOpen) }
+                    CollectionAction("编辑", Glyph.Edit) { dismissThen { vm.open(item) } }
                     CollectionAction("分享", Glyph.Share) { dismissThen(onShare) }
                     CollectionAction("复制链接", Glyph.Copy) { dismissThen(onCopy) }
                     CollectionAction("复制为 Markdown", Glyph.Markdown) { dismissThen(onCopyMarkdown) }
-                    CollectionAction("编辑", Glyph.Edit) { dismissThen { vm.open(item) } }
                     CollectionAction(if (item.pinned) "取消置顶" else "置顶", Glyph.Pin) { dismissThen { vm.togglePin(item) } }
                     CollectionAction(if (item.read) "标为未读" else "标为已读", Glyph.Check) { dismissThen { vm.toggleRead(item) } }
                     CollectionAction(if (item.archived) "移出归档" else "归档", Glyph.Archive) { dismissThen { vm.toggleArchived(item) } }

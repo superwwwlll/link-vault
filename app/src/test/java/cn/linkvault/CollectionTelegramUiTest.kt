@@ -63,7 +63,7 @@ class CollectionTelegramUiTest {
         rule.runOnIdle { assertFalse(selecting) }
         rule.onNodeWithTag("collection-list").performScrollToIndex(15)
         rule.onNodeWithText("书架").assertIsDisplayed()
-        rule.onNodeWithTag("collection-search-toggle").assertIsDisplayed()
+        rule.onNodeWithTag("collection-search").assertIsDisplayed()
         rule.onNodeWithTag("collection-scope-0").assertIsSelected()
     }
 
@@ -85,7 +85,7 @@ class CollectionTelegramUiTest {
         seed(fontScale = 2f)
         rule.onNodeWithTag("collection-scope-3").performScrollTo().performClick().assertIsSelected()
         rule.onNodeWithText("归档为空").assertIsDisplayed()
-        rule.onNodeWithContentDescription("展开搜索").performClick()
+        rule.onNodeWithTag("collection-search").performClick()
         rule.onNodeWithTag("collection-search").assertIsDisplayed()
     }
 }

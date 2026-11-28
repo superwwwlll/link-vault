@@ -13,7 +13,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -55,8 +54,6 @@ fun VaultScreen(vm: VaultViewModel) {
     val editing = d != null || nd != null
     val detail = vm.items.firstOrNull { it.id == vm.detailId }
     val collectionListState = rememberLazyListState()
-    val fabShown = rememberFabShown(collectionListState)
-    var collectionSelection by remember { mutableStateOf(false) }
     val snackbarHost = remember { SnackbarHostState() }
     val undo = vm.deletionUndo
     LaunchedEffect(undo?.token) {
@@ -66,10 +63,6 @@ fun VaultScreen(vm: VaultViewModel) {
             else vm.dismissDeletionUndo(undo)
         }
     }
-    LaunchedEffect(vm.tab, vm.detailId, editing, conversationKey) {
-        if (vm.tab != 0 || vm.detailId != null || editing || conversationKey != null) collectionSelection = false
-    }
-
     val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri -> uri?.let(vm::export) }
     val exportHtml = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/html")) { uri -> uri?.let(vm::exportHtml) }
     val exportPortalHtml = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/html")) { uri -> uri?.let(vm::exportPortalHtml) }
@@ -231,8 +224,6 @@ fun VaultScreen(vm: VaultViewModel) {
                 vm.tab == 2 -> TagsPage(vm)
                 vm.tab == 3 -> SettingsPage(vm, ::launchExport, ::launchExportHtml, ::launchExportPortalHtml, ::launchExportMarkdown, ::launchImport, ::launchFolder, ::launchSecureExport, ::launchSecureImport)
                 else -> CollectionPage(vm, onShare = ::share, onDelete = { deleteId = it.id }, onCopy = ::copyLink, onCopyMarkdown = ::copyMarkdown, onOpen = ::openLink, listState = collectionListState,
-                    onSelectionChange = { collectionSelection = it },
-                    showAdd = fabShown && !collectionSelection,
                     onAdd = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         vm.edit(Draft())
@@ -289,29 +280,4 @@ private fun ClipboardSuggestion(
             }
         }
     }
-}
-
-/**
- * 向下滚动时收起收藏页导航栏里的添加按钮。回到列表顶部时必须显示。
- */
-@Composable
-private fun rememberFabShown(listState: LazyListState): Boolean {
-    var shown by remember { mutableStateOf(true) }
-    LaunchedEffect(listState) {
-        var lastIndex = listState.firstVisibleItemIndex
-        var lastOffset = listState.firstVisibleItemScrollOffset
-        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
-            .collect { (index, offset) ->
-                val down = index > lastIndex || (index == lastIndex && offset > lastOffset)
-                val up = index < lastIndex || (index == lastIndex && offset < lastOffset)
-                when {
-                    index == 0 && offset == 0 -> shown = true
-                    down -> shown = false
-                    up -> shown = true
-                }
-                lastIndex = index
-                lastOffset = offset
-            }
-    }
-    return shown
 }

@@ -651,13 +651,23 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
     fun extractText(text: String, html: String = "", suggested: String = "") {
         val urls = Links.extract(text.take(16000), html)
         if (urls.isEmpty()) { fail("没有找到有效的 HTTP/HTTPS 链接"); return }
-        notice = if (urls.size > 1) "检测到 ${urls.size} 个链接，本次仅取第一个；其余链接请分别收藏。" else null
+        notice = if (urls.size > 1) "检测到 ${urls.size} 条链接，单条保存仅取第一个。" else null
         detected = urls
         saved["detected"] = ArrayList(urls)
         val old = draft ?: Draft()
         val fromHtml = if (html.isBlank()) "" else Links.titleFromHtml(html, urls.first())
         val title = old.title.ifBlank { suggested.ifBlank { fromHtml }.ifBlank { Links.fallbackTitle(urls.first()) } }
         edit(old.copy(url = urls.first(), title = title.take(200)))
+    }
+
+    fun updateDraftUrl(value: String) {
+        val current = draft ?: return
+        val url = value.take(16000)
+        if (url == current.url) return
+        detected = emptyList()
+        saved["detected"] = null
+        notice = null
+        edit(current.copy(url = url))
     }
 
     fun paste(text: String, html: String) = extractText(text, html)
@@ -828,6 +838,7 @@ class VaultViewModel(private val app: Application, private val saved: SavedState
                     if (written.fetchedAt == 0L || existing?.url != written.url) autoComplete(written)
                     else analysis.afterBookmarkSave(id)
                     edit(null); notice = null; detected = emptyList(); saved["detected"] = null
+                    if (existing == null) toast("已收藏")
                 }
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) { fail("保存失败，草稿已保留，请重试：${e.localizedMessage}") }
