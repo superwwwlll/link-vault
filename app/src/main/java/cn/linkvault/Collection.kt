@@ -259,7 +259,7 @@ private fun CollectionScopes(scope: Int, onScope: (Int) -> Unit) {
         Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
-            .padding(start = 16.dp, end = 16.dp, bottom = 4.dp),
+            .padding(start = 12.dp, end = 12.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         scopeLabels.forEachIndexed { index, label ->
@@ -269,7 +269,8 @@ private fun CollectionScopes(scope: Int, onScope: (Int) -> Unit) {
                     .testTag("collection-scope-$index")
                     .semantics { this.selected = selected }
                     .clickable { onScope(index) }
-                    .padding(horizontal = 8.dp)
+                    .widthIn(min = 48.dp)
+                    .padding(horizontal = 4.dp)
                     .heightIn(min = 48.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
